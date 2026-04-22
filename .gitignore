@@ -1,0 +1,14 @@
+# Binaries
+/specscore
+/dist/
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

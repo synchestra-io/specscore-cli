@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/idea"
 )
 
 // setupSpecRoot stages a temp spec repo with empty indexes and returns the

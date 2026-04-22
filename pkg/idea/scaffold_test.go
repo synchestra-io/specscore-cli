@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore/pkg/idea"
-	"github.com/synchestra-io/specscore/pkg/lint"
+	"github.com/synchestra-io/specscore-cli/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/lint"
 )
 
 // writeSpecTree stages a minimal spec tree with a single idea file at

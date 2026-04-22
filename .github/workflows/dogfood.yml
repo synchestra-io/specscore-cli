@@ -1,0 +1,43 @@
+name: Dogfood lint
+
+on:
+  push:
+    paths:
+      - 'spec/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - '.github/workflows/dogfood.yml'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    paths:
+      - 'spec/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - '.github/workflows/dogfood.yml'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dogfood-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build CLI
+        run: go build -o /tmp/specscore ./cmd/specscore
+      - name: Lint own spec tree
+        run: /tmp/specscore spec lint

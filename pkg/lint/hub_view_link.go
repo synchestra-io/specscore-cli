@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/synchestra-io/specscore/pkg/gitremote"
-	"github.com/synchestra-io/specscore/pkg/projectdef"
+	"github.com/synchestra-io/specscore-cli/pkg/gitremote"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
 // hubViewLinkMarker is the unique prefix we write / look for. Any line

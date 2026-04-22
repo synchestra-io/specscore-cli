@@ -1,6 +1,6 @@
 # Feature: Code Deps
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fcode%2Fdeps) — graph, discussions, approvals
+> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fcode%2Fdeps) — graph, discussions, approvals
 
 **Status:** Stable
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore/pkg/gitremote"
-	"github.com/synchestra-io/specscore/pkg/projectdef"
+	"github.com/synchestra-io/specscore-cli/pkg/gitremote"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
 const (

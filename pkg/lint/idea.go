@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/idea"
 )
 
 // ideaChecker is a dispatch checker that runs all idea-* rules in one pass

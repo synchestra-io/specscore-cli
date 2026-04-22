@@ -1,6 +1,6 @@
 # Feature: Task List
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ftask%2Flist) — graph, discussions, approvals
+> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ftask%2Flist) — graph, discussions, approvals
 
 **Status:** Stable
 

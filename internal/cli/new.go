@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore/pkg/exitcode"
-	"github.com/synchestra-io/specscore/pkg/feature"
-	"github.com/synchestra-io/specscore/pkg/idea"
-	"github.com/synchestra-io/specscore/pkg/lint"
+	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/synchestra-io/specscore-cli/pkg/feature"
+	"github.com/synchestra-io/specscore-cli/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/lint"
 )
 
 // newCommand returns the "new" command group — scaffolders for spec artifacts.

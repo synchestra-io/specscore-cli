@@ -1,14 +1,14 @@
-module github.com/synchestra-io/specscore
+module github.com/synchestra-io/specscore-cli
 
 go 1.26.1
 
 require (
+	charm.land/fang/v2 v2.0.1
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	charm.land/fang/v2 v2.0.1 // indirect
 	charm.land/lipgloss/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect

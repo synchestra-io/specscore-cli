@@ -25,9 +25,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/synchestra-io/specscore/internal/cli.version={{.Version}}
-      - -X github.com/synchestra-io/specscore/internal/cli.commit={{.Commit}}
-      - -X github.com/synchestra-io/specscore/internal/cli.date={{.Date}}
+      - -X github.com/synchestra-io/specscore-cli/internal/cli.version={{.Version}}
+      - -X github.com/synchestra-io/specscore-cli/internal/cli.commit={{.Commit}}
+      - -X github.com/synchestra-io/specscore-cli/internal/cli.date={{.Date}}
 
 archives:
   - id: specscore

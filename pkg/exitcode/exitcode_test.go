@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/synchestra-io/specscore/pkg/exitcode"
+	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
 )
 
 func TestErrorSatisfiesInterface(t *testing.T) {

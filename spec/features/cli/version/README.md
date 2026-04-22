@@ -1,6 +1,6 @@
 # Feature: Version
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fversion) — graph, discussions, approvals
+> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fversion) — graph, discussions, approvals
 
 **Status:** Stable
 
@@ -69,9 +69,9 @@ The version, commit, and date fields are populated at build time and baked into 
 The three values MUST be injected via Go linker flags against package-level `var` symbols in `internal/cli`:
 
 ```
--X github.com/synchestra-io/specscore/internal/cli.version=<semver>
--X github.com/synchestra-io/specscore/internal/cli.commit=<full-sha>
--X github.com/synchestra-io/specscore/internal/cli.date=<rfc3339>
+-X github.com/synchestra-io/specscore-cli/internal/cli.version=<semver>
+-X github.com/synchestra-io/specscore-cli/internal/cli.commit=<full-sha>
+-X github.com/synchestra-io/specscore-cli/internal/cli.date=<rfc3339>
 ```
 
 A release build MUST supply all three. The release workflow (goreleaser / equivalent) is the canonical producer of these values.

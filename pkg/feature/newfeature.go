@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/synchestra-io/specscore/pkg/exitcode"
+	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
 )
 
 // NewOptions holds the parameters for creating a new feature.
