@@ -87,7 +87,7 @@ When a feature ID does not resolve to an existing feature directory, commands MU
 ## Outstanding Questions
 
 - The `--fields` flag overlaps between `deps`, `info`, `list`, `refs`, and `tree`, but the exact set of valid field names is not enumerated in a single place. Should field names move to a shared registry (e.g., a REQ in this parent) or stay documented per-command?
-- `feature new --parent <id>` and `feature new --depends-on <ids>` overlap with Idea-derived scaffolding from `new idea`. Should there be a consolidated `new feature` path that handles both flows, or does the current split (general "new" group for pre-spec artifacts, `feature new` inside this group for features) remain clearer?
+- `feature new --parent <id>` and `feature new --depends-on <ids>` overlap with Idea-derived scaffolding from `idea new`. Should `feature new` accept a `--from-idea <slug>` flag that auto-populates `## Source Ideas:` and tightens the Idea → Feature promotion path, or does the current split (one `new` verb per resource group) stay as-is?
 
 ---
 *This document follows the https://specscore.md/feature-specification*

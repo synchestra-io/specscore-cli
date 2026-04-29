@@ -15,20 +15,20 @@ import (
 	"github.com/synchestra-io/specscore-cli/pkg/lint"
 )
 
-// newCommand returns the "new" command group — scaffolders for spec artifacts.
-func newCommand() *cobra.Command {
+// ideaCommand returns the "idea" command group — query and scaffold Idea artifacts.
+func ideaCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "new",
-		Short: "Scaffold new spec artifacts (ideas, features, ...)",
+		Use:   "idea",
+		Short: "Idea management — scaffold new Idea artifacts",
 	}
-	cmd.AddCommand(newIdeaCommand())
+	cmd.AddCommand(ideaNewCommand())
 	return cmd
 }
 
-// newIdeaCommand scaffolds a lint-clean Idea artifact at spec/ideas/<slug>.md.
-func newIdeaCommand() *cobra.Command {
+// ideaNewCommand scaffolds a lint-clean Idea artifact at spec/ideas/<slug>.md.
+func ideaNewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "idea <slug>",
+		Use:   "new <slug>",
 		Short: "Scaffold a new Idea artifact",
 		Long: `Creates a lint-clean Idea skeleton at spec/ideas/<slug>.md.
 
@@ -38,7 +38,7 @@ what belongs there. Supply content via flags (--title, --owner, --hmw,
 file is always lint-clean — running ` + "`specscore lint`" + ` immediately
 afterwards passes.`,
 		Args: cobra.ExactArgs(1),
-		RunE: runNewIdea,
+		RunE: runIdeaNew,
 	}
 	cmd.Flags().String("title", "", "Idea title (defaults to title-cased slug)")
 	cmd.Flags().String("owner", "", "author identifier (defaults to $USER)")
@@ -53,7 +53,7 @@ afterwards passes.`,
 	return cmd
 }
 
-func runNewIdea(cmd *cobra.Command, args []string) error {
+func runIdeaNew(cmd *cobra.Command, args []string) error {
 	slug := args[0]
 	if err := idea.ValidateSlug(slug); err != nil {
 		return exitcode.InvalidArgsErrorf("invalid slug %q: %v", slug, err)
