@@ -1,6 +1,6 @@
 # specscore-cli
 
-Reference CLI for [SpecScore](https://specscore.md) — lint, query, and scaffold SpecScore specifications.
+CLI for [SpecScore](https://specscore.md) — lint, query, and scaffold SpecScore specifications.
 
 ## Install
 

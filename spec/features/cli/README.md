@@ -6,7 +6,7 @@
 
 ## Summary
 
-The `specscore` CLI is the reference tooling for working with SpecScore specification repositories. It validates specs, queries the feature tree, inspects source-to-spec links, manages tasks, scaffolds new artifacts, and reports its own identity.
+The `specscore` CLI is the tooling for working with SpecScore specification repositories. It validates specs, queries the feature tree, inspects source-to-spec links, manages tasks, scaffolds new artifacts, and reports its own identity.
 
 This feature is the umbrella for command-level specifications. Each command or command group owns a child feature directory with its own contract — flags, output, exit codes, and behavior.
 
