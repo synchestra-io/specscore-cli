@@ -1,17 +1,17 @@
-# Feature: New Idea
+# Feature: Idea New
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fnew%2Fidea) — graph, discussions, approvals
+> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fidea%2Fnew) — graph, discussions, approvals
 
 **Status:** Stable
 
 ## Summary
 
-`specscore new idea <slug>` scaffolds a lint-clean Idea artifact at `spec/ideas/<slug>.md`. Each required section is emitted with an HTML-comment prompt describing what belongs there. Content can be supplied via flags or gathered interactively with `-i`.
+`specscore idea new <slug>` scaffolds a lint-clean Idea artifact at `spec/ideas/<slug>.md`. Each required section is emitted with an HTML-comment prompt describing what belongs there. Content can be supplied via flags or gathered interactively with `-i`.
 
 ## Synopsis
 
 ```
-specscore new idea <slug> [--title <text>] [--owner <id>] [--hmw <text>] [--context <text>] [--recommended-direction <text>] [--mvp <text>] [--not-doing "<thing> — <reason>" ...] [--interactive] [--force] [--project <path>]
+specscore idea new <slug> [--title <text>] [--owner <id>] [--hmw <text>] [--context <text>] [--recommended-direction <text>] [--mvp <text>] [--not-doing "<thing> — <reason>" ...] [--interactive] [--force] [--project <path>]
 ```
 
 ## Problem
@@ -82,31 +82,31 @@ If `spec/ideas/<slug>.md` already exists, the command MUST exit `1` (Conflict) w
 | Feature | Interaction |
 |---|---|
 | [idea](../../../idea/README.md) | Source of truth for required Idea sections, slug rules, and lint checks. |
-| [new](../README.md) | Parent group. Inherits the lint-clean-on-create guarantee. |
+| [idea (CLI group)](../README.md) | Parent group. Inherits the lint-clean-on-create guarantee. |
 
 ## Acceptance Criteria
 
 ### AC: scaffolded-idea-is-lint-clean
 
-**Requirements:** cli/new/idea#req:sensible-defaults
+**Requirements:** cli/idea/new#req:sensible-defaults
 
-`specscore new idea my-idea` with no other flags creates `spec/ideas/my-idea.md`. `specscore spec lint` immediately afterwards reports no new violations, even though several fields contain `<!-- TODO: ... -->` prompts.
+`specscore idea new my-idea` with no other flags creates `spec/ideas/my-idea.md`. `specscore spec lint` immediately afterwards reports no new violations, even though several fields contain `<!-- TODO: ... -->` prompts.
 
 ### AC: existing-file-conflict
 
-**Requirements:** cli/new/idea#req:no-clobber-default
+**Requirements:** cli/idea/new#req:no-clobber-default
 
 Running the command twice for the same slug, without `--force`, exits `1` on the second run and leaves the existing file untouched. With `--force`, the second run overwrites and exits `0`.
 
 ### AC: invalid-slug-rejected
 
-**Requirements:** cli/new/idea#req:slug-format
+**Requirements:** cli/idea/new#req:slug-format
 
-`specscore new idea My_Idea` exits `2` with a message that the slug contains invalid characters. No file is created.
+`specscore idea new My_Idea` exits `2` with a message that the slug contains invalid characters. No file is created.
 
 ## Outstanding Questions
 
-- Should `new idea` accept an `--edit` flag that opens the scaffolded file in `$EDITOR` after writing, for a smoother author flow?
+- Should `idea new` accept an `--edit` flag that opens the scaffolded file in `$EDITOR` after writing, for a smoother author flow?
 - Should the `--owner` default be GitHub username (from git config / `gh auth status`) instead of `$USER`, matching how `gh` attributes authorship?
 
 ---

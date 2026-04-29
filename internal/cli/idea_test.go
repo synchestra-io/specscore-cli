@@ -41,9 +41,9 @@ func withCwd(t *testing.T, dir string) {
 	t.Cleanup(func() { _ = os.Chdir(old) })
 }
 
-func runNew(t *testing.T, args ...string) (string, string, error) {
+func runIdea(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
-	cmd := newCommand()
+	cmd := ideaCommand()
 	var out, errOut bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
@@ -52,11 +52,11 @@ func runNew(t *testing.T, args ...string) (string, string, error) {
 	return out.String(), errOut.String(), err
 }
 
-func TestNewIdea_BareInvocationLintClean(t *testing.T) {
+func TestIdeaNew_BareInvocationLintClean(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	_, _, err := runNew(t, "idea", "demo-bare")
+	_, _, err := runIdea(t, "new", "demo-bare")
 	if err != nil {
 		t.Fatalf("command failed: %v", err)
 	}
@@ -71,11 +71,11 @@ func TestNewIdea_BareInvocationLintClean(t *testing.T) {
 	}
 }
 
-func TestNewIdea_FlagsInject(t *testing.T) {
+func TestIdeaNew_FlagsInject(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	_, _, err := runNew(t, "idea", "demo-flag",
+	_, _, err := runIdea(t, "new", "demo-flag",
 		"--title", "Demo Flag",
 		"--owner", "alice",
 		"--hmw", "How might we flag this?",
@@ -98,14 +98,14 @@ func TestNewIdea_FlagsInject(t *testing.T) {
 	}
 }
 
-func TestNewIdea_DuplicateRefused(t *testing.T) {
+func TestIdeaNew_DuplicateRefused(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	if _, _, err := runNew(t, "idea", "dup"); err != nil {
+	if _, _, err := runIdea(t, "new", "dup"); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
-	_, _, err := runNew(t, "idea", "dup")
+	_, _, err := runIdea(t, "new", "dup")
 	if err == nil {
 		t.Fatal("expected second run to fail without --force")
 	}
@@ -114,7 +114,7 @@ func TestNewIdea_DuplicateRefused(t *testing.T) {
 	}
 
 	// With --force, succeeds.
-	if _, _, err := runNew(t, "idea", "dup", "--force", "--title", "After Force"); err != nil {
+	if _, _, err := runIdea(t, "new", "dup", "--force", "--title", "After Force"); err != nil {
 		t.Fatalf("--force run: %v", err)
 	}
 	body, _ := os.ReadFile(filepath.Join(root, "spec", "ideas", "dup.md"))
@@ -123,28 +123,28 @@ func TestNewIdea_DuplicateRefused(t *testing.T) {
 	}
 }
 
-func TestNewIdea_InvalidSlug(t *testing.T) {
+func TestIdeaNew_InvalidSlug(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	_, _, err := runNew(t, "idea", "BadSlug")
+	_, _, err := runIdea(t, "new", "BadSlug")
 	if err == nil {
 		t.Fatal("expected error for invalid slug")
 	}
 }
 
-func TestNewIdea_Interactive(t *testing.T) {
+func TestIdeaNew_Interactive(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	cmd := newCommand()
+	cmd := ideaCommand()
 	var out, errOut bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
 	// Provide: title, owner, hmw, then blank-through the rest, then a
 	// single not-doing bullet, then blank to end.
 	cmd.SetIn(strings.NewReader("Interactive Demo\nzoe\nHow might we interact?\n\n\n\nthing interactive — reason\n\n"))
-	cmd.SetArgs([]string{"idea", "demo-inter", "-i"})
+	cmd.SetArgs([]string{"new", "demo-inter", "-i"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("interactive run failed: %v\nerr: %s", err, errOut.String())
 	}
@@ -164,11 +164,11 @@ func TestNewIdea_Interactive(t *testing.T) {
 	}
 }
 
-func TestNewIdea_IndexRowInserted(t *testing.T) {
+func TestIdeaNew_IndexRowInserted(t *testing.T) {
 	root := setupSpecRoot(t)
 	withCwd(t, root)
 
-	if _, _, err := runNew(t, "idea", "idx-check", "--owner", "pat"); err != nil {
+	if _, _, err := runIdea(t, "new", "idx-check", "--owner", "pat"); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	idx, _ := os.ReadFile(filepath.Join(root, "spec", "ideas", "README.md"))
@@ -183,7 +183,7 @@ func TestNewIdea_IndexRowInserted(t *testing.T) {
 
 // Ensure the exported idea.Scaffold still produces a valid file for a
 // hand-chosen set of options.
-func TestNewIdea_ScaffoldExported(t *testing.T) {
+func TestIdeaNew_ScaffoldExported(t *testing.T) {
 	body, err := idea.Scaffold(idea.ScaffoldOptions{Slug: "export-check"})
 	if err != nil {
 		t.Fatalf("Scaffold: %v", err)

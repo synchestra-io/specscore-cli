@@ -20,7 +20,7 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 |---|---|
 | [code/](code/README.md) | Source-code → SpecScore relationship queries |
 | [feature/](feature/README.md) | Feature tree queries and scaffolding |
-| [new/](new/README.md) | Scaffolding for non-feature artifacts (ideas, …) |
+| [idea/](idea/README.md) | Idea artifact scaffolding |
 | [spec/](spec/README.md) | Specification-tree validation and search |
 | [task/](task/README.md) | Task board management |
 | [version/](version/README.md) | CLI version reporting |
@@ -33,9 +33,9 @@ Queries relationships from source files to SpecScore resources. Scans `specscore
 
 Queries the feature tree: list every feature, inspect a feature's metadata and section TOC, view the hierarchy as a tree, and follow dependency / reference chains. Also hosts `feature new`, which scaffolds a new feature directory with a lint-clean README.
 
-### new
+### idea
 
-Scaffolds non-feature SpecScore artifacts. Currently hosts `new idea`, which creates a lint-clean Idea file at `spec/ideas/<slug>.md`. Future artifact kinds (plan, task, decision, …) will slot in as additional subcommands here.
+Scaffolds Idea artifacts at `spec/ideas/<slug>.md`. Hosts `idea new`, which emits a lint-clean Idea skeleton with HTML-comment prompts for every required section. Future artifact kinds (Plan, Decision) will live in their own resource groups (`specscore plan new`, `specscore decision new`) following the same pattern.
 
 ### spec
 
