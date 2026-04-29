@@ -116,6 +116,10 @@ Several flags appear across multiple commands with identical semantics:
 
 When `--project` is not supplied, commands MUST autodetect the project root by searching upward from the current working directory for `specscore-spec-repo.yaml`. If no project is found, commands MUST exit `3` (NotFound) with a clear message.
 
+## Consumers
+
+The [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) Claude Code plugin wraps every command group below as an agent skill. Each skill loads per-verb references on demand and treats the feature spec in this tree as the authoritative contract — when a flag, exit code, or output shape changes here, the corresponding skill follows. The wrapper-skill catalogue lives at [`skills/README.md`](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue).
+
 ## Outstanding Questions
 
 - The MVP task surface (list, info, new) does not include status transitions (claim, release, status update). Should those land as part of this feature or in a future `cli/task/status/…` expansion that tracks a `task-lifecycle` feature spec?

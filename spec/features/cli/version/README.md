@@ -111,6 +111,7 @@ The version command cannot fail under normal operation — missing build metadat
 |---|---|
 | [CLI](../README.md) | Parent feature. `version` inherits any shared CLI conventions introduced there. |
 | [Project Definition](../../project-definition/README.md) | Unrelated. The CLI version is a property of the binary, not of the spec repo it operates on. A spec repo does not pin a CLI version. |
+| [`install` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/install/SKILL.md) (ai-plugin-specscore) | Uses `specscore --version` as its post-install verification step; depends on the bare-semver shape pinned by [REQ: flag-output](#req-flag-output). |
 
 The installation documentation in `docs/installation.md` shows users how to verify a successful install by matching the shape defined in [REQ: subcommand-output](#req-subcommand-output). Changes to that format MUST be reflected in the installation docs.
 

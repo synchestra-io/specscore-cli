@@ -82,6 +82,7 @@ When a feature ID does not resolve to an existing feature directory, commands MU
 |---|---|
 | [feature](../../feature/README.md) | Defines what a feature is. This command group provides the CLI surface for querying and creating them. |
 | [CLI](../README.md) | Inherits shared exit-code contract, flag conventions, and project autodetection. |
+| [`feature/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper. Loads per-verb references on demand; treats this feature spec as the authoritative contract for command shape, flags, and output. |
 
 ## Outstanding Questions
 

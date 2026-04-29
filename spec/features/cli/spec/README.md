@@ -37,6 +37,7 @@ Commands under `specscore spec` operate on the specification tree as a whole —
 | Feature | Interaction |
 |---|---|
 | [CLI](../README.md) | Inherits shared exit-code contract and `--project` semantics. |
+| [`spec/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `spec lint`. Treats this feature spec as the authoritative contract. |
 
 ## Outstanding Questions
 

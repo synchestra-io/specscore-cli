@@ -38,6 +38,7 @@ No `specscore code` subcommand may write to disk, make network calls, or require
 |---|---|
 | [source-references](../../source-references/README.md) | Defines the `specscore:` annotation and URL-in-comment conventions. This command group reads them. |
 | [CLI](../README.md) | Inherits shared exit-code contract, project autodetection, and output-format conventions. |
+| [`code/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `code deps`. Treats this feature spec as the authoritative contract. |
 
 ## Outstanding Questions
 

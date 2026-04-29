@@ -56,6 +56,7 @@ Every non-listing command takes a task slug via `--task <slug>` (a flag, not pos
 |---|---|
 | [task](../../task/README.md) | Source of truth for task file structure, board format, and allowed status values. |
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
+| [`task/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `task list`, `task info`, and `task new`. Treats this feature spec as the authoritative contract. |
 
 ## Outstanding Questions
 

@@ -47,6 +47,7 @@ A file produced by any `specscore new <kind>` command MUST satisfy every lint ru
 | [idea](../../idea/README.md) | Defines the required shape of an Idea. `new idea` produces instances. |
 | [feature new](../feature/new/README.md) | Sibling scaffolder for features. Lives in the `feature` group because features are queried there too. |
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
+| [`idea/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `new idea` (and future `new <kind>` scaffolders). Treats this feature spec as the authoritative contract. |
 
 ## Outstanding Questions
 
