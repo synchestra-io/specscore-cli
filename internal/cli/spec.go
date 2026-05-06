@@ -49,7 +49,7 @@ invalid arguments, 10+ = unexpected error.`,
 	cmd.Flags().String("ignore", "", "disable specified rules (comma-separated)")
 	cmd.Flags().String("severity", "error", "minimum severity: error, warning, info")
 	cmd.Flags().String("format", "text", "output format: text, json, yaml")
-	cmd.Flags().Bool("fix", false, "apply fixes from checkers that support autofix (e.g. adherence-footer, hub-view-link, idea sync/index/archived-order)")
+	cmd.Flags().Bool("fix", false, "apply fixes from checkers that support autofix (e.g. adherence-footer, view-link, idea sync/index/archived-order)")
 	return cmd
 }
 

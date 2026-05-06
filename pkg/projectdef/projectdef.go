@@ -20,9 +20,18 @@ type PlanningConfig struct {
 	WhatsNext string `yaml:"whats_next"`
 }
 
-// HubConfig controls optional Synchestra Hub integration. Presence of Host
-// (non-empty) is the opt-in signal; when omitted, no Hub-related behavior
-// (e.g. the hub-view-link lint rule) activates.
+// StudioConfig controls optional Spec Studio integration. Presence of
+// Host (non-empty) is the opt-in signal; when omitted, no Studio-related
+// behavior (e.g. the view-link lint rule) activates.
+type StudioConfig struct {
+	Host string `yaml:"host"`
+}
+
+// HubConfig is the deprecated form of StudioConfig from when the linked
+// surface was called Synchestra Hub. Preserved for backward
+// compatibility on existing configs; new configs should use Studio.
+//
+// Deprecated: use StudioConfig.
 type HubConfig struct {
 	Host string `yaml:"host"`
 }
@@ -32,17 +41,32 @@ type SpecConfig struct {
 	StateRepo string          `yaml:"state_repo"`
 	Repos     []string        `yaml:"repos"`
 	Planning  *PlanningConfig `yaml:"planning,omitempty"`
-	Hub       *HubConfig      `yaml:"hub,omitempty"`
+	Studio    *StudioConfig   `yaml:"studio,omitempty"`
+	Hub       *HubConfig      `yaml:"hub,omitempty"` // Deprecated: use Studio
 	Extras    map[string]any  `yaml:",inline"`
 }
 
-// HubHost returns the configured Synchestra Hub base URL, or "" if Hub
-// integration is not enabled for this project.
-func (c SpecConfig) HubHost() string {
-	if c.Hub == nil {
-		return ""
+// StudioHost returns the configured Spec Studio base URL, or "" if
+// Studio integration is not enabled for this project. Falls back to
+// the deprecated `hub.host` field for backward compatibility with
+// older configs.
+func (c SpecConfig) StudioHost() string {
+	if c.Studio != nil && c.Studio.Host != "" {
+		return strings.TrimRight(c.Studio.Host, "/")
 	}
-	return strings.TrimRight(c.Hub.Host, "/")
+	if c.Hub != nil && c.Hub.Host != "" {
+		return strings.TrimRight(c.Hub.Host, "/")
+	}
+	return ""
+}
+
+// HubHost returns the configured base URL via the legacy `hub.host`
+// path. Retained so external callers do not break on this rename;
+// equivalent to StudioHost.
+//
+// Deprecated: use StudioHost.
+func (c SpecConfig) HubHost() string {
+	return c.StudioHost()
 }
 
 // WhatsNextMode returns the effective whats_next mode, defaulting to "disabled".

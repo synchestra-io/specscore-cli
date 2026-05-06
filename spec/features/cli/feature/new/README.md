@@ -38,7 +38,7 @@ The command creates `spec/features/<parent>/<slug>/README.md` containing every s
 
 #### REQ: lint-clean
 
-The generated README MUST pass `specscore spec lint` immediately — including the adherence footer, OQ section, hub view link (when `hub.host` is configured), and all structural conventions.
+The generated README MUST pass `specscore spec lint` immediately — including the adherence footer, OQ section, view link (when `studio.host` is configured), and all structural conventions.
 
 #### REQ: status-default
 

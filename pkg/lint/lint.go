@@ -113,7 +113,7 @@ var allRuleNames = map[string]bool{
 	"plan-hierarchy":     true,
 	"plan-roi-metadata":  true,
 	"adherence-footer":   true,
-	"hub-view-link":      true,
+	"view-link":          true,
 	// Idea lint rules.
 	"idea-location":                     true,
 	"idea-slug-format":                  true,
