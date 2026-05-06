@@ -1,12 +1,12 @@
 # Feature: Spec Lint
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fspec%2Flint) — graph, discussions, approvals
+> [View in Spec Studio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fspec%2Flint) — graph, discussions, approvals
 
 **Status:** Stable
 
 ## Summary
 
-`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, hub view links, idea sync / index / archived-order rules).
+`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, view links, idea sync / index / archived-order rules).
 
 ## Synopsis
 

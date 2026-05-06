@@ -1,6 +1,6 @@
 # Feature: Feature New
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ffeature%2Fnew) — graph, discussions, approvals
+> [View in Spec Studio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ffeature%2Fnew) — graph, discussions, approvals
 
 **Status:** Stable
 
@@ -16,7 +16,7 @@ specscore feature new --title <title> [--slug <slug>] [--parent <id>] [--status 
 
 ## Problem
 
-Creating a new feature by hand means remembering every required section, the correct status values, the Dependencies subsection format, the hub view link template, and the adherence footer. Every manual authoring slip becomes a lint violation. A scaffolding command that always emits a lint-clean feature removes that tax.
+Creating a new feature by hand means remembering every required section, the correct status values, the Dependencies subsection format, the view link template, and the adherence footer. Every manual authoring slip becomes a lint violation. A scaffolding command that always emits a lint-clean feature removes that tax.
 
 ## Behavior
 

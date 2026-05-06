@@ -1,6 +1,6 @@
 # specscore-cli Features
 
-> [View in Synchestra Hub](https://hub.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures) — graph, discussions, approvals
+> [View in Spec Studio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures) — graph, discussions, approvals
 
 Features of the `specscore` CLI.
 
