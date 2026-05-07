@@ -1,6 +1,6 @@
 # Feature: Feature List
 
-> [View in Spec Studio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ffeature%2Flist) — graph, discussions, approvals
+> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ffeature%2Flist) — graph, discussions, approvals
 
 **Status:** Stable
 
