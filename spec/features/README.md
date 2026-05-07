@@ -6,7 +6,7 @@ Features of the `specscore` CLI.
 
 | Feature | Status | Kind | Description |
 |---------|--------|------|-------------|
-| [cli](cli/README.md) | In Progress | Command | `specscore` CLI — parent feature for command-level specifications |
+| [cli](cli/README.md) | Implementing | Command | `specscore` CLI — parent feature for command-level specifications |
 
 ## Outstanding Questions
 
