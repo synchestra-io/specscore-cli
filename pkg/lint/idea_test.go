@@ -442,6 +442,54 @@ func TestCheckIdeas_UnlistedIdeaInIndex(t *testing.T) {
 	}
 }
 
+// TestCheckIdeas_IndexRowDriftDetectedAndFixed exercises the
+// idea-index-row-sync rule. The Idea file declares Status="Approved",
+// but the active-index row says "Draft". Without --fix, the linter
+// reports drift; with --fix, the row is rewritten from the parsed Idea
+// and the violation clears.
+func TestCheckIdeas_IndexRowDriftDetectedAndFixed(t *testing.T) {
+	staleIndex := `# SpecScore Ideas
+
+## Index
+
+| Idea | Status | Date | Owner | Promotes To |
+|------|--------|------|-------|-------------|
+| [offline-mode](offline-mode.md) | Draft | 2026-04-10 | alice | — |
+
+## Outstanding Questions
+
+None at this time.
+`
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":          staleIndex,
+		"ideas/archived/README.md": archivedIndex,
+		"ideas/offline-mode.md":    validIdeaBody("Offline Mode", "Approved", nil),
+	})
+
+	// Without --fix: row-sync violation, no completeness violation.
+	vs, _ := CheckIdeas(specRoot, false)
+	if !hasRule(vs, "idea-index-row-sync") {
+		t.Errorf("expected idea-index-row-sync violation: %+v", vs)
+	}
+	if hasRule(vs, "idea-index-completeness") {
+		t.Errorf("idea-index-completeness should not fire when slug is present: %+v", vs)
+	}
+
+	// With --fix: row is rewritten and the violation is gone.
+	vs2, _ := CheckIdeas(specRoot, true)
+	if hasRule(vs2, "idea-index-row-sync") {
+		t.Errorf("--fix did not resync row: %+v", vs2)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "README.md"))
+	body := string(data)
+	if !strings.Contains(body, "| [offline-mode](offline-mode.md) | Approved |") {
+		t.Errorf("index row not rewritten with Approved status: %s", body)
+	}
+	if strings.Contains(body, "| Draft |") {
+		t.Errorf("stale Draft cell still present: %s", body)
+	}
+}
+
 func TestCheckIdeas_ArchivedIndexOutOfOrderAndFixed(t *testing.T) {
 	older := validIdeaBody("Older", "Archived", map[string]string{"Archive Reason": "pivoted", "Date": "2024-11-02"})
 	newer := validIdeaBody("Newer", "Archived", map[string]string{"Archive Reason": "pivoted", "Date": "2025-03-10"})
