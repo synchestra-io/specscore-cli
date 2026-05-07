@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/synchestra-io/specscore-cli/pkg/feature"
 	"github.com/synchestra-io/specscore-cli/pkg/idea"
 )
 
@@ -266,17 +267,18 @@ func ideaFileRules(p *idea.Idea, relPath string, archived bool, all map[string]*
 		vs = append(vs, Violation{
 			File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
 			Rule:    "idea-status-values",
-			Message: fmt.Sprintf("Status %q is not one of Draft, Under Review, Approved, Specified, Archived", status),
+			Message: fmt.Sprintf("Status %q is not one of Draft, Under Review, Approved, Implementing, Specified, Archived", status),
 		})
 	}
 
-	// idea-specified-requires-promotion
-	if status == "Specified" {
+	// idea-specified-requires-promotion (also covers Implementing — both
+	// derived statuses require a non-empty Promotes To list).
+	if status == "Specified" || status == "Implementing" {
 		if len(p.PromotesTo()) == 0 {
 			vs = append(vs, Violation{
 				File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
 				Rule:    "idea-specified-requires-promotion",
-				Message: "Status: Specified requires a non-empty **Promotes To:** list",
+				Message: fmt.Sprintf("Status: %s requires a non-empty **Promotes To:** list", status),
 			})
 		}
 	}
@@ -479,12 +481,13 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 	}
 
 	// idea-feature-cross-reference: each feature->idea reference must resolve
-	// and the idea must be Approved or Specified (not Draft/Under Review/Archived).
-	for feature, ideas := range featureIdeas {
+	// and the idea must be Approved, Implementing, or Specified
+	// (not Draft/Under Review/Archived).
+	for featureSlug, ideas := range featureIdeas {
 		for _, slug := range ideas {
 			p, ok := parsed[slug]
 			if !ok {
-				rel := filepath.Join("features", feature, "README.md")
+				rel := filepath.Join("features", featureSlug, "README.md")
 				vs = append(vs, Violation{
 					File: rel, Line: 0, Severity: "error",
 					Rule:    "idea-feature-cross-reference",
@@ -493,18 +496,40 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 				continue
 			}
 			st := p.Status()
-			if st != "Approved" && st != "Specified" {
-				rel := filepath.Join("features", feature, "README.md")
+			if st != "Approved" && st != "Implementing" && st != "Specified" {
+				rel := filepath.Join("features", featureSlug, "README.md")
 				vs = append(vs, Violation{
 					File: rel, Line: 0, Severity: "error",
 					Rule:    "idea-feature-cross-reference",
-					Message: fmt.Sprintf("Source Ideas references idea %q with Status %q (must be Approved or Specified)", slug, st),
+					Message: fmt.Sprintf("Source Ideas references idea %q with Status %q (must be Approved, Implementing, or Specified)", slug, st),
 				})
 			}
 		}
 	}
 
+	// Feature status cache for derivation. Read each referenced feature's
+	// **Status:** value lazily so we only touch what we need.
+	featureStatusCache := make(map[string]string)
+	getFeatureStatus := func(featureSlug string) string {
+		if st, ok := featureStatusCache[featureSlug]; ok {
+			return st
+		}
+		readme := filepath.Join(specRoot, "features", featureSlug, "README.md")
+		st, err := feature.ParseFeatureStatus(readme)
+		if err != nil {
+			st = ""
+		}
+		featureStatusCache[featureSlug] = st
+		return st
+	}
+
 	// idea-sync-lint-strict per idea.
+	//
+	// Derivation rules (per spec REQ:implementing-derivation +
+	// REQ:specified-derivation):
+	//   - no Feature references                            -> Approved
+	//   - 1+ refs, every referenced Feature Status==Stable -> Specified
+	//   - 1+ refs, any  referenced Feature Status!=Stable  -> Implementing
 	for slug, p := range parsed {
 		refs := reverse[slug]
 		expectedPromotes := append([]string{}, refs...)
@@ -513,15 +538,27 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 		sort.Strings(actualPromotes)
 
 		var expectedStatus string
-		if len(refs) > 0 {
-			expectedStatus = "Specified"
-		} else {
-			// Not Specified. But the idea may legitimately be Draft/Approved/etc.
-			// Drift only if current status == Specified.
-			if p.Status() == "Specified" {
+		if len(refs) == 0 {
+			// No references. The idea may legitimately be Draft/Approved/etc.
+			// Drift only if current status is one of the derived states.
+			cur := p.Status()
+			if cur == "Specified" || cur == "Implementing" {
 				expectedStatus = "Approved" // drop back
 			} else {
 				expectedStatus = "" // no change expected
+			}
+		} else {
+			allStable := true
+			for _, fs := range refs {
+				if getFeatureStatus(fs) != "Stable" {
+					allStable = false
+					break
+				}
+			}
+			if allStable {
+				expectedStatus = "Specified"
+			} else {
+				expectedStatus = "Implementing"
 			}
 		}
 

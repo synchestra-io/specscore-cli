@@ -3,7 +3,7 @@ package feature
 import "strings"
 
 // ValidStatuses lists the allowed feature lifecycle statuses.
-var ValidStatuses = []string{"Draft", "In Progress", "Stable", "Deprecated"}
+var ValidStatuses = []string{"Draft", "Under Review", "Approved", "Implementing", "Stable", "Deprecated"}
 
 // IsValidStatus reports whether status matches one of the ValidStatuses
 // (case-insensitive).

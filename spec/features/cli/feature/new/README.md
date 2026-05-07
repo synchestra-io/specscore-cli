@@ -42,7 +42,7 @@ The generated README MUST pass `specscore spec lint` immediately — including t
 
 #### REQ: status-default
 
-`--status` MUST accept one of `Draft`, `In Progress`, `Stable`, `Deprecated`. Default is `Draft`. Any other value MUST exit `2`.
+`--status` MUST accept one of `Draft`, `Under Review`, `Approved`, `Implementing`, `Stable`, `Deprecated`. Default is `Draft`. Any other value MUST exit `2`.
 
 ### Dependencies
 

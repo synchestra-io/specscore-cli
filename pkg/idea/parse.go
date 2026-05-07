@@ -14,6 +14,7 @@ var ValidStatuses = map[string]bool{
 	"Draft":        true,
 	"Under Review": true,
 	"Approved":     true,
+	"Implementing": true,
 	"Specified":    true,
 	"Archived":     true,
 }

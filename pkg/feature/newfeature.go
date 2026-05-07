@@ -40,7 +40,7 @@ func New(featuresDir string, opts NewOptions) (*NewResult, error) {
 		status = "Draft"
 	}
 	if !IsValidStatus(status) {
-		return nil, exitcode.InvalidArgsErrorf("invalid status: %s (supported: Draft, In Progress, Stable, Deprecated)", status)
+		return nil, exitcode.InvalidArgsErrorf("invalid status: %s (supported: Draft, Under Review, Approved, Implementing, Stable, Deprecated)", status)
 	}
 
 	// Generate or validate slug.

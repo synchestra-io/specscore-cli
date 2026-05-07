@@ -382,7 +382,8 @@ None at this time.
 		t.Fatal(err)
 	}
 	s := string(data)
-	if !strings.Contains(s, "**Status:** Specified") {
+	// Referencing Feature is Draft, so derived status is Implementing.
+	if !strings.Contains(s, "**Status:** Implementing") {
 		t.Errorf("status not updated: %s", s)
 	}
 	if !strings.Contains(s, "**Promotes To:** offline-sync") {
@@ -494,5 +495,165 @@ func TestCheckIdeas_IdeaWithIdField(t *testing.T) {
 	vs, _ := CheckIdeas(specRoot, false)
 	if !hasRule(vs, "idea-id-is-slug") {
 		t.Errorf("expected idea-id-is-slug violation")
+	}
+}
+
+// featureBody returns a minimal Feature README with the given status and
+// optional Source Ideas value (use "" to omit the field).
+func featureBody(title, status, sourceIdeas string) string {
+	var b strings.Builder
+	b.WriteString("# Feature: " + title + "\n\n")
+	b.WriteString("**Status:** " + status + "\n")
+	if sourceIdeas != "" {
+		b.WriteString("**Source Ideas:** " + sourceIdeas + "\n")
+	}
+	b.WriteString("\n## Summary\n\nStuff.\n\n## Outstanding Questions\n\nNone at this time.\n")
+	return b.String()
+}
+
+// TestCheckIdeas_DerivesImplementing_WhenAnyFeatureNotStable verifies that
+// an Idea referenced by a non-Stable Feature derives `Implementing`.
+func TestCheckIdeas_DerivesImplementing_WhenAnyFeatureNotStable(t *testing.T) {
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":                 activeIndexWith("offline-mode"),
+		"ideas/archived/README.md":        archivedIndex,
+		"ideas/offline-mode.md":           validIdeaBody("Offline Mode", "Approved", nil),
+		"features/offline-sync/README.md": featureBody("Offline Sync", "Draft", "offline-mode"),
+	})
+	// --fix should set the idea to Implementing.
+	if _, err := CheckIdeas(specRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "offline-mode.md"))
+	if !strings.Contains(string(data), "**Status:** Implementing") {
+		t.Errorf("expected Implementing, got: %s", string(data))
+	}
+	// Subsequent lint passes.
+	vs, _ := CheckIdeas(specRoot, false)
+	if hasRule(vs, "idea-sync-lint-strict") {
+		t.Errorf("subsequent lint reports drift: %+v", vs)
+	}
+}
+
+// TestCheckIdeas_DerivesSpecified_WhenAllFeaturesStable verifies that an
+// Idea referenced only by Stable Features derives `Specified`.
+func TestCheckIdeas_DerivesSpecified_WhenAllFeaturesStable(t *testing.T) {
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":                 activeIndexWith("offline-mode"),
+		"ideas/archived/README.md":        archivedIndex,
+		"ideas/offline-mode.md":           validIdeaBody("Offline Mode", "Approved", nil),
+		"features/offline-sync/README.md": featureBody("Offline Sync", "Stable", "offline-mode"),
+	})
+	if _, err := CheckIdeas(specRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "offline-mode.md"))
+	if !strings.Contains(string(data), "**Status:** Specified") {
+		t.Errorf("expected Specified, got: %s", string(data))
+	}
+	vs, _ := CheckIdeas(specRoot, false)
+	if hasRule(vs, "idea-sync-lint-strict") {
+		t.Errorf("subsequent lint reports drift: %+v", vs)
+	}
+}
+
+// TestCheckIdeas_DerivesImplementing_WhenMixed verifies an Idea referenced
+// by one Stable AND one Draft Feature derives `Implementing` (any non-Stable
+// pulls it back from Specified).
+func TestCheckIdeas_DerivesImplementing_WhenMixed(t *testing.T) {
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":          activeIndexWith("offline-mode"),
+		"ideas/archived/README.md": archivedIndex,
+		"ideas/offline-mode.md":    validIdeaBody("Offline Mode", "Approved", nil),
+		"features/feat-a/README.md": featureBody("Feat A", "Stable", "offline-mode"),
+		"features/feat-b/README.md": featureBody("Feat B", "Draft", "offline-mode"),
+	})
+	if _, err := CheckIdeas(specRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "offline-mode.md"))
+	if !strings.Contains(string(data), "**Status:** Implementing") {
+		t.Errorf("expected Implementing, got: %s", string(data))
+	}
+}
+
+// TestCheckIdeas_DeprecatedFeatureGivesImplementing verifies that a
+// `Deprecated` Feature counts as non-Stable for derivation purposes.
+func TestCheckIdeas_DeprecatedFeatureGivesImplementing(t *testing.T) {
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":                 activeIndexWith("offline-mode"),
+		"ideas/archived/README.md":        archivedIndex,
+		"ideas/offline-mode.md":           validIdeaBody("Offline Mode", "Approved", nil),
+		"features/offline-sync/README.md": featureBody("Offline Sync", "Deprecated", "offline-mode"),
+	})
+	if _, err := CheckIdeas(specRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "offline-mode.md"))
+	if !strings.Contains(string(data), "**Status:** Implementing") {
+		t.Errorf("expected Implementing (Deprecated is not Stable), got: %s", string(data))
+	}
+}
+
+// TestCheckIdeas_ImplementingRevertsToApproved_WhenRefsRemoved verifies
+// that removing all Feature references reverts an Implementing Idea to
+// Approved on --fix.
+func TestCheckIdeas_ImplementingRevertsToApproved_WhenRefsRemoved(t *testing.T) {
+	body := validIdeaBody("Offline Mode", "Implementing", nil)
+	body = strings.Replace(body, "**Promotes To:** —", "**Promotes To:** offline-sync", 1)
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":          activeIndexWith("offline-mode"),
+		"ideas/archived/README.md": archivedIndex,
+		"ideas/offline-mode.md":    body,
+		// no feature referencing it
+	})
+	// Without --fix: drift reported.
+	vs, _ := CheckIdeas(specRoot, false)
+	if !hasRule(vs, "idea-sync-lint-strict") {
+		t.Fatalf("expected drift: %+v", vs)
+	}
+	// With --fix: revert to Approved with empty Promotes To.
+	if _, err := CheckIdeas(specRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(specRoot, "ideas", "offline-mode.md"))
+	s := string(data)
+	if !strings.Contains(s, "**Status:** Approved") {
+		t.Errorf("expected Approved after revert, got: %s", s)
+	}
+	if !strings.Contains(s, "**Promotes To:** —") {
+		t.Errorf("expected empty Promotes To after revert, got: %s", s)
+	}
+}
+
+// TestCheckIdeas_ImplementingRequiresPromotion verifies that a manual
+// `Status: Implementing` with empty Promotes To is rejected.
+func TestCheckIdeas_ImplementingRequiresPromotion(t *testing.T) {
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":          activeIndexWith("x"),
+		"ideas/archived/README.md": archivedIndex,
+		"ideas/x.md":               validIdeaBody("X", "Implementing", nil),
+	})
+	vs, _ := CheckIdeas(specRoot, false)
+	if !hasRule(vs, "idea-specified-requires-promotion") {
+		t.Errorf("expected idea-specified-requires-promotion violation")
+	}
+}
+
+// TestCheckIdeas_FeatureMayReferenceImplementingIdea verifies a Feature
+// can reference an Idea whose status is Implementing.
+func TestCheckIdeas_FeatureMayReferenceImplementingIdea(t *testing.T) {
+	body := validIdeaBody("Offline Mode", "Implementing", nil)
+	body = strings.Replace(body, "**Promotes To:** —", "**Promotes To:** feat-a, feat-b", 1)
+	specRoot := writeSpec(t, map[string]string{
+		"ideas/README.md":           activeIndexWith("offline-mode"),
+		"ideas/archived/README.md":  archivedIndex,
+		"ideas/offline-mode.md":     body,
+		"features/feat-a/README.md": featureBody("Feat A", "Draft", "offline-mode"),
+		"features/feat-b/README.md": featureBody("Feat B", "Draft", "offline-mode"),
+	})
+	vs, _ := CheckIdeas(specRoot, false)
+	if hasRule(vs, "idea-feature-cross-reference") {
+		t.Errorf("Implementing should be an allowed cross-reference target: %+v", vs)
 	}
 }
