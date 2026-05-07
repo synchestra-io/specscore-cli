@@ -37,7 +37,7 @@ var RequiredSections = []string{
 	"Not Doing (and Why)",
 	"Key Assumptions to Validate",
 	"SpecScore Integration",
-	"Open Questions",
+	"Outstanding Questions",
 }
 
 // RequiredHeaderFields lists required **X:** fields in order.

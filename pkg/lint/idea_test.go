@@ -57,7 +57,7 @@ Small.
 ## SpecScore Integration
 - **New Features this would create:** TBD
 
-## Open Questions
+## Outstanding Questions
 None at this time.
 `)
 	return header.String()

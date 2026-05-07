@@ -70,7 +70,7 @@ Single job.
 ## SpecScore Integration
 - **New Features this would create:** TBD
 
-## Open Questions
+## Outstanding Questions
 None at this time.
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
