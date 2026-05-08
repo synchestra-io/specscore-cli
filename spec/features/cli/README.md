@@ -48,6 +48,7 @@ Manages the project task board at `tasks/README.md` and individual task files un
 ### version
 
 Reports the CLI's build identity. `specscore version` prints the full human-readable line; `specscore --version` (and `-v`) prints the bare semver for scripts. See [version/README.md](version/README.md) for the full contract.
+| [init](init/README.md) | specscore init scaffolds a SpecScore-managed project root: creates specscore.yaml with the mandatory schema-pointer header, the spec/ tree with lint-clean Ideas and Features indexes, and optional spec/research and spec/decisions trees. Refuses to clobber existing specscore.yaml unless --force. |
 
 ## Behavior
 
