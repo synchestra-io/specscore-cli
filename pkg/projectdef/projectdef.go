@@ -52,12 +52,74 @@ type SpecConfig struct {
 // omitted, callers infer values from the working directory and git
 // remote.
 type ProjectConfig struct {
-	Title        string         `yaml:"title,omitempty"`
-	Host         string         `yaml:"host,omitempty"`
-	Org          string         `yaml:"org,omitempty"`
-	Repo         string         `yaml:"repo,omitempty"`
-	Repositories []string       `yaml:"repositories,omitempty"`
-	Extras       map[string]any `yaml:",inline"`
+	Title        string             `yaml:"title,omitempty"`
+	Host         string             `yaml:"host,omitempty"`
+	Org          string             `yaml:"org,omitempty"`
+	Repo         string             `yaml:"repo,omitempty"`
+	Repositories []RepositoryConfig `yaml:"repositories,omitempty"`
+	Extras       map[string]any     `yaml:",inline"`
+}
+
+// RepositoryConfig is one entry in `project.repositories`. Per
+// repo-config#req:repositories-entry-shape every entry MUST be a YAML
+// mapping (object) with a non-empty `roles` list — flat URL strings are
+// rejected.
+type RepositoryConfig struct {
+	URL     string         `yaml:"url"`
+	Title   string         `yaml:"title,omitempty"`
+	Comment string         `yaml:"comment,omitempty"`
+	Roles   []Role         `yaml:"roles"`
+	Extras  map[string]any `yaml:",inline"`
+}
+
+// Role is a value from the closed enum defined in
+// repo-config#req:repositories-roles-enum.
+type Role string
+
+// Canonical role values per repo-config#req:repositories-roles-enum.
+// The enum is closed in v1; new values require a Feature revision.
+const (
+	RoleCode          Role = "code"
+	RoleSpecification Role = "specification"
+	RoleState         Role = "state"
+	RoleDocs          Role = "docs"
+	RoleRunner        Role = "runner"
+)
+
+// validRoles is the canonical set used for membership checks.
+var validRoles = map[Role]struct{}{
+	RoleCode:          {},
+	RoleSpecification: {},
+	RoleState:         {},
+	RoleDocs:          {},
+	RoleRunner:        {},
+}
+
+// IsValidRole reports whether r is a member of the canonical role enum.
+func IsValidRole(r Role) bool {
+	_, ok := validRoles[r]
+	return ok
+}
+
+// UnmarshalYAML enforces repo-config#req:repositories-entry-shape — the
+// entry MUST be a mapping (not a scalar / not a sequence). Flat URL
+// strings are rejected with a hard error citing the violated REQ.
+func (r *RepositoryConfig) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf(
+			"project.repositories entry must be a mapping with `url` and `roles` fields; flat-string entries are not accepted (repo-config#req:repositories-entry-shape)",
+		)
+	}
+	// Use a type alias to avoid recursing back into UnmarshalYAML and to
+	// pick up the inline `Extras` plumbing that gopkg.in/yaml.v3 wires
+	// only on the unaliased type.
+	type rawRepo RepositoryConfig
+	var raw rawRepo
+	if err := node.Decode(&raw); err != nil {
+		return fmt.Errorf("decoding project.repositories entry: %w", err)
+	}
+	*r = RepositoryConfig(raw)
+	return nil
 }
 
 // ViewerConfig names the upstream viewer that renders SpecScore
@@ -140,9 +202,9 @@ func (c SpecConfig) EffectiveModules() []ModuleConfig {
 }
 
 // Validate checks the structural invariants that don't require I/O:
-// viewer mapping completeness and module path uniqueness/non-nesting.
-// File-system checks (e.g. projects local-path resolution) belong to
-// the linter.
+// viewer mapping completeness, repositories entry shape and role-enum
+// membership, and module path uniqueness/non-nesting. File-system
+// checks (e.g. projects local-path resolution) belong to the linter.
 func (c SpecConfig) Validate() error {
 	if !c.viewerExplicitNull && c.Viewer != nil {
 		if c.Viewer.Name == "" {
@@ -152,7 +214,41 @@ func (c SpecConfig) Validate() error {
 			return errors.New("viewer.url is required when the viewer block is a mapping (repo-config#req:viewer-explicit-values)")
 		}
 	}
+	if c.Project != nil {
+		if err := validateRepositories(c.Project.Repositories); err != nil {
+			return err
+		}
+	}
 	return validateModules(c.Modules)
+}
+
+// validateRepositories enforces repo-config#req:repositories-entry-shape,
+// repo-config#req:repositories-roles-list, and repo-config#req:repositories-roles-enum.
+// Errors include the offending entry index and the violated REQ name.
+func validateRepositories(repos []RepositoryConfig) error {
+	for i, r := range repos {
+		if r.URL == "" {
+			return fmt.Errorf(
+				"project.repositories[%d]: missing `url` (repo-config#req:repositories-entry-shape)",
+				i,
+			)
+		}
+		if len(r.Roles) == 0 {
+			return fmt.Errorf(
+				"project.repositories[%d]: `roles` is required and must be a non-empty list (repo-config#req:repositories-roles-list)",
+				i,
+			)
+		}
+		for _, role := range r.Roles {
+			if !IsValidRole(role) {
+				return fmt.Errorf(
+					"project.repositories[%d]: unknown role %q; expected one of code, specification, state, docs, runner (repo-config#req:repositories-roles-enum)",
+					i, string(role),
+				)
+			}
+		}
+	}
+	return nil
 }
 
 // ValidateSchemaHeader verifies the first line of `data` is exactly the

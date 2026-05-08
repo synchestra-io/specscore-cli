@@ -21,8 +21,10 @@ func TestRoundTripWithProjectAndViewer(t *testing.T) {
 	dir := t.TempDir()
 	cfg := SpecConfig{
 		Project: &ProjectConfig{
-			Title:        "Test Project",
-			Repositories: []string{"https://github.com/test/code.git"},
+			Title: "Test Project",
+			Repositories: []RepositoryConfig{
+				{URL: "https://github.com/test/code.git", Roles: []Role{RoleCode}},
+			},
 		},
 		Viewer: &ViewerConfig{Name: "AcmeDocs", URL: "https://docs.acme.example/"},
 	}
@@ -38,6 +40,12 @@ func TestRoundTripWithProjectAndViewer(t *testing.T) {
 	}
 	if got.Viewer == nil || got.Viewer.Name != "AcmeDocs" || got.Viewer.URL != "https://docs.acme.example/" {
 		t.Errorf("Viewer round-trip failed: %+v", got.Viewer)
+	}
+	if len(got.Project.Repositories) != 1 ||
+		got.Project.Repositories[0].URL != "https://github.com/test/code.git" ||
+		len(got.Project.Repositories[0].Roles) != 1 ||
+		got.Project.Repositories[0].Roles[0] != RoleCode {
+		t.Errorf("Repositories round-trip failed: %+v", got.Project.Repositories)
 	}
 }
 
@@ -224,5 +232,166 @@ func TestSpecConfigFileWritten(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(data), SchemaHeader+"\n") {
 		t.Errorf("written file does not begin with schema header; got %q", string(data))
+	}
+}
+
+// TestRepositoriesRoundTripMultiRole exercises AC: repositories-role-tagged.
+// Mixed shapes do NOT exist — every entry MUST be a role-tagged object.
+// The fixture covers: optional title/comment, multi-valued roles, and
+// the implicit single-role shape.
+func TestRepositoriesRoundTripMultiRole(t *testing.T) {
+	dir := t.TempDir()
+	body := SchemaHeader + `
+project:
+  title: T
+  repositories:
+    - url: https://github.com/acme/api
+      roles: [code]
+    - url: https://github.com/acme/spec
+      title: Spec Repo
+      comment: SpecScore-managed spec for the project
+      roles: [specification, code]
+    - url: https://github.com/acme/state
+      roles: [state]
+      tracker: jira-123   # unknown field — must round-trip
+`
+	writeRaw(t, dir, body)
+
+	cfg, err := ReadSpecConfig(dir)
+	if err != nil {
+		t.Fatalf("ReadSpecConfig: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	repos := cfg.Project.Repositories
+	if len(repos) != 3 {
+		t.Fatalf("expected 3 repositories, got %d", len(repos))
+	}
+	if repos[1].Title != "Spec Repo" || repos[1].Comment == "" {
+		t.Errorf("title/comment lost on entry[1]: %+v", repos[1])
+	}
+	if len(repos[1].Roles) != 2 || repos[1].Roles[0] != RoleSpecification || repos[1].Roles[1] != RoleCode {
+		t.Errorf("multi-role list mangled on entry[1]: %v", repos[1].Roles)
+	}
+	// Unknown field round-trips — write back and read again, then assert
+	// the on-disk text still contains the unknown field.
+	if err := WriteSpecConfig(dir, cfg); err != nil {
+		t.Fatalf("WriteSpecConfig: %v", err)
+	}
+	written, err := os.ReadFile(filepath.Join(dir, SpecConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(written), "tracker: jira-123") {
+		t.Errorf("unknown field `tracker` lost on round-trip; written=%q", written)
+	}
+}
+
+// TestRepositoriesShapeErrors exercises AC: repositories-shape-errors.
+// Every malformed shape produces a hard error from Validate() that names
+// both the offending entry index and the violated REQ.
+func TestRepositoriesShapeErrors(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     string
+		wantREQ  string
+		wantText string // substring expected in the error
+	}{
+		{
+			name: "flat-string entry rejected at decode time",
+			body: `project:
+  repositories:
+    - https://example.com/repo
+`,
+			wantREQ:  "repo-config#req:repositories-entry-shape",
+			wantText: "flat-string entries are not accepted",
+		},
+		{
+			name: "missing url",
+			body: `project:
+  repositories:
+    - roles: [code]
+`,
+			wantREQ:  "repo-config#req:repositories-entry-shape",
+			wantText: "missing `url`",
+		},
+		{
+			name: "missing roles field",
+			body: `project:
+  repositories:
+    - url: https://example.com/repo
+`,
+			wantREQ:  "repo-config#req:repositories-roles-list",
+			wantText: "must be a non-empty list",
+		},
+		{
+			name: "empty roles list",
+			body: `project:
+  repositories:
+    - url: https://example.com/repo
+      roles: []
+`,
+			wantREQ:  "repo-config#req:repositories-roles-list",
+			wantText: "must be a non-empty list",
+		},
+		{
+			name: "scalar roles instead of list",
+			body: `project:
+  repositories:
+    - url: https://example.com/repo
+      roles: code
+`,
+			// yaml.v3 raises a type-mismatch decode error on scalar→list;
+			// surfaced via UnmarshalYAML wrapper.
+			wantREQ:  "decoding project.repositories entry",
+			wantText: "decoding project.repositories entry",
+		},
+		{
+			name: "unknown role value",
+			body: `project:
+  repositories:
+    - url: https://example.com/repo
+      roles: [helm-chart]
+`,
+			wantREQ:  "repo-config#req:repositories-roles-enum",
+			wantText: `unknown role "helm-chart"`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeRaw(t, dir, SchemaHeader+"\n"+tc.body)
+			cfg, readErr := ReadSpecConfig(dir)
+			// Decode-time errors (UnmarshalYAML) surface from ReadSpecConfig;
+			// validation errors surface from Validate().
+			err := readErr
+			if err == nil {
+				err = cfg.Validate()
+			}
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.wantText) {
+				t.Errorf("error text missing %q; got: %v", tc.wantText, err)
+			}
+			if !strings.Contains(err.Error(), tc.wantREQ) {
+				t.Errorf("error missing REQ reference %q; got: %v", tc.wantREQ, err)
+			}
+		})
+	}
+}
+
+// TestIsValidRole asserts the closed enum membership.
+func TestIsValidRole(t *testing.T) {
+	for _, r := range []Role{RoleCode, RoleSpecification, RoleState, RoleDocs, RoleRunner} {
+		if !IsValidRole(r) {
+			t.Errorf("%q should be a valid role", r)
+		}
+	}
+	for _, r := range []Role{"", "code-repo", "Code", "CODE", "unknown"} {
+		if IsValidRole(r) {
+			t.Errorf("%q should NOT be a valid role", r)
+		}
 	}
 }
