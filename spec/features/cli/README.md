@@ -108,13 +108,13 @@ Several flags appear across multiple commands with identical semantics:
 
 | Flag | Semantics |
 |---|---|
-| `--project` | Path to the project root. Autodetected from `cwd` (walks up until finding `specscore-spec-repo.yaml`) when omitted. |
+| `--project` | Path to the project root. Autodetected from `cwd` (walks up until finding `specscore.yaml`) when omitted. |
 | `--format` | Output format. Allowed values vary by command (always a subset of `yaml`, `json`, `text`, `md`). |
 | `-h`, `--help` | Print help and exit `0`. Provided by cobra; commands MUST NOT override it. |
 
 #### REQ: project-autodetect
 
-When `--project` is not supplied, commands MUST autodetect the project root by searching upward from the current working directory for `specscore-spec-repo.yaml`. If no project is found, commands MUST exit `3` (NotFound) with a clear message.
+When `--project` is not supplied, commands MUST autodetect the project root by searching upward from the current working directory for `specscore.yaml`. If no project is found, commands MUST exit `3` (NotFound) with a clear message.
 
 ## Consumers
 

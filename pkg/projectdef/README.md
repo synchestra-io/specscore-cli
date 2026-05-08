@@ -1,6 +1,6 @@
 # pkg/projectdef
 
-`specscore-project.yaml` schema and read/write operations for all repository config file types (spec, state, code, embedded state).
+`specscore.yaml` schema and read/write operations per the [Repo Config feature](https://specscore.md/repo-config). Validates the mandatory schema-header comment on line 1, applies SpecStudio defaults for `viewer:`, and enforces module path uniqueness/non-nesting.
 
 ## Outstanding Questions
 

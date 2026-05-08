@@ -11,29 +11,33 @@ import (
 	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
-// viewLinkMarker is the unique prefix we write / look for. Any line
-// starting with this under the H1 is treated as the view-link
-// blockquote (stale or fresh).
-const viewLinkMarker = "> [View in Spec Studio]("
-
 // viewLinkSuffix is the trailing copy describing what the linked
 // surface offers.
 const viewLinkSuffix = ") — graph, discussions, approvals"
 
 // legacyViewLinkMarkers are marker prefixes from previous incarnations
-// of this rule (e.g. when the linked surface was called Synchestra
-// Hub). The classifier flags them as stale; --fix replaces them with
-// the current marker so opted-in repos migrate forward in one CLI run.
-// Append-only — never remove an entry until every downstream repo has
-// migrated.
+// of this rule (when the linked surface was called Synchestra Hub, or
+// when the brand was rendered "Spec Studio" with a space). The
+// classifier flags them as stale; --fix replaces them with the current
+// marker so opted-in repos migrate forward in one CLI run. Append-only
+// — never remove an entry until every downstream repo has migrated.
 var legacyViewLinkMarkers = []string{
 	"> [View in Synchestra Hub](",
+	"> [View in Spec Studio](",
 }
 
-// viewLinkChecker verifies that every feature README carries an opt-in
-// view-link blockquote directly under its H1. The rule is a no-op
-// unless `studio.host` (or its deprecated alias `hub.host`) is set in
-// specscore-spec-repo.yaml.
+// viewLinkMarker returns the marker prefix for a given viewer name. The
+// prefix uniquely identifies the view-link blockquote (stale or fresh)
+// in a feature README.
+func viewLinkMarker(viewerName string) string {
+	return "> [View in " + viewerName + "]("
+}
+
+// viewLinkChecker verifies that every feature README carries a
+// "View in {viewer.name}" blockquote directly under its H1.
+//
+// The rule is always-on with SpecStudio defaults; only `viewer: null`
+// in specscore.yaml suppresses it (repo-config#req:viewer-null-opts-out).
 type viewLinkChecker struct{}
 
 func newViewLinkChecker() checker { return &viewLinkChecker{} }
@@ -43,22 +47,25 @@ func (c *viewLinkChecker) severity() string { return "warning" }
 
 // BuildViewURL returns the canonical view URL for a feature README at
 // relPath (relative to the project root, e.g. "spec/features/bots").
-// host is the base URL of the linked surface without trailing slash.
+// host is the base URL of the linked surface, with or without a
+// trailing slash — both are normalized.
 func BuildViewURL(host string, r gitremote.Remote, relPath string) string {
+	host = strings.TrimRight(host, "/")
 	id := fmt.Sprintf("%s@%s@%s", r.Repo, r.Owner, r.Host)
 	relPath = filepath.ToSlash(relPath)
 	return fmt.Sprintf("%s/project/features?id=%s&path=%s",
 		host, id, url.QueryEscape(relPath))
 }
 
-// viewLinkContext resolves the project-level inputs (Studio host + git
-// remote) once per run. If no Studio host is configured, enabled ==
+// viewLinkContext resolves the project-level inputs (effective viewer +
+// git remote) once per run. When `viewer: null` is set, enabled is
 // false and no walking happens. Any opt-in-but-broken configuration
 // (no git remote, non-GitHub remote) is surfaced as a single warning
 // at the config file.
 type viewLinkContext struct {
 	enabled    bool
-	studioHost string
+	viewerName string
+	viewerURL  string
 	remote     gitremote.Remote
 	skipWith   Violation // populated if enabled but remote unusable
 	skipSet    bool
@@ -68,14 +75,16 @@ func resolveViewLinkContext(specRoot string) viewLinkContext {
 	projectRoot := filepath.Dir(specRoot)
 	cfg, err := projectdef.ReadSpecConfig(projectRoot)
 	if err != nil {
+		// Treat read failure (missing or malformed config) as
+		// rule-disabled; other rules surface those errors directly.
 		return viewLinkContext{}
 	}
-	host := cfg.StudioHost()
-	if host == "" {
+	name, host, suppressed := cfg.EffectiveViewer()
+	if suppressed {
 		return viewLinkContext{}
 	}
 
-	ctx := viewLinkContext{enabled: true, studioHost: host}
+	ctx := viewLinkContext{enabled: true, viewerName: name, viewerURL: host}
 	originURL, err := gitremote.OriginURL(projectRoot)
 	if err != nil {
 		ctx.skipSet = true
@@ -84,7 +93,7 @@ func resolveViewLinkContext(specRoot string) viewLinkContext {
 			Line:     0,
 			Severity: "warning",
 			Rule:     "view-link",
-			Message:  "studio.host is set but origin remote could not be read; rule skipped",
+			Message:  "viewer is configured but origin remote could not be read; rule skipped",
 		}
 		return ctx
 	}
@@ -96,7 +105,7 @@ func resolveViewLinkContext(specRoot string) viewLinkContext {
 			Line:     0,
 			Severity: "warning",
 			Rule:     "view-link",
-			Message:  "studio.host is set but origin remote is not a supported GitHub URL; rule skipped",
+			Message:  "viewer is configured but origin remote is not a supported GitHub URL; rule skipped",
 		}
 		return ctx
 	}
@@ -114,21 +123,22 @@ func (c *viewLinkChecker) check(specRoot string) ([]Violation, error) {
 	}
 
 	projectRoot := filepath.Dir(specRoot)
+	currentMarker := viewLinkMarker(ctx.viewerName)
 	var violations []Violation
 	err := walkFeatureReadmes(specRoot, func(readmePath string, content []byte) {
 		relFromRoot, _ := filepath.Rel(projectRoot, readmePath)
 		relFromRoot = filepath.ToSlash(relFromRoot)
-		expectedURL := BuildViewURL(ctx.studioHost, ctx.remote, filepath.Dir(relFromRoot))
-		expectedLine := viewLinkMarker + expectedURL + viewLinkSuffix
+		expectedURL := BuildViewURL(ctx.viewerURL, ctx.remote, filepath.Dir(relFromRoot))
+		expectedLine := currentMarker + expectedURL + viewLinkSuffix
 
-		status := classifyViewLink(string(content), expectedLine)
+		status := classifyViewLink(string(content), currentMarker, expectedLine)
 		if status == viewLinkOK {
 			return
 		}
 		relFromSpec, _ := filepath.Rel(specRoot, readmePath)
-		msg := "missing 'View in Spec Studio' blockquote under the H1"
+		msg := fmt.Sprintf("missing 'View in %s' blockquote under the H1", ctx.viewerName)
 		if status == viewLinkStale {
-			msg = "'View in Spec Studio' blockquote is out of date (wrong URL or copy)"
+			msg = fmt.Sprintf("'View in %s' blockquote is out of date (wrong URL or copy)", ctx.viewerName)
 		}
 		violations = append(violations, Violation{
 			File:     relFromSpec,
@@ -150,13 +160,14 @@ func (c *viewLinkChecker) fix(specRoot string) error {
 		return nil
 	}
 	projectRoot := filepath.Dir(specRoot)
+	currentMarker := viewLinkMarker(ctx.viewerName)
 	return walkFeatureReadmes(specRoot, func(readmePath string, content []byte) {
 		relFromRoot, _ := filepath.Rel(projectRoot, readmePath)
 		relFromRoot = filepath.ToSlash(relFromRoot)
-		expectedURL := BuildViewURL(ctx.studioHost, ctx.remote, filepath.Dir(relFromRoot))
-		expectedLine := viewLinkMarker + expectedURL + viewLinkSuffix
+		expectedURL := BuildViewURL(ctx.viewerURL, ctx.remote, filepath.Dir(relFromRoot))
+		expectedLine := currentMarker + expectedURL + viewLinkSuffix
 
-		updated, changed := applyViewLink(string(content), expectedLine)
+		updated, changed := applyViewLink(string(content), currentMarker, expectedLine)
 		if !changed {
 			return
 		}
@@ -175,8 +186,8 @@ const (
 // hasViewLinkMarker reports whether line begins with the current marker
 // or any legacy marker. Used to detect both fresh and migration-eligible
 // view-link blockquotes in a single pass.
-func hasViewLinkMarker(line string) bool {
-	if strings.HasPrefix(line, viewLinkMarker) {
+func hasViewLinkMarker(line, currentMarker string) bool {
+	if strings.HasPrefix(line, currentMarker) {
 		return true
 	}
 	for _, legacy := range legacyViewLinkMarkers {
@@ -187,9 +198,9 @@ func hasViewLinkMarker(line string) bool {
 	return false
 }
 
-func classifyViewLink(content, expectedLine string) viewLinkStatus {
+func classifyViewLink(content, currentMarker, expectedLine string) viewLinkStatus {
 	for _, line := range strings.Split(content, "\n") {
-		if !hasViewLinkMarker(line) {
+		if !hasViewLinkMarker(line, currentMarker) {
 			continue
 		}
 		if line == expectedLine {
@@ -205,13 +216,13 @@ func classifyViewLink(content, expectedLine string) viewLinkStatus {
 // separated by a single blank line above and below. Existing blockquotes
 // using either the current marker or any legacy marker are replaced
 // in-place — that is what migrates older repos forward on `--fix`.
-func applyViewLink(content, expectedLine string) (string, bool) {
+func applyViewLink(content, currentMarker, expectedLine string) (string, bool) {
 	lines := strings.Split(content, "\n")
 
 	// Replace an existing blockquote anywhere in the file (idempotent
 	// on stale; migrates legacy markers forward).
 	for i, line := range lines {
-		if !hasViewLinkMarker(line) {
+		if !hasViewLinkMarker(line, currentMarker) {
 			continue
 		}
 		if line == expectedLine {

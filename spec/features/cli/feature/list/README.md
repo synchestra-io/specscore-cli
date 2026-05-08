@@ -54,7 +54,7 @@ None. All inputs are flags.
 |---|---|
 | `0` | Listing printed (even if zero features exist) |
 | `2` | Unknown `--fields` name, invalid `--format` value |
-| `3` | No project found (no `specscore-spec-repo.yaml` reachable from `cwd` and no `--project`) |
+| `3` | No project found (no `specscore.yaml` reachable from `cwd` and no `--project`) |
 | `10` | Unexpected I/O failure while reading the feature tree |
 
 ## Interaction with Other Features
