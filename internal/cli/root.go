@@ -39,6 +39,7 @@ func Run(args []string) error {
 		codeCommand(),
 		taskCommand(),
 		ideaCommand(),
+		initCommand(),
 	)
 
 	if len(args) > 1 {
