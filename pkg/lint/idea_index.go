@@ -178,14 +178,6 @@ func ideaIndexRules(specRoot string, discovered []idea.Discovered, parsed map[st
 	return vs, fixed
 }
 
-func toSet(s []string) map[string]bool {
-	m := make(map[string]bool, len(s))
-	for _, v := range s {
-		m[v] = true
-	}
-	return m
-}
-
 // indexRow captures one parsed row of the active ideas index table.
 // It mirrors the column set declared by the ideas-index feature spec
 // (REQ: index-columns).
