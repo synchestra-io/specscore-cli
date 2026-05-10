@@ -54,8 +54,9 @@ changelog:
       - Merge branch
 
 # Scoop bucket — https://scoop.sh
-# Requires SPECSCORE_GORELEASER_GITHUB_TOKEN with `public_repo` scope on
-# synchestra-io/scoop-bucket. The bucket repo must exist with a `main` branch.
+# Requires SPECSCORE_GORELEASER_GITHUB_TOKEN — a classic PAT with `public_repo`
+# scope (see release.yml for the rationale; cross-fork PRs to microsoft/winget-pkgs
+# rule out a fine-grained PAT). The bucket repo must exist with a `main` branch.
 scoops:
   - name: specscore
     ids:
@@ -71,11 +72,11 @@ scoops:
       token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
 
 # WinGet — https://github.com/microsoft/winget-pkgs
-# Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN: GoReleaser pushes a manifest
-# branch to synchestra-io/winget-pkgs (a fork of microsoft/winget-pkgs) and
-# opens a PR upstream. Opening a PR from a fork to a public upstream relies
-# on GitHub's fork relationship — no token access on microsoft/winget-pkgs
-# is required.
+# Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN. GoReleaser pushes a manifest branch
+# to synchestra-io/winget-pkgs (a fork of microsoft/winget-pkgs), then opens a
+# PR upstream. The cross-fork PR step requires a classic PAT with `public_repo`
+# scope — fine-grained PATs cannot grant Pull-requests:write on third-party
+# repos like microsoft/winget-pkgs, so they 403 at the PR-creation step.
 winget:
   - name: SpecScore
     publisher: Synchestra

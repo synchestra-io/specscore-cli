@@ -128,11 +128,11 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Cross-repo PAT for Windows package publishers. A single classic
-          # PAT with `public_repo` scope is enough — GoReleaser uses it to
-          # push to synchestra-io/scoop-bucket and synchestra-io/winget-pkgs
-          # and to open a PR upstream to microsoft/winget-pkgs (the latter
-          # works via the fork relationship, no scope on the upstream needed).
+          # Cross-repo PAT for Windows package publishers (Scoop + WinGet).
+          # MUST be a classic PAT with `public_repo` scope, not a fine-grained
+          # PAT: opening the WinGet PR upstream against microsoft/winget-pkgs
+          # needs Pull-requests:write on a repo we don't own, which fine-grained
+          # tokens cannot grant. See .goreleaser.yml for the full rationale.
           SPECSCORE_GORELEASER_GITHUB_TOKEN: ${{ secrets.SPECSCORE_GORELEASER_GITHUB_TOKEN }}
 
       - name: Upload snapshot artifacts
