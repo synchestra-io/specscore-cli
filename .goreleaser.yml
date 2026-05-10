@@ -52,3 +52,51 @@ changelog:
       - "^chore:"
       - Merge pull request
       - Merge branch
+
+# Scoop bucket — https://scoop.sh
+# Requires SPECSCORE_GORELEASER_GITHUB_TOKEN with `public_repo` scope on
+# synchestra-io/scoop-bucket. The bucket repo must exist with a `main` branch.
+scoops:
+  - name: specscore
+    ids:
+      - specscore
+    description: "SpecScore CLI — lint, validate, and navigate Markdown specifications."
+    homepage: https://specscore.md
+    license: Apache-2.0
+    url_template: "https://github.com/synchestra-io/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    repository:
+      owner: synchestra-io
+      name: scoop-bucket
+      branch: main
+      token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
+
+# WinGet — https://github.com/microsoft/winget-pkgs
+# Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN: GoReleaser pushes a manifest
+# branch to synchestra-io/winget-pkgs (a fork of microsoft/winget-pkgs) and
+# opens a PR upstream. Opening a PR from a fork to a public upstream relies
+# on GitHub's fork relationship — no token access on microsoft/winget-pkgs
+# is required.
+winget:
+  - name: SpecScore
+    publisher: Synchestra
+    publisher_url: https://specscore.md
+    package_identifier: Synchestra.SpecScore
+    license: Apache-2.0
+    homepage: https://specscore.md
+    short_description: "Lint, validate, and navigate Markdown specifications."
+    description: |
+      SpecScore is a CLI for working with Markdown-based specifications:
+      validate spec trees against structural conventions, search across
+      features, and inspect feature/plan/task relationships.
+    url_template: "https://github.com/synchestra-io/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    repository:
+      owner: synchestra-io
+      name: winget-pkgs
+      branch: "specscore-{{.Version}}"
+      token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
