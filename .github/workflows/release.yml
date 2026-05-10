@@ -60,15 +60,15 @@ jobs:
         run: |
           set -eu
 
-          # --v0 keeps a 0.x project in 0.x territory: a stray "BREAKING CHANGE"
-          # token (even in commit-message prose) won't silently graduate the
-          # project to v1.0.0. Drop --v0 once the project is intentionally 1.x.
+          # svu v3 removed --v0; staying in 0.x is the default behaviour.
+          # A breaking-change marker would still need an explicit `svu major
+          # --force-v1` to graduate to v1.0.0, so we're safe without --v0.
           case "${INPUT:-auto}" in
             ''|auto)
-              TAG=$(svu next --v0)
+              TAG=$(svu next)
               ;;
             patch|minor|major)
-              TAG=$(svu "$INPUT" --v0)
+              TAG=$(svu "$INPUT")
               ;;
             v*)
               if ! printf '%s' "$INPUT" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
