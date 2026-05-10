@@ -118,7 +118,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Initialized SpecScore project at %s\n", root)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Initialized SpecScore project at %s\n", root)
 	return nil
 }
 
@@ -173,9 +173,9 @@ func promptProjectMetadata(r io.Reader, w io.Writer, title, host, org, repo *str
 	for _, p := range prompts {
 		def := *p.field
 		if def != "" {
-			fmt.Fprintf(w, "%s [%s]: ", p.label, def)
+			_, _ = fmt.Fprintf(w, "%s [%s]: ", p.label, def)
 		} else {
-			fmt.Fprintf(w, "%s: ", p.label)
+			_, _ = fmt.Fprintf(w, "%s: ", p.label)
 		}
 		if !scanner.Scan() {
 			if err := scanner.Err(); err != nil {
