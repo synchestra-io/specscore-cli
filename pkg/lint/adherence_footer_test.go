@@ -298,7 +298,11 @@ func runAdherenceFooterCheck(t *testing.T, specRoot string) []Violation {
 func runAdherenceFooterFix(t *testing.T, specRoot string) {
 	t.Helper()
 	c := newAdherenceFooterChecker()
-	if err := c.fix(specRoot); err != nil {
+	f, ok := c.(fixer)
+	if !ok {
+		t.Fatal("adherence-footer checker does not implement fixer")
+	}
+	if err := f.fix(specRoot); err != nil {
 		t.Fatalf("fix returned error: %v", err)
 	}
 }
