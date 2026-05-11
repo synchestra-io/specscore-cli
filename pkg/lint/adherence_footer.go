@@ -168,8 +168,8 @@ func (c *adherenceFooterChecker) fix(specRoot string) error {
 }
 
 func rewriteTrailingAdherenceFooterURL(content, targetURL string) (string, bool) {
-	trimmed := strings.TrimRight(content, "\n")
-	lines := strings.Split(trimmed, "\n")
+	body, trailingNewlines := splitTrailingNewlines(content)
+	lines := strings.Split(body, "\n")
 	if len(lines) < 2 {
 		return content, false
 	}
@@ -191,7 +191,15 @@ func rewriteTrailingAdherenceFooterURL(content, targetURL string) (string, bool)
 	}
 
 	lines[len(lines)-1] = prefix + targetURL + suffix
-	return strings.Join(lines, "\n") + "\n", true
+	return strings.Join(lines, "\n") + trailingNewlines, true
+}
+
+func splitTrailingNewlines(s string) (body, trailingNewlines string) {
+	i := len(s)
+	for i > 0 && s[i-1] == '\n' {
+		i--
+	}
+	return s[:i], s[i:]
 }
 
 // walkIdeaFiles invokes fn for every Idea file under specRoot/ideas/*.md,
