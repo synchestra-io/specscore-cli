@@ -58,7 +58,15 @@ Rules that support autofix declare so in their registration. `--fix` applies onl
 
 #### REQ: fix-is-safe-subset
 
-`--fix` MUST only mutate what the rule declares safe to mutate. Rules that require human judgment (e.g., wrong-URL adherence footers — possibly mis-classified documents) MUST NOT be autofixed, even with `--fix`.
+`--fix` MUST only mutate what the rule declares safe to mutate. Mutations that require semantic interpretation of document intent beyond structural conventions MUST NOT be autofixed. Structural rewrites of a recognized trailing adherence-footer block are safe and allowed.
+
+#### REQ: adherence-footer-fix-rewrites-trailing-footer
+
+When the `adherence-footer` rule runs with `--fix`:
+
+- if the required URL is missing and no adherence-footer block exists at end-of-file, the canonical footer block MUST be appended;
+- if an adherence-footer block exists at end-of-file but carries the wrong `https://specscore.md/*-specification` URL, the fixer MUST rewrite that existing block to the canonical URL for the document type;
+- the fixer MUST leave exactly one adherence-footer block at end-of-file.
 
 #### REQ: fix-is-idempotent
 
@@ -93,7 +101,7 @@ None. All inputs are flags.
 
 | Feature | Interaction |
 |---|---|
-| [adherence-footer](../../../adherence-footer/README.md) | Defines the footer contract; `spec lint` enforces it. Autofix inserts missing footers. |
+| [adherence-footer](../../../adherence-footer/README.md) | Defines the footer contract; `spec lint` enforces it. Autofix inserts missing footers and rewrites incorrect trailing footer URLs. |
 | [idea](../../../idea/README.md) | Declares idea-specific rules; `spec lint` runs them alongside shared rules. |
 | [feature](../../../feature/README.md) | Declares the required-sections rules for feature READMEs. |
 | [CLI](../../README.md) | Inherits exit-code contract and project autodetection. `spec lint`'s exit-1-on-violations convention is part of the shared contract. |
@@ -123,6 +131,12 @@ A tree containing at least one error-severity violation exits `1`. The violation
 **Requirements:** cli/spec/lint#req:fix-is-idempotent
 
 Running `spec lint --fix` twice consecutively on the same tree yields no file changes on the second run and exits `0`.
+
+### AC: adherence-footer-fix-replaces-trailing-wrong-url
+
+**Requirements:** cli/spec/lint#req:adherence-footer-fix-rewrites-trailing-footer
+
+If a document ends with an adherence-footer block that uses the wrong `specscore.md/*-specification` URL, running `spec lint --fix` rewrites that block to the canonical URL and does not append a second footer block.
 
 ## Outstanding Questions
 

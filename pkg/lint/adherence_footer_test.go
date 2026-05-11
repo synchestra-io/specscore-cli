@@ -230,6 +230,48 @@ func TestAdherenceFooter_RegisteredAsKnownRule(t *testing.T) {
 	}
 }
 
+func TestAdherenceFooterFix_RewritesTrailingWrongURL_InPlace(t *testing.T) {
+	tmp := t.TempDir()
+	writeFeaturesIndexReadme(t, tmp, "# specscore-cli Features\n\n---\n*This document follows the https://specscore.md/feature-specification*\n")
+
+	runAdherenceFooterFix(t, tmp)
+
+	b, err := os.ReadFile(filepath.Join(tmp, "features", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(b)
+	if strings.Contains(got, "https://specscore.md/feature-specification") {
+		t.Fatalf("wrong URL should be replaced, got:\n%s", got)
+	}
+	if !strings.Contains(got, "https://specscore.md/features-index-specification") {
+		t.Fatalf("expected rewritten features-index URL, got:\n%s", got)
+	}
+	if strings.Count(got, "*This document follows the https://specscore.md/") != 1 {
+		t.Fatalf("expected exactly one adherence footer, got:\n%s", got)
+	}
+}
+
+func TestAdherenceFooterFix_RewritesTrailingWrongURL_EvenIfCanonicalURLAppearsElsewhere(t *testing.T) {
+	tmp := t.TempDir()
+	content := "# specscore-cli Features\n\nSee https://specscore.md/features-index-specification for details.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	writeFeaturesIndexReadme(t, tmp, content)
+
+	runAdherenceFooterFix(t, tmp)
+
+	b, err := os.ReadFile(filepath.Join(tmp, "features", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(b)
+	if strings.Count(got, "*This document follows the https://specscore.md/") != 1 {
+		t.Fatalf("expected exactly one trailing adherence footer, got:\n%s", got)
+	}
+	if !strings.HasSuffix(got, "\n---\n*This document follows the https://specscore.md/features-index-specification*\n") {
+		t.Fatalf("expected trailing footer to be rewritten, got:\n%s", got)
+	}
+}
+
 // writeFeatureReadme writes a feature README under specRoot/features/<slug>/README.md.
 func writeFeatureReadme(t *testing.T, specRoot, slug, content string) {
 	t.Helper()
@@ -251,4 +293,27 @@ func runAdherenceFooterCheck(t *testing.T, specRoot string) []Violation {
 		t.Fatalf("check returned error: %v", err)
 	}
 	return violations
+}
+
+func runAdherenceFooterFix(t *testing.T, specRoot string) {
+	t.Helper()
+	c := newAdherenceFooterChecker()
+	f, ok := c.(fixer)
+	if !ok {
+		t.Fatal("adherence-footer checker does not implement fixer")
+	}
+	if err := f.fix(specRoot); err != nil {
+		t.Fatalf("fix returned error: %v", err)
+	}
+}
+
+func writeFeaturesIndexReadme(t *testing.T, specRoot, content string) {
+	t.Helper()
+	dir := filepath.Join(specRoot, "features")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
