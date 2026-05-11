@@ -129,13 +129,19 @@ func (c *adherenceFooterChecker) check(specRoot string) ([]Violation, error) {
 func (c *adherenceFooterChecker) fix(specRoot string) error {
 	for _, t := range docTypeTargets {
 		target := t
+		var writeErr error
 		err := target.walk(specRoot, func(path string, content []byte) {
+			if writeErr != nil {
+				return
+			}
 			s := string(content)
 
 			rewritten, replaced := rewriteTrailingAdherenceFooterURL(s, target.url)
 			if replaced {
 				if rewritten != s {
-					_ = os.WriteFile(path, []byte(rewritten), 0o644)
+					if err := os.WriteFile(path, []byte(rewritten), 0o644); err != nil {
+						writeErr = err
+					}
 				}
 				return
 			}
@@ -147,10 +153,15 @@ func (c *adherenceFooterChecker) fix(specRoot string) error {
 				s += "\n"
 			}
 			s += "\n---\n*This document follows the " + target.url + "*\n"
-			_ = os.WriteFile(path, []byte(s), 0o644)
+			if err := os.WriteFile(path, []byte(s), 0o644); err != nil {
+				writeErr = err
+			}
 		})
 		if err != nil {
 			return err
+		}
+		if writeErr != nil {
+			return writeErr
 		}
 	}
 	return nil

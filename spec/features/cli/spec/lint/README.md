@@ -58,7 +58,7 @@ Rules that support autofix declare so in their registration. `--fix` applies onl
 
 #### REQ: fix-is-safe-subset
 
-`--fix` MUST only mutate what the rule declares safe to mutate. Mutations that require semantic interpretation of document intent beyond structural conventions MUST NOT be autofixed.
+`--fix` MUST only mutate what the rule declares safe to mutate. Mutations that require semantic interpretation of document intent beyond structural conventions MUST NOT be autofixed. Structural rewrites of a recognized trailing adherence-footer block are safe and allowed.
 
 #### REQ: adherence-footer-fix-rewrites-trailing-footer
 
