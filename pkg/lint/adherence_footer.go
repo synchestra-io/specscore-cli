@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -87,6 +88,8 @@ var docTypeTargets = []docTypeTarget{
 // to its document type, as required by the Adherence Footer feature.
 type adherenceFooterChecker struct{}
 
+var adherenceFooterURLPattern = regexp.MustCompile(`^https://specscore\.md/[a-z0-9-]+-specification$`)
+
 func newAdherenceFooterChecker() checker {
 	return &adherenceFooterChecker{}
 }
@@ -118,19 +121,28 @@ func (c *adherenceFooterChecker) check(specRoot string) ([]Violation, error) {
 	return violations, nil
 }
 
-// fix appends the canonical adherence footer to any document that is missing
-// it. A document already containing the URL is left untouched. Wrong-URL
-// violations are never auto-rewritten — a wrong URL may indicate a
-// mis-classified document and silent rewriting would mask the bug. See
-// adherence-footer#req:fix-inserts-only.
+// fix enforces a canonical adherence footer per document type.
+// If a trailing adherence-footer block exists with a wrong
+// https://specscore.md/*-specification URL, the URL is rewritten in-place.
+// Otherwise, when the required URL is missing, the canonical footer is
+// appended.
 func (c *adherenceFooterChecker) fix(specRoot string) error {
 	for _, t := range docTypeTargets {
 		target := t
 		err := target.walk(specRoot, func(path string, content []byte) {
-			if strings.Contains(string(content), target.url) {
+			s := string(content)
+
+			rewritten, replaced := rewriteTrailingAdherenceFooterURL(s, target.url)
+			if replaced {
+				if rewritten != s {
+					_ = os.WriteFile(path, []byte(rewritten), 0o644)
+				}
 				return
 			}
-			s := string(content)
+
+			if strings.Contains(s, target.url) {
+				return
+			}
 			if !strings.HasSuffix(s, "\n") {
 				s += "\n"
 			}
@@ -142,6 +154,33 @@ func (c *adherenceFooterChecker) fix(specRoot string) error {
 		}
 	}
 	return nil
+}
+
+func rewriteTrailingAdherenceFooterURL(content, targetURL string) (string, bool) {
+	trimmed := strings.TrimRight(content, "\n")
+	lines := strings.Split(trimmed, "\n")
+	if len(lines) < 2 {
+		return content, false
+	}
+	if lines[len(lines)-2] != "---" {
+		return content, false
+	}
+
+	const prefix = "*This document follows the "
+	const suffix = "*"
+
+	last := lines[len(lines)-1]
+	if !strings.HasPrefix(last, prefix) || !strings.HasSuffix(last, suffix) {
+		return content, false
+	}
+
+	currentURL := strings.TrimSuffix(strings.TrimPrefix(last, prefix), suffix)
+	if !adherenceFooterURLPattern.MatchString(currentURL) {
+		return content, false
+	}
+
+	lines[len(lines)-1] = prefix + targetURL + suffix
+	return strings.Join(lines, "\n") + "\n", true
 }
 
 // walkIdeaFiles invokes fn for every Idea file under specRoot/ideas/*.md,
