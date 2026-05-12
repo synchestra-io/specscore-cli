@@ -84,6 +84,14 @@ If any violation at or above the effective `--severity` is found, the command MU
 
 Default output is text. `--format json` and `--format yaml` produce structured output suitable for tool consumption.
 
+### Repo-config gate
+
+`spec lint` operates on a SpecScore-managed project, which is anchored by a [`specscore.yaml`](../../../repo-config/README.md) file at the project root. Unlike `feature` / `idea` / `task` commands, lint does NOT fall back to a bare `spec/features/` directory — a config file is the single source of truth for project identity, viewer settings, and module layout, all of which the linter relies on.
+
+#### REQ: specscore-yaml-required
+
+`spec lint` MUST refuse to run when no `specscore.yaml` is found in the working directory or any of its ancestors. The command MUST exit `3` (NotFound) with a message that (1) names `specscore.yaml` as mandatory and (2) tells the caller to run `specscore init` to create it. The message MUST NOT mention the legacy `spec/features/` fallback used by other commands.
+
 ## Parameters
 
 None. All inputs are flags.
@@ -95,6 +103,7 @@ None. All inputs are flags.
 | `0` | No violations at or above `--severity` |
 | `1` | One or more violations at or above `--severity` |
 | `2` | Invalid `--rules` / `--ignore` name, invalid `--severity`/`--format` value, conflicting filters |
+| `3` | `specscore.yaml` not found in any ancestor directory |
 | `10` | Unexpected I/O failure while scanning |
 
 ## Interaction with Other Features
@@ -138,6 +147,11 @@ Running `spec lint --fix` twice consecutively on the same tree yields no file ch
 
 If a document ends with an adherence-footer block that uses the wrong `specscore.md/*-specification` URL, running `spec lint --fix` rewrites that block to the canonical URL and does not append a second footer block.
 
+### AC: missing-specscore-yaml-exits-3
+
+**Requirements:** cli/spec/lint#req:specscore-yaml-required
+
+Running `specscore spec lint` in a directory tree that has no `specscore.yaml` in any ancestor exits `3`. The error message names `specscore.yaml` as mandatory and instructs the caller to run `specscore init` to create it. The presence of a bare `spec/features/` directory does NOT satisfy the gate.
 ## Outstanding Questions
 
 - Should `spec lint` accept a path argument (`spec lint spec/features/cli/`) to lint a subtree, for faster feedback during development? Today the full tree is always scanned.

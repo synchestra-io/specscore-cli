@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
 	"github.com/synchestra-io/specscore-cli/pkg/lint"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,7 +71,10 @@ func runSpecLint(cmd *cobra.Command, args []string) error {
 		startDir = cwd
 	}
 
-	root, err := feature.FindSpecRepoRoot(startDir)
+	// cli/spec/lint#req:specscore-yaml-required — lint REQUIRES an
+	// anchoring specscore.yaml. Unlike feature/idea/task commands, no
+	// fallback to a bare spec/features/ directory.
+	root, err := findRepoConfigRoot(startDir)
 	if err != nil {
 		return err
 	}
@@ -240,4 +243,31 @@ func lintPlural(n int) string {
 		return ""
 	}
 	return "s"
+}
+
+// findRepoConfigRoot walks up from startDir looking for specscore.yaml
+// and returns the directory that contains it. Unlike
+// feature.FindSpecRepoRoot, no fallback to a bare spec/features/ is
+// allowed — `spec lint` REQUIRES a config file
+// (cli/spec/lint#req:specscore-yaml-required). On failure, the returned
+// error carries exit code 3 (NotFound) and tells the caller to run
+// `specscore init`.
+func findRepoConfigRoot(startDir string) (string, error) {
+	current, err := filepath.Abs(startDir)
+	if err != nil {
+		return "", exitcode.UnexpectedErrorf("resolving path: %v", err)
+	}
+	for {
+		if _, statErr := os.Stat(filepath.Join(current, projectdef.SpecConfigFile)); statErr == nil {
+			return current, nil
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return "", exitcode.NotFoundErrorf(
+				"%s is required but was not found in %s or any parent directory; run `specscore init` to create it",
+				projectdef.SpecConfigFile, startDir,
+			)
+		}
+		current = parent
+	}
 }
