@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/synchestra-io/specscore-cli/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/lint"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
 // setupSpecRoot stages a temp spec repo with empty indexes and returns the
@@ -178,6 +180,87 @@ func TestIdeaNew_IndexRowInserted(t *testing.T) {
 	}
 	if !strings.Contains(s, "pat") {
 		t.Errorf("missing owner in index:\n%s", s)
+	}
+}
+
+// AC: lint-clean-after-bare-project — `idea new` in a project that has
+// specscore.yaml but no spec/ tree MUST materialize spec/README.md and
+// spec/ideas/README.md, then leave the tree lint-clean modulo any
+// violations inside the newly created Idea file.
+func TestIdeaNew_BareProjectMaterializesAncestorIndexes(t *testing.T) {
+	root := t.TempDir()
+	// Only specscore.yaml exists — no spec/ tree.
+	if err := projectdef.WriteSpecConfig(root, projectdef.SpecConfig{}); err != nil {
+		t.Fatalf("write specscore.yaml: %v", err)
+	}
+	withCwd(t, root)
+
+	if _, _, err := runIdea(t, "new", "first-idea"); err != nil {
+		t.Fatalf("idea new: %v", err)
+	}
+
+	// Both ancestor indexes MUST exist with their canonical headings.
+	specReadme, err := os.ReadFile(filepath.Join(root, "spec", "README.md"))
+	if err != nil {
+		t.Fatalf("spec/README.md missing: %v", err)
+	}
+	if !strings.Contains(string(specReadme), "# Specifications") {
+		t.Errorf("spec/README.md missing canonical heading:\n%s", specReadme)
+	}
+	ideasReadme, err := os.ReadFile(filepath.Join(root, "spec", "ideas", "README.md"))
+	if err != nil {
+		t.Fatalf("spec/ideas/README.md missing: %v", err)
+	}
+	for _, want := range []string{"# Ideas", "## Index", "## Outstanding Questions", "ideas-index-specification"} {
+		if !strings.Contains(string(ideasReadme), want) {
+			t.Errorf("spec/ideas/README.md missing %q:\n%s", want, ideasReadme)
+		}
+	}
+	// Idea file itself.
+	if _, err := os.Stat(filepath.Join(root, "spec", "ideas", "first-idea.md")); err != nil {
+		t.Fatalf("idea file missing: %v", err)
+	}
+
+	// Lint MUST be clean for everything outside spec/ideas/first-idea.md.
+	// We run lint directly (not via the CLI) to avoid coupling to spec lint
+	// CLI changes in this test.
+	violations, err := lint.Lint(lint.Options{SpecRoot: filepath.Join(root, "spec")})
+	if err != nil {
+		t.Fatalf("lint: %v", err)
+	}
+	for _, v := range violations {
+		if v.Severity != "error" {
+			continue
+		}
+		// Allow error-severity violations only inside the new idea file.
+		if v.File == filepath.Join("ideas", "first-idea.md") {
+			continue
+		}
+		t.Errorf("unexpected error-severity violation outside the new idea: %s:%d [%s] %s", v.File, v.Line, v.Rule, v.Message)
+	}
+}
+
+// Idempotence: running idea new twice with different slugs in a bare
+// project MUST NOT clobber the indexes created on the first run.
+func TestIdeaNew_AncestorIndexesIdempotent(t *testing.T) {
+	root := t.TempDir()
+	if err := projectdef.WriteSpecConfig(root, projectdef.SpecConfig{}); err != nil {
+		t.Fatalf("write specscore.yaml: %v", err)
+	}
+	withCwd(t, root)
+
+	if _, _, err := runIdea(t, "new", "alpha"); err != nil {
+		t.Fatalf("first idea new: %v", err)
+	}
+	specBefore, _ := os.ReadFile(filepath.Join(root, "spec", "README.md"))
+
+	if _, _, err := runIdea(t, "new", "beta"); err != nil {
+		t.Fatalf("second idea new: %v", err)
+	}
+	specAfter, _ := os.ReadFile(filepath.Join(root, "spec", "README.md"))
+
+	if string(specBefore) != string(specAfter) {
+		t.Errorf("spec/README.md mutated by second idea new:\nbefore=%q\nafter=%q", specBefore, specAfter)
 	}
 }
 

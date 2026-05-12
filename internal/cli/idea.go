@@ -13,6 +13,7 @@ import (
 	"github.com/synchestra-io/specscore-cli/pkg/feature"
 	"github.com/synchestra-io/specscore-cli/pkg/idea"
 	"github.com/synchestra-io/specscore-cli/pkg/lint"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
 // ideaCommand returns the "idea" command group — query and scaffold Idea artifacts.
@@ -106,6 +107,15 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 		return exitcode.ConflictErrorf("idea already exists: %s (pass --force to overwrite)", target)
 	}
 
+	// cli/idea/new#req:ancestor-indexes-materialized — create the spec/
+	// and spec/ideas/ index READMEs before the Idea file, so a fresh
+	// project ends up lint-clean for everything except the new Idea.
+	// Done BEFORE WriteFile(target) so a failure here cannot leave a
+	// half-scaffolded state. Existing files are left untouched.
+	if err := ensureIdeaAncestorIndexes(specRoot); err != nil {
+		return exitcode.UnexpectedErrorf("materializing ancestor indexes: %v", err)
+	}
+
 	body, err := idea.Scaffold(opts)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("scaffolding idea: %v", err)
@@ -143,6 +153,35 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", target)
+	return nil
+}
+
+// ensureIdeaAncestorIndexes materializes spec/README.md and
+// spec/ideas/README.md when they don't already exist, using the same
+// project-aware templates as `specscore init`. Project metadata is
+// read from specscore.yaml when present; on absence we fall back to
+// an empty SpecConfig, which yields placeholder view-link IDs — the
+// resulting files are still lint-clean. Existing files are left
+// untouched per cli/idea/new#req:ancestor-indexes-materialized.
+func ensureIdeaAncestorIndexes(root string) error {
+	cfg, err := projectdef.ReadSpecConfig(root)
+	if err != nil {
+		// Absence (or malformed) → use defaults. Lint will surface any
+		// specscore.yaml issues separately; idea new shouldn't fail on
+		// them.
+		cfg = projectdef.SpecConfig{}
+	}
+	for _, w := range []struct {
+		path    string
+		content string
+	}{
+		{"spec/README.md", specReadmeContent(cfg)},
+		{"spec/ideas/README.md", ideasIndexContent(cfg)},
+	} {
+		if err := writeMissingIndex(root, w.path, w.content); err != nil {
+			return fmt.Errorf("writing %s: %w", w.path, err)
+		}
+	}
 	return nil
 }
 

@@ -62,6 +62,14 @@ By default, the command MUST refuse to overwrite an existing file. `--force` opt
 
 If `spec/ideas/<slug>.md` already exists, the command MUST exit `1` (Conflict) with a message naming the path, unless `--force` is supplied. No partial write may occur before the collision check.
 
+### Ancestor index materialization
+
+`idea new` is the entry point to writing the first Idea in a project. The Idea file alone is not enough — `spec/` and `spec/ideas/` each require a `README.md` for `spec lint` to be clean. Authors who skip `specscore init` (or who land in a partially-scaffolded tree) MUST still end up with a lint-clean tree after a single `idea new` invocation, modulo violations in the new Idea file itself.
+
+#### REQ: ancestor-indexes-materialized
+
+When `idea new` writes `spec/ideas/<slug>.md`, the command MUST also materialize `spec/README.md` and `spec/ideas/README.md` when they do not already exist, using the same templates as `specscore init` (project-aware view-link, canonical headings, adherence-footer URL on the ideas index). Existing files MUST be left untouched — this step is idempotent. The Idea file itself MUST NOT be written until both ancestor indexes are in place, so that a failure to materialize them does not leave a half-scaffolded state.
+
 ## Parameters
 
 | Name | Required | Description |
@@ -103,6 +111,12 @@ Running the command twice for the same slug, without `--force`, exits `1` on the
 **Requirements:** cli/idea/new#req:slug-format
 
 `specscore idea new My_Idea` exits `2` with a message that the slug contains invalid characters. No file is created.
+
+### AC: lint-clean-after-bare-project
+
+**Requirements:** cli/idea/new#req:ancestor-indexes-materialized, cli/idea/README#req:lint-clean-on-create
+
+In a project that has `specscore.yaml` but no `spec/` tree, running `specscore idea new my-idea` creates `spec/README.md`, `spec/ideas/README.md`, and `spec/ideas/my-idea.md`. A subsequent `specscore spec lint` returns no error-severity violations outside `spec/ideas/my-idea.md` itself.
 
 ## Outstanding Questions
 
