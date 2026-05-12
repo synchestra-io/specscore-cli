@@ -610,9 +610,9 @@ func TestCheckIdeas_DerivesSpecified_WhenAllFeaturesStable(t *testing.T) {
 // pulls it back from Specified).
 func TestCheckIdeas_DerivesImplementing_WhenMixed(t *testing.T) {
 	specRoot := writeSpec(t, map[string]string{
-		"ideas/README.md":          activeIndexWith("offline-mode"),
-		"ideas/archived/README.md": archivedIndex,
-		"ideas/offline-mode.md":    validIdeaBody("Offline Mode", "Approved", nil),
+		"ideas/README.md":           activeIndexWith("offline-mode"),
+		"ideas/archived/README.md":  archivedIndex,
+		"ideas/offline-mode.md":     validIdeaBody("Offline Mode", "Approved", nil),
 		"features/feat-a/README.md": featureBody("Feat A", "Stable", "offline-mode"),
 		"features/feat-b/README.md": featureBody("Feat B", "Draft", "offline-mode"),
 	})
