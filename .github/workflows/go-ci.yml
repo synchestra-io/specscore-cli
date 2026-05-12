@@ -1,5 +1,9 @@
 name: Go CI
 
+# Build, vet, fmt-check, and test the module. Versioning and tag pushes
+# are out of scope here — they live in `.github/workflows/release.yml`
+# behind a conventional-commit gate (see issue #1).
+
 on:
   push:
     paths:
@@ -23,11 +27,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Build, vet, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-  strongo_workflow:
-    permissions:
-      contents: write
-    uses: strongo/go-ci-action/.github/workflows/workflow.yml@main
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: gofmt
+        run: |
+          set -eu
+          OUT=$(gofmt -l .)
+          if [ -n "$OUT" ]; then
+            echo "::error::gofmt found unformatted files:"
+            echo "$OUT"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./... -count=1

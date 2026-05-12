@@ -1,5 +1,19 @@
 name: Release
 
+# Three triggers, one shared composite action (.github/actions/release):
+#
+#   1. Push to main touching Go files — auto-release if svu detects a
+#      version-bumping commit (feat:/fix:/feat!:), else snapshot-build.
+#   2. Tag push (v*) — release that tag as-is, no svu.
+#   3. workflow_dispatch — manual trigger with optional explicit bump.
+#
+# Issue #1 motivation: the previous setup auto-bumped on every .go push
+# via strongo/go-ci-action. That created ghost tags on chore:/docs:/test:
+# commits, and GITHUB_TOKEN-pushed tags don't trigger the release
+# workflow — so the tag existed but no Release was ever published. The
+# new gate is conventional-commit-driven (svu) and tag-and-release run
+# in the same job.
+
 on:
   push:
     branches:
@@ -10,6 +24,9 @@ on:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
+      - '.goreleaser.yml'
+      - '.github/workflows/release.yml'
+      - '.github/actions/release/**'
   workflow_dispatch:
     inputs:
       release_tag:
@@ -30,113 +47,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  goreleaser:
-    name: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && 'Publish release' || 'Validate snapshot build' }}
+  release:
+    name: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && 'Publish release' || 'Auto-release or snapshot' }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Resolve and run release
+        id: release
+        uses: ./.github/actions/release
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install svu
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          go install github.com/caarlos0/svu/v3@v3.4.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
-      - name: Resolve release tag
-        id: resolve
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        env:
-          INPUT: ${{ inputs.release_tag }}
-        run: |
-          set -eu
-
-          # svu v3 removed --v0; staying in 0.x is the default behaviour.
-          # A breaking-change marker would still need an explicit `svu major
-          # --force-v1` to graduate to v1.0.0, so we're safe without --v0.
-          case "${INPUT:-auto}" in
-            ''|auto)
-              TAG=$(svu next)
-              ;;
-            patch|minor|major)
-              TAG=$(svu "$INPUT")
-              ;;
-            v*)
-              if ! printf '%s' "$INPUT" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-                echo "::error::explicit release_tag must be semver like v1.2.3 or v1.2.3-rc.1 (got: $INPUT)"
-                exit 1
-              fi
-              TAG="$INPUT"
-              ;;
-            *)
-              echo "::error::release_tag must be empty, 'auto', 'patch', 'minor', 'major', or a vX.Y.Z tag (got: $INPUT)"
-              exit 1
-              ;;
-          esac
-
-          LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo '')
-          if [ -n "$LAST" ] && [ "$TAG" = "$LAST" ]; then
-            echo "::error::computed tag $TAG equals latest tag $LAST — no version-bumping commits (feat:/fix:/feat!:) since last release. Make a qualifying commit or pass an explicit bump (patch|minor|major) or version."
-            exit 1
-          fi
-
-          echo "Resolved release_tag: $TAG  (input='${INPUT:-auto}', previous=${LAST:-none})"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag (manual dispatch)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        env:
-          TAG: ${{ steps.resolve.outputs.tag }}
-        run: |
-          set -eu
-          git config user.name  'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::tag $TAG already exists on origin"
-            exit 1
-          fi
-
-          echo "Creating tag $TAG at $(git rev-parse HEAD)"
-          git tag -a "$TAG" -m "$TAG"
-          git push origin "refs/tags/$TAG"
-          git checkout "refs/tags/$TAG"
-
-      - name: Run GoReleaser (snapshot — validate only)
-        if: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') }}
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          version: latest
-          args: release --snapshot --clean --skip=publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run GoReleaser (full release)
-        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Cross-repo PAT for Windows package publishers (Scoop + WinGet).
-          # MUST be a classic PAT with `public_repo` scope, not a fine-grained
-          # PAT: opening the WinGet PR upstream against microsoft/winget-pkgs
-          # needs Pull-requests:write on a repo we don't own, which fine-grained
-          # tokens cannot grant. See .goreleaser.yml for the full rationale.
-          SPECSCORE_GORELEASER_GITHUB_TOKEN: ${{ secrets.SPECSCORE_GORELEASER_GITHUB_TOKEN }}
+          release_tag: ${{ inputs.release_tag || 'auto' }}
+          goreleaser_github_token: ${{ secrets.SPECSCORE_GORELEASER_GITHUB_TOKEN }}
 
       - name: Upload snapshot artifacts
-        if: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ steps.release.outputs.released == 'false' }}
         uses: actions/upload-artifact@v7
         with:
           name: snapshot-binaries
