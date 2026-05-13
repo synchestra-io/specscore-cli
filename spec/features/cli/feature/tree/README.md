@@ -54,6 +54,18 @@ Text output (default) uses indentation and the Unicode character `*` to mark the
 
 In text output, exactly one node — the focused feature — MUST be marked with a `*` prefix. The full-tree view (no `<feature_id>`) has no focus marker.
 
+### Outstanding-question surfacing
+
+In addition to the count exposed by `--fields oq`, the tree command MUST accept `--fields questions` to surface the text of each item in a feature's `## Outstanding Questions` section, and `--fields title` to surface the feature's H1 (with the conventional `Feature: ` prefix stripped). These fields compose with the rest of the registry, so `--fields title,oq,questions` renders a question-aware project tree.
+
+#### REQ: questions-field
+
+`--fields questions` MUST return one string per top-level `- ` item under `## Outstanding Questions`, in document order. When the section is absent or contains no items, the field MUST be omitted (YAML/JSON) so callers can distinguish "no questions" from "field not requested". The count returned by `--fields oq` MUST equal the length of the list returned by `--fields questions` for the same feature.
+
+#### REQ: title-field
+
+`--fields title` MUST return the text of the README's first H1, with a leading `Feature:` (and optional whitespace) stripped to match the scaffolding template. When no H1 is present, the field MUST be omitted.
+
 ## Parameters
 
 | Name | Required | Description |
@@ -95,6 +107,12 @@ In text output, exactly one node — the focused feature — MUST be marked with
 **Requirements:** cli/feature/tree#req:direction-requires-id, cli/feature/tree#req:direction-values
 
 `tree cli/version --direction up` prints only the path from the root to `cli/version`. `tree cli/version --direction down` prints only `cli/version` and its subtree. `tree --direction up` (no ID) exits `2`.
+
+### AC: questions-and-title-fields
+
+**Requirements:** cli/feature/tree#req:questions-field, cli/feature/tree#req:title-field
+
+Given a feature `a` whose README starts with `# Feature: Alpha` and contains an `## Outstanding Questions` section with two `- ` items (`Q1?` and `Q2?`), `specscore feature tree a --fields title,oq,questions --format yaml` returns an entry with `title: Alpha`, `oq: 2`, and a `questions` list `[Q1?, Q2?]`. For a feature with no `## Outstanding Questions` section, the same command omits both `oq` and `questions` (or returns `oq: 0` and omits `questions`).
 
 ## Outstanding Questions
 

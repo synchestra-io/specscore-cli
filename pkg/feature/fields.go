@@ -10,6 +10,8 @@ import (
 var ValidFields = map[string]bool{
 	"status":    true,
 	"oq":        true,
+	"questions": true,
+	"title":     true,
 	"deps":      true,
 	"refs":      true,
 	"children":  true,
@@ -32,7 +34,7 @@ func ParseFieldNames(fieldsStr string) ([]string, error) {
 			continue
 		}
 		if !ValidFields[f] {
-			return nil, fmt.Errorf("unknown field %q (valid: status, oq, deps, refs, children, plans, proposals)", f)
+			return nil, fmt.Errorf("unknown field %q (valid: status, oq, questions, title, deps, refs, children, plans, proposals)", f)
 		}
 		if !seen[f] {
 			seen[f] = true
@@ -49,8 +51,10 @@ type EnrichedFeature struct {
 	Path       string             `yaml:"path" json:"path"`
 	Focus      *bool              `yaml:"focus,omitempty" json:"focus,omitempty"`
 	Cycle      *bool              `yaml:"cycle,omitempty" json:"cycle,omitempty"`
+	Title      string             `yaml:"title,omitempty" json:"title,omitempty"`
 	Status     string             `yaml:"status,omitempty" json:"status,omitempty"`
 	OQ         *int               `yaml:"oq,omitempty" json:"oq,omitempty"`
+	Questions  []string           `yaml:"questions,omitempty" json:"questions,omitempty"`
 	Deps       []string           `yaml:"deps,omitempty" json:"deps,omitempty"`
 	Refs       []string           `yaml:"refs,omitempty" json:"refs,omitempty"`
 	Plans      []string           `yaml:"plans,omitempty" json:"plans,omitempty"`
@@ -81,6 +85,20 @@ func ResolveFields(featuresDir, featureID string, fields []string) (*EnrichedFea
 				errs = append(errs, fmt.Sprintf("oq: %v", err))
 			} else {
 				ef.OQ = &n
+			}
+		case "questions":
+			qs, err := ExtractOutstandingQuestions(readmePath)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("questions: %v", err))
+			} else {
+				ef.Questions = qs
+			}
+		case "title":
+			t, err := ParseFeatureTitle(readmePath)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("title: %v", err))
+			} else {
+				ef.Title = t
 			}
 		case "deps":
 			d, err := ParseDependencies(readmePath)

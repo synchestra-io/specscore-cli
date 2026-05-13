@@ -632,6 +632,15 @@ func TestParseFieldNames(t *testing.T) {
 		t.Fatalf("got %d fields, want 3", len(fields))
 	}
 
+	// New title and questions fields accepted.
+	fields, err = ParseFieldNames("title,questions")
+	if err != nil {
+		t.Fatalf("title,questions should be accepted: %v", err)
+	}
+	if len(fields) != 2 || fields[0] != "title" || fields[1] != "questions" {
+		t.Errorf("got %v, want [title questions]", fields)
+	}
+
 	// Duplicate removal.
 	fields, err = ParseFieldNames("status,status")
 	if err != nil {
@@ -654,5 +663,144 @@ func TestParseFieldNames(t *testing.T) {
 	}
 	if fields != nil {
 		t.Errorf("got %v, want nil for empty string", fields)
+	}
+}
+
+func TestExtractOutstandingQuestions(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		content string
+		want    []string
+	}{
+		"multiple items": {
+			content: "# Feature: X\n\n## Outstanding Questions\n\n- First question?\n- Second question?\n\n## Other\n",
+			want:    []string{"First question?", "Second question?"},
+		},
+		"empty section": {
+			content: "# Feature: X\n\n## Outstanding Questions\n\n## Other\n",
+			want:    nil,
+		},
+		"section absent": {
+			content: "# Feature: X\n\n## Summary\n\nNo OQ here.\n",
+			want:    nil,
+		},
+		"last section in file": {
+			content: "# Feature: X\n\n## Outstanding Questions\n\n- Only one\n",
+			want:    []string{"Only one"},
+		},
+		"ignores non-list paragraphs": {
+			content: "# Feature: X\n\n## Outstanding Questions\n\nIntro paragraph.\n\n- Captured\n",
+			want:    []string{"Captured"},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "README.md")
+			if err := os.WriteFile(path, []byte(tc.content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got, err := ExtractOutstandingQuestions(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("item %d: got %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestCountMatchesExtract(t *testing.T) {
+	t.Parallel()
+	content := "# Feature: X\n\n## Outstanding Questions\n\n- A\n- B\n- C\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	count, err := CountOutstandingQuestions(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := ExtractOutstandingQuestions(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != len(items) {
+		t.Errorf("count %d != len(items) %d — must stay in sync", count, len(items))
+	}
+}
+
+func TestParseFeatureTitle(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		content string
+		want    string
+	}{
+		"with Feature prefix": {
+			content: "# Feature: Feature Tree\n\n**Status:** Stable\n",
+			want:    "Feature Tree",
+		},
+		"without Feature prefix": {
+			content: "# Just A Title\n\n## Summary\n",
+			want:    "Just A Title",
+		},
+		"colon-only prefix tolerated": {
+			content: "# Feature:Tight Title\n",
+			want:    "Tight Title",
+		},
+		"no H1": {
+			content: "## Subheading only\n",
+			want:    "",
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "README.md")
+			if err := os.WriteFile(path, []byte(tc.content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got, err := ParseFeatureTitle(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveFields_TitleAndQuestions(t *testing.T) {
+	t.Parallel()
+	featDir := setupTestFeatures(t, map[string]string{
+		"a": "# Feature: Alpha\n\n## Outstanding Questions\n\n- Q1?\n- Q2?\n",
+	})
+
+	ef, err := ResolveFields(featDir, "a", []string{"title", "oq", "questions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ef.Title != "Alpha" {
+		t.Errorf("Title = %q, want %q", ef.Title, "Alpha")
+	}
+	if ef.OQ == nil || *ef.OQ != 2 {
+		t.Errorf("OQ = %v, want 2", ef.OQ)
+	}
+	if len(ef.Questions) != 2 || ef.Questions[0] != "Q1?" || ef.Questions[1] != "Q2?" {
+		t.Errorf("Questions = %v, want [Q1? Q2?]", ef.Questions)
 	}
 }

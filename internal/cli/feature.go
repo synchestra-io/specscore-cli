@@ -136,6 +136,10 @@ func writeEnrichedTextNode(w *bufio.Writer, ef *feature.EnrichedFeature, fields 
 	var meta []string
 	for _, f := range fields {
 		switch f {
+		case "title":
+			if ef.Title != "" {
+				meta = append(meta, fmt.Sprintf("title=%q", ef.Title))
+			}
 		case "status":
 			if ef.Status != "" {
 				meta = append(meta, fmt.Sprintf("status=%s", ef.Status))
@@ -143,6 +147,10 @@ func writeEnrichedTextNode(w *bufio.Writer, ef *feature.EnrichedFeature, fields 
 		case "oq":
 			if ef.OQ != nil {
 				meta = append(meta, fmt.Sprintf("oq=%d", *ef.OQ))
+			}
+		case "questions":
+			if len(ef.Questions) > 0 {
+				meta = append(meta, fmt.Sprintf("questions=[%s]", strings.Join(ef.Questions, "; ")))
 			}
 		case "deps":
 			if len(ef.Deps) > 0 {

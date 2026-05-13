@@ -379,14 +379,27 @@ func ParseSections(readmePath string) ([]SectionInfo, error) {
 // CountOutstandingQuestions counts list items in the
 // ## Outstanding Questions section.
 func CountOutstandingQuestions(readmePath string) (int, error) {
-	f, err := os.Open(readmePath)
+	items, err := ExtractOutstandingQuestions(readmePath)
 	if err != nil {
 		return 0, err
 	}
+	return len(items), nil
+}
+
+// ExtractOutstandingQuestions returns the text of each top-level list item
+// under the ## Outstanding Questions section, with the leading "- " stripped.
+// Returns an empty slice when the section is absent or contains no items.
+// One question per "- " line; multi-line items capture only the first line,
+// matching CountOutstandingQuestions's notion of an item.
+func ExtractOutstandingQuestions(readmePath string) ([]string, error) {
+	f, err := os.Open(readmePath)
+	if err != nil {
+		return nil, err
+	}
 	defer func() { _ = f.Close() }()
 
+	var items []string
 	inOQ := false
-	count := 0
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -398,8 +411,34 @@ func CountOutstandingQuestions(readmePath string) (int, error) {
 			break
 		}
 		if inOQ && strings.HasPrefix(line, "- ") {
-			count++
+			items = append(items, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
 		}
 	}
-	return count, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// ParseFeatureTitle returns the first H1 from a feature README, stripping the
+// conventional "Feature: " prefix produced by GenerateReadme. If no H1 is
+// present, an empty string is returned with no error.
+func ParseFeatureTitle(readmePath string) (string, error) {
+	f, err := os.Open(readmePath)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "# ") {
+			continue
+		}
+		title := strings.TrimSpace(strings.TrimPrefix(line, "# "))
+		title = strings.TrimPrefix(title, "Feature:")
+		return strings.TrimSpace(title), nil
+	}
+	return "", scanner.Err()
 }
