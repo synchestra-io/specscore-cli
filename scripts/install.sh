@@ -161,5 +161,29 @@ if [ "$IN_PATH" = "1" ]; then
       log "  unable to rename (insufficient permissions); remove or rename it manually:"
       log "    mv ${SHADOW} ${BACKUP}"
     fi
+  else
+    # PATH resolution is fine, but a behind-PATH ${BIN_NAME} elsewhere (e.g.
+    # a stale `go install` binary in $GOPATH/bin that appears after
+    # $INSTALL_DIR in PATH) may have been hashed by the caller's interactive
+    # shell from a previous invocation. We can't clear the parent shell's
+    # hash table from this subshell — print the fix instead.
+    OTHER=""
+    IFS_SAVE="$IFS"
+    IFS=":"
+    for d in $PATH; do
+      [ -n "$d" ] || continue
+      [ "$d/$BIN_NAME" = "$DST" ] && continue
+      if [ -x "$d/$BIN_NAME" ]; then
+        OTHER="$d/$BIN_NAME"
+        break
+      fi
+    done
+    IFS="$IFS_SAVE"
+    if [ -n "$OTHER" ]; then
+      log ""
+      log "note: another ${BIN_NAME} is on PATH at ${OTHER} (behind ${DST})"
+      log "  if your shell still reports an old version, clear its command cache:"
+      log "    hash -r"
+    fi
   fi
 fi
