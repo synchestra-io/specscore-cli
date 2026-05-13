@@ -1,6 +1,8 @@
 # Feature: Idea (CLI)
 
 > [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fidea) — graph, discussions, approvals
+>
+> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/idea/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Stable
 
