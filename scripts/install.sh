@@ -128,11 +128,38 @@ chmod +x "$DST"
 log "installed ${BIN_NAME} ${VERSION} to ${DST}"
 
 # --- PATH advisory --------------------------------------------------------
+IN_PATH=0
 case ":$PATH:" in
-  *":$INSTALL_DIR:"*) ;;
+  *":$INSTALL_DIR:"*) IN_PATH=1 ;;
   *)
     log ""
     log "note: ${INSTALL_DIR} is not in your PATH. Add it with:"
     log "  export PATH=\"${INSTALL_DIR}:\$PATH\""
     ;;
 esac
+
+# --- Shadow check ----------------------------------------------------------
+# If another ${BIN_NAME} appears earlier on PATH (commonly a stale
+# `go install` build in $GOPATH/bin), it shadows the binary we just
+# installed. Rename it to .backup so the released version takes effect.
+if [ "$IN_PATH" = "1" ]; then
+  SHADOW="$(command -v "$BIN_NAME" 2>/dev/null || true)"
+  if [ -n "$SHADOW" ] && [ "$SHADOW" != "$DST" ]; then
+    BACKUP="${SHADOW}.backup"
+    # If a prior .backup already exists (e.g. user reinstalled via `go install`
+    # after a previous curl-install), suffix with a timestamp so we never
+    # clobber the earlier preserved binary.
+    if [ -e "$BACKUP" ]; then
+      BACKUP="${SHADOW}.backup.$(date +%Y%m%d%H%M%S)"
+    fi
+    log ""
+    log "note: another ${BIN_NAME} is earlier on PATH at ${SHADOW}"
+    log "  it would shadow the version just installed at ${DST}"
+    if mv "$SHADOW" "$BACKUP" 2>/dev/null; then
+      log "  renamed to ${BACKUP}"
+    else
+      log "  unable to rename (insufficient permissions); remove or rename it manually:"
+      log "    mv ${SHADOW} ${BACKUP}"
+    fi
+  fi
+fi
