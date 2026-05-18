@@ -8,7 +8,7 @@ Pre-spec one-pagers for the `specscore` CLI. Each Idea refines a vague concept i
 |------|--------|------|-------|-------------|
 | [entity-and-property-cli-support](entity-and-property-cli-support.md) | Approved | 2026-05-18 | alexander.trakhimenok | — |
 | [index-entries-autofix](index-entries-autofix.md) | Approved | 2026-05-18 | alexander.trakhimenok | — |
-| [lifecycle-verbs-for-idea-and-feature](lifecycle-verbs-for-idea-and-feature.md) | Approved | 2026-05-18 | alexander.trakhimenok | — |
+| [lifecycle-verbs-for-idea-and-feature](lifecycle-verbs-for-idea-and-feature.md) | Implementing | 2026-05-18 | alexander.trakhimenok | cli/feature/change-status, cli/idea/change-status, cli/lifecycle-transitions |
 
 ## Outstanding Questions
 

@@ -1,9 +1,9 @@
 # Idea: Lifecycle Verbs for Idea and Feature
 
-**Status:** Approved
+**Status:** Implementing
 **Date:** 2026-05-18
 **Owner:** alexander.trakhimenok
-**Promotes To:** —
+**Promotes To:** cli/feature/change-status, cli/idea/change-status, cli/lifecycle-transitions
 **Supersedes:** —
 **Related Ideas:** —
 

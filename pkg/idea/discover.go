@@ -107,8 +107,9 @@ var sourceIdeasRe = regexp.MustCompile(`^\*\*Source Ideas:\*\*\s*(.*)$`)
 
 // FeatureSourceIdeas scans every `spec/features/**/README.md` and returns a
 // map of feature slug -> []idea-slug based on the **Source Ideas:** header.
-// Features without the field are omitted. Only top-level feature dirs are
-// returned (filepath suffix: "features/<slug>/README.md").
+// Features without the field are omitted. The slug is the feature's path
+// relative to `spec/features/` (e.g. `cli`, `cli/spec/lint`,
+// `cli/lifecycle-transitions`), so nested sub-features are first-class.
 func FeatureSourceIdeas(specRoot string) (map[string][]string, error) {
 	featuresDir := filepath.Join(specRoot, "features")
 	info, err := os.Stat(featuresDir)
@@ -116,25 +117,41 @@ func FeatureSourceIdeas(specRoot string) (map[string][]string, error) {
 		return map[string][]string{}, nil
 	}
 	out := make(map[string][]string)
-	entries, err := os.ReadDir(featuresDir)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+	err = filepath.Walk(featuresDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		readme := filepath.Join(featuresDir, e.Name(), "README.md")
+		if !info.IsDir() {
+			return nil
+		}
+		// Skip hidden and underscore-convention dirs (e.g. `_args/`).
+		base := filepath.Base(path)
+		if path != featuresDir && (strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_")) {
+			return filepath.SkipDir
+		}
+		// The features root itself has a README.md but is not a feature dir.
+		if path == featuresDir {
+			return nil
+		}
+		readme := filepath.Join(path, "README.md")
 		if _, err := os.Stat(readme); err != nil {
-			continue
+			return nil
 		}
 		ideas, err := parseSourceIdeas(readme)
+		if err != nil || len(ideas) == 0 {
+			return nil
+		}
+		slug, err := filepath.Rel(featuresDir, path)
 		if err != nil {
-			continue
+			return nil
 		}
-		if len(ideas) > 0 {
-			out[e.Name()] = ideas
-		}
+		// Normalize to forward slashes so slugs are stable across platforms.
+		slug = filepath.ToSlash(slug)
+		out[slug] = ideas
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return out, nil
 }
