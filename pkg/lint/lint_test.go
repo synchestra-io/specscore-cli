@@ -293,40 +293,96 @@ func TestIndexEntries_FixDeletesPhantomRow(t *testing.T) {
 	}
 }
 
-// AC: index-entries-fix-removes-phantom-row (second half) — `--fix` does NOT
-// repair the orphan-child direction. The unlisted child stays a violation.
-func TestIndexEntries_FixLeavesOrphanChildAlone(t *testing.T) {
+// AC: index-entries-fix-inserts-orphan-row (root features index) — when a
+// top-level feature directory exists on disk but is not linked from
+// spec/features/README.md, `--fix` appends a 4-cell row with the parsed
+// Status and the standard placeholders for Kind / Description. Mirrors the
+// row shape `specscore feature new` already produces, so the autofix never
+// invents content the user has authority over.
+func TestIndexEntries_FixInsertsOrphanRowAtRoot(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/cli/README.md": "# CLI\n\n" +
-			"| Dir | Desc |\n" +
-			"|---|---|\n" +
-			"| [real](real/README.md) | Real |\n",
-		"features/cli/real/README.md":   "# Real\n",
-		"features/cli/orphan/README.md": "# Orphan\n",
+		"features/README.md": "# Features\n\n" +
+			"| Feature | Status | Kind | Description |\n" +
+			"|---------|--------|------|-------------|\n" +
+			"| [auth](auth/README.md) | Implementing | Command | linked |\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n",
+		"features/auth/README.md":   "# Feature: Auth\n\n**Status:** Implementing\n",
+		"features/billing/README.md": "# Feature: Billing\n\n**Status:** Stable\n",
 	})
 
 	c := newIndexEntriesChecker().(*indexEntriesChecker)
-	before, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
 	if err := c.fix(root); err != nil {
 		t.Fatalf("fix: %v", err)
 	}
-	after, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
-	if string(before) != string(after) {
-		t.Errorf("fix MUST NOT touch index when only orphan-child violations exist:\nbefore:\n%s\nafter:\n%s", before, after)
+
+	got, _ := os.ReadFile(filepath.Join(root, "features", "README.md"))
+	s := string(got)
+
+	// The parsed Status flows through; Kind and Description use the
+	// codified placeholders.
+	wantRow := "| [billing](billing/README.md) | Stable | — | TODO: Add description. |"
+	if !strings.Contains(s, wantRow) {
+		t.Errorf("orphan row not inserted with expected shape.\nwant: %s\ngot:\n%s", wantRow, s)
+	}
+	// Existing rows preserved.
+	if !strings.Contains(s, "| [auth](auth/README.md) | Implementing | Command | linked |") {
+		t.Errorf("existing row was mutated:\n%s", s)
 	}
 
-	violations, err := c.check(root)
-	if err != nil {
-		t.Fatal(err)
+	// Idempotency: pass 2 is a no-op.
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix (pass 2): %v", err)
 	}
-	var orphanReported bool
+	got2, _ := os.ReadFile(filepath.Join(root, "features", "README.md"))
+	if string(got2) != s {
+		t.Errorf("pass 2 mutated the file (idempotency violation):\npass1:\n%s\npass2:\n%s", s, got2)
+	}
+
+	// Post-fix check pass: no orphan-child violations remain.
+	violations, _ := c.check(root)
 	for _, v := range violations {
-		if strings.Contains(v.Message, "not listed in index: orphan") {
-			orphanReported = true
+		if strings.Contains(v.Message, "not listed in index") {
+			t.Errorf("orphan-child violation survived --fix: %v", v)
 		}
 	}
-	if !orphanReported {
-		t.Errorf("orphan-child violation must still be reported after --fix; got %v", violations)
+}
+
+// AC: index-entries-fix-inserts-orphan-row (nested feature index) — when a
+// nested feature has child directories that are not linked from its
+// ## Contents table, `--fix` appends 2-cell rows. The shape matches what
+// `feature new --parent` produces.
+func TestIndexEntries_FixInsertsOrphanRowNested(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": "# Feature: CLI\n\n" +
+			"**Status:** Stable\n\n" +
+			"## Contents\n\n" +
+			"| Child | Description |\n" +
+			"|---|---|\n" +
+			"| [list](list/README.md) | linked |\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n",
+		"features/cli/list/README.md": "# Feature: List\n\n**Status:** Stable\n",
+		"features/cli/info/README.md": "# Feature: Info\n\n**Status:** Implementing\n",
+	})
+
+	c := newIndexEntriesChecker().(*indexEntriesChecker)
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+
+	got, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	s := string(got)
+	wantRow := "| [info](info/README.md) | TODO: Add description. |"
+	if !strings.Contains(s, wantRow) {
+		t.Errorf("nested orphan row not inserted with expected shape.\nwant: %s\ngot:\n%s", wantRow, s)
+	}
+
+	// Idempotency.
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix (pass 2): %v", err)
+	}
+	got2, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if string(got2) != s {
+		t.Errorf("nested pass 2 mutated the file (idempotency):\npass1:\n%s\npass2:\n%s", s, got2)
 	}
 }
 

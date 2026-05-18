@@ -9,7 +9,7 @@
 
 ## Summary
 
-`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, view links, idea sync / index / archived-order rules, phantom rows in feature indices).
+`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, view links, idea sync / index / archived-order rules, phantom rows in feature indices, missing rows for orphan child directories).
 
 ## Synopsis
 
@@ -60,7 +60,16 @@ Both directions apply at every level of the feature tree, including the root `sp
 
 When `index-entries` reports `Index mentions non-existent directory: <name>` and `spec lint` runs with `--fix`, the fixer MUST remove from the parent README's index table the single row whose link target ends in `<name>/README.md`. Surrounding rows, table delimiters, and the rest of the document MUST be preserved.
 
-The orphan-child direction — a child directory that exists on disk but is not linked from the parent index — remains report-only and MUST NOT be autofixed. Inserting a row requires reading `Status`, `Kind`, and a `Description` from the child README, which has no canonical parser today; choosing those values without one would violate `fix-is-safe-subset`.
+#### REQ: index-entries-fix-inserts-orphan-rows
+
+When `index-entries` reports `Child directory not listed in index: <name>` and `spec lint` runs with `--fix`, the fixer MUST append a row that links the missing child. The row shape MUST match what `specscore feature new` already writes via `UpdateFeatureIndex` / `UpdateParentContents`:
+
+- At the root features index (`spec/features/README.md`), a 4-cell row of the form `| \[<name>\]\(<name>/README.md\) | <status> | — | TODO: Add description. |`. `<status>` is parsed from the child's `**Status:**` header via `feature.ParseFeatureStatus`; `Kind` and `Description` use the same hand-maintained placeholder convention `feature new` codifies.
+- At a nested feature index, a 2-cell row in the `## Contents` table of the form `| \[<name>\]\(<name>/README.md\) | TODO: Add description. |`. The `## Contents` block is created if absent.
+
+The fixer MUST NOT mutate any cell beyond the inserted row; existing rows are preserved byte-for-byte. The deletion direction (phantom rows) runs first so the insertion phase reads a phantom-free index.
+
+This REQ does NOT violate `fix-is-safe-subset`. Status flows from a structurally-parsed field; Kind and Description use placeholders the project has already codified for `feature new`, so the autofix is byte-identical to user-driven scaffolding. The placeholders are visibly under-filled (`—`, `TODO: ...`), inviting the author to populate them rather than masking missing intent.
 
 ### Severity filtering
 
@@ -173,7 +182,13 @@ If a document ends with an adherence-footer block that uses the wrong `specscore
 
 **Requirements:** cli/spec/lint#req:index-entries-fix-deletes-phantom-rows
 
-Given a parent README whose index table contains a Markdown link whose target is `ghost/README.md` while no `ghost/` directory exists on disk, running `specscore spec lint --fix` removes that single row from the index table and leaves every other row intact. A second consecutive `spec lint --fix` produces no further changes (per `fix-is-idempotent`). An unlisted child directory in the same tree still produces an `index-entries` violation that the fixer does NOT repair.
+Given a parent README whose index table contains a Markdown link whose target is `ghost/README.md` while no `ghost/` directory exists on disk, running `specscore spec lint --fix` removes that single row from the index table and leaves every other row intact. A second consecutive `spec lint --fix` produces no further changes (per `fix-is-idempotent`).
+
+### AC: index-entries-fix-inserts-orphan-row
+
+**Requirements:** cli/spec/lint#req:index-entries-fix-inserts-orphan-rows
+
+Given a root features index that lists `auth` while a `billing/` directory with `**Status:** Stable` also exists on disk but is unlinked, running `specscore spec lint --fix` appends the row `| \[billing\]\(billing/README.md\) | Stable | — | TODO: Add description. |` to the index table, preserves the existing `auth` row byte-for-byte, and emits no further changes on a second consecutive pass. The nested case behaves the same way with a 2-cell `| \[<name>\]\(<name>/README.md\) | TODO: Add description. |` row in the `## Contents` table of the parent feature.
 
 ### AC: index-entries-flags-orphan-child
 

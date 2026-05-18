@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"github.com/synchestra-io/specscore-cli/pkg/feature"
 )
 
 // indexEntriesChecker verifies that feature README indices match actual child directories.
@@ -99,13 +102,21 @@ func (c *indexEntriesChecker) check(specRoot string) ([]Violation, error) {
 	return violations, err
 }
 
-// fix implements the index-entries-fix-deletes-phantom-rows REQ: for every
-// feature README index that links a child directory which does not exist on
-// disk, the row referencing that phantom child is removed. The orphan-child
-// direction (a real directory not listed in the index) is NOT autofixed —
-// inserting a populated row would require reading Status/Kind/Description
-// from the child README, which violates fix-is-safe-subset until a canonical
-// feature-metadata parser exists.
+// fix implements both index-entries autofix REQs:
+//
+//   - index-entries-fix-deletes-phantom-rows: rows whose link target points
+//     at a non-existent child directory are deleted.
+//   - index-entries-fix-inserts-orphan-rows: child directories that exist on
+//     disk but are not linked from the parent index get a fresh row appended.
+//     Status is parsed from the child README via feature.ParseFeatureStatus.
+//     Kind and Description use the same placeholder convention that
+//     `specscore feature new` already codifies (`—` and `TODO: Add
+//     description.`) — both columns are hand-maintained in features-index
+//     and have no per-feature source-of-truth in the child README.
+//
+// Phase 1 (delete) runs first so subsequent Phase 2 (insert) reads a
+// phantom-free index. Both phases are idempotent: pass 2 finds no phantom
+// rows to delete and no unlinked children to insert.
 func (c *indexEntriesChecker) fix(specRoot string) error {
 	featureDir := filepath.Join(specRoot, "features")
 	info, err := os.Stat(featureDir)
@@ -126,27 +137,66 @@ func (c *indexEntriesChecker) fix(specRoot string) error {
 			return nil
 		}
 
-		// Collect actual child dirs so we know which mentioned slugs are phantoms.
+		// Collect actual child dirs (those with their own README — i.e., features).
 		entries, readErr := os.ReadDir(path)
 		if readErr != nil {
 			return nil
 		}
+		var actualChildren []string
 		actualSet := make(map[string]bool)
 		for _, e := range entries {
-			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") && !strings.HasPrefix(e.Name(), "_") {
-				actualSet[e.Name()] = true
+			if !e.IsDir() || strings.HasPrefix(e.Name(), ".") || strings.HasPrefix(e.Name(), "_") {
+				continue
 			}
+			if _, err := os.Stat(filepath.Join(path, e.Name(), "README.md")); err != nil {
+				continue
+			}
+			actualChildren = append(actualChildren, e.Name())
+			actualSet[e.Name()] = true
 		}
 
+		// Phase 1: drop phantom rows.
 		content, err := os.ReadFile(readmePath)
 		if err != nil {
 			return nil
 		}
-		rewritten, changed := dropPhantomIndexRows(string(content), actualSet)
-		if !changed {
-			return nil
+		if rewritten, changed := dropPhantomIndexRows(string(content), actualSet); changed {
+			if err := os.WriteFile(readmePath, []byte(rewritten), 0o644); err != nil {
+				return err
+			}
 		}
-		return os.WriteFile(readmePath, []byte(rewritten), 0o644)
+
+		// Phase 2: insert rows for orphan children. Re-parse the index AFTER
+		// Phase 1 so we don't count phantom mentions as already-listed.
+		mentioned, _ := extractChildRefsFromReadme(readmePath)
+		mentionedSet := make(map[string]bool, len(mentioned))
+		for _, m := range mentioned {
+			mentionedSet[m] = true
+		}
+
+		isRootFeaturesIndex := path == featureDir
+		// Sort for deterministic ordering across runs.
+		sort.Strings(actualChildren)
+		for _, child := range actualChildren {
+			if mentionedSet[child] {
+				continue
+			}
+			childReadme := filepath.Join(path, child, "README.md")
+			status, _ := feature.ParseFeatureStatus(childReadme)
+			if status == "" || status == "Unknown" {
+				status = "Draft"
+			}
+			if isRootFeaturesIndex {
+				if _, err := feature.UpdateFeatureIndex(readmePath, child, status, ""); err != nil {
+					return err
+				}
+			} else {
+				if _, err := feature.UpdateParentContents(readmePath, child, ""); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	})
 }
 
