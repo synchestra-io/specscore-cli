@@ -57,9 +57,7 @@ func newLinter(opts Options) *linter {
 	}
 
 	// Register feature-index checker (feature-index-row-sync).
-	fic := newFeatureIndexChecker()
-	fic.autofix = opts.Fix
-	l.registerChecker(fic)
+	l.registerChecker(newFeatureIndexChecker())
 
 	// Register custom checkers
 	for _, c := range customCheckers {

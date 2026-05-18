@@ -12,14 +12,12 @@ import (
 	"github.com/synchestra-io/specscore-cli/pkg/feature"
 )
 
-// featureIndexChecker dispatches the feature-index-row-sync rule.
-// It mirrors how `ideaChecker` participates in `--fix`: the autofix
-// pass is performed inside `check()` (under the `autofix` flag) so the
-// post-fix scan reports zero violations naturally, and there is no
-// separate `fixer` implementation.
-type featureIndexChecker struct {
-	autofix bool
-}
+// featureIndexChecker dispatches the feature-index-row-sync rule. The
+// rule logic lives in `featureIndexRules` and is invoked twice — once
+// in report mode from `check()`, once in mutation mode from `fix()` —
+// matching the `checker` / `fixer` split used by every other rule in
+// this package.
+type featureIndexChecker struct{}
 
 func newFeatureIndexChecker() *featureIndexChecker {
 	return &featureIndexChecker{}
@@ -29,8 +27,18 @@ func (c *featureIndexChecker) name() string     { return "feature-index-row-sync
 func (c *featureIndexChecker) severity() string { return "error" }
 
 func (c *featureIndexChecker) check(specRoot string) ([]Violation, error) {
-	vs, _ := featureIndexRules(specRoot, c.autofix)
+	vs, _ := featureIndexRules(specRoot, false)
 	return vs, nil
+}
+
+// fix implements the fixer interface: rewrites drifted Status cells in
+// the features-index to match each feature's `**Status:**`. The check
+// pass that follows reports zero violations because the rewrite is
+// complete; idempotency is satisfied because the second pass finds no
+// drift to rewrite.
+func (c *featureIndexChecker) fix(specRoot string) error {
+	_, _ = featureIndexRules(specRoot, true)
+	return nil
 }
 
 // featureIndexRules enforces:
