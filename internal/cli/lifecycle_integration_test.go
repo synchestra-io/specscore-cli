@@ -204,8 +204,12 @@ func TestLifecycleIntegration(t *testing.T) {
 		t.Fatalf("step 5: feature new bar failed: %v\nstderr=%s", err, errOut)
 	}
 	featPath := filepath.Join(root, "spec", "features", "bar", "README.md")
+	featuresIdx := filepath.Join(root, "spec", "features", "README.md")
 	if got := readFileStatus(t, featPath); got != "Draft" {
 		t.Fatalf("step 5: feature status = %q, want Draft", got)
+	}
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Draft | — | integration test feature |") {
+		t.Errorf("step 5: features index missing 4-cell row for bar at Draft")
 	}
 	assertLintClean(t, root, "after feature new")
 
@@ -228,15 +232,9 @@ func TestLifecycleIntegration(t *testing.T) {
 	if got := readFileStatus(t, featPath); got != "Under Review" {
 		t.Errorf("step 6: feature status = %q, want Under Review", got)
 	}
-	// NOTE: We do NOT assert "features index reflects Under Review"
-	// here. `feature new` currently writes a 2-cell row (link +
-	// description) into the features index, while
-	// feature-index-row-sync expects a 4-cell row (link, status,
-	// kind, description). The mismatched-format row is silently
-	// skipped by the lint rule's regex, so the index never picks up
-	// the new status. That's a pre-existing `feature new` quirk
-	// outside the scope of this plan; lint still passes because the
-	// stale row format doesn't trigger row-sync as a "drift".
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Under Review | — | integration test feature |") {
+		t.Errorf("step 6: features index Status cell not synced to Under Review")
+	}
 	assertLintClean(t, root, "after feature→under review")
 
 	// Illegal transition 3: same-target re-run (exit 4).
@@ -258,6 +256,9 @@ func TestLifecycleIntegration(t *testing.T) {
 	if got := readFileStatus(t, featPath); got != "Approved" {
 		t.Errorf("step 7: feature status = %q, want Approved", got)
 	}
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Approved | — | integration test feature |") {
+		t.Errorf("step 7: features index Status cell not synced to Approved")
+	}
 	assertLintClean(t, root, "after feature→approved")
 
 	// Step 8: feature change-status bar --to=implementing.
@@ -271,6 +272,9 @@ func TestLifecycleIntegration(t *testing.T) {
 	if got := readFileStatus(t, featPath); got != "Implementing" {
 		t.Errorf("step 8: feature status = %q, want Implementing", got)
 	}
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Implementing | — | integration test feature |") {
+		t.Errorf("step 8: features index Status cell not synced to Implementing")
+	}
 	assertLintClean(t, root, "after feature→implementing")
 
 	// Step 9: feature change-status bar --to=stable.
@@ -283,6 +287,9 @@ func TestLifecycleIntegration(t *testing.T) {
 	}
 	if got := readFileStatus(t, featPath); got != "Stable" {
 		t.Errorf("step 9: feature status = %q, want Stable", got)
+	}
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Stable | — | integration test feature |") {
+		t.Errorf("step 9: features index Status cell not synced to Stable")
 	}
 	assertLintClean(t, root, "after feature→stable")
 
@@ -304,6 +311,9 @@ func TestLifecycleIntegration(t *testing.T) {
 	}
 	if got := readFileStatus(t, featPath); got != "Deprecated" {
 		t.Errorf("step 10: feature status = %q, want Deprecated", got)
+	}
+	if !fileContains(t, featuresIdx, "| [bar](bar/README.md) | Deprecated | — | integration test feature |") {
+		t.Errorf("step 10: features index Status cell not synced to Deprecated")
 	}
 	assertLintClean(t, root, "after feature→deprecated")
 
