@@ -306,7 +306,7 @@ func TestIndexEntries_FixInsertsOrphanRowAtRoot(t *testing.T) {
 			"|---------|--------|------|-------------|\n" +
 			"| [auth](auth/README.md) | Implementing | Command | linked |\n\n" +
 			"## Outstanding Questions\n\nNone at this time.\n",
-		"features/auth/README.md":   "# Feature: Auth\n\n**Status:** Implementing\n",
+		"features/auth/README.md":    "# Feature: Auth\n\n**Status:** Implementing\n",
 		"features/billing/README.md": "# Feature: Billing\n\n**Status:** Stable\n",
 	})
 
@@ -498,10 +498,10 @@ func TestIndexEntries_ChildNotListed(t *testing.T) {
 	// A child directory with a README exists on disk, but the parent index
 	// does not link to it. The checker MUST flag the orphan.
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":           "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
-		"features/orphan/README.md":    "# Orphan Feature\n",
-		"features/listed/README.md":    "# Listed\n",
-		"features/cli/README.md":       "# CLI\n\n| Dir | Desc |\n|---|---|\n| [listed](listed/README.md) | Linked child |\n",
+		"features/README.md":        "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
+		"features/orphan/README.md": "# Orphan Feature\n",
+		"features/listed/README.md": "# Listed\n",
+		"features/cli/README.md":    "# CLI\n\n| Dir | Desc |\n|---|---|\n| [listed](listed/README.md) | Linked child |\n",
 	})
 	// The cli index links 'listed' but not 'orphan'; cli has only the
 	// already-listed dir, so the violation belongs to the root index.

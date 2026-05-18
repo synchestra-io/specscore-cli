@@ -37,8 +37,8 @@ func TestFeatureSourceIdeas_NestedFeatures(t *testing.T) {
 		"features/cli/README.md": "# Feature: CLI\n\n**Status:** Stable\n\n",
 
 		// Dir convention prefixes that must be skipped entirely.
-		"features/_args/README.md":    "# Args\n\n**Source Ideas:** ignored-conventional-dir\n",
-		"features/.hidden/README.md":  "# Hidden\n\n**Source Ideas:** ignored-hidden\n",
+		"features/_args/README.md":   "# Args\n\n**Source Ideas:** ignored-conventional-dir\n",
+		"features/.hidden/README.md": "# Hidden\n\n**Source Ideas:** ignored-hidden\n",
 	}
 	for path, content := range files {
 		full := filepath.Join(specRoot, path)
@@ -56,9 +56,9 @@ func TestFeatureSourceIdeas_NestedFeatures(t *testing.T) {
 	}
 
 	want := map[string][]string{
-		"auth":                       {"auth-overhaul"},
-		"cli/lifecycle-transitions":  {"lifecycle-verbs-for-idea-and-feature"},
-		"cli/spec/lint":              {"index-entries-autofix"},
+		"auth":                      {"auth-overhaul"},
+		"cli/lifecycle-transitions": {"lifecycle-verbs-for-idea-and-feature"},
+		"cli/spec/lint":             {"index-entries-autofix"},
 	}
 
 	if len(got) != len(want) {
