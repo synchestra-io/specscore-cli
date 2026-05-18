@@ -55,7 +55,7 @@ changelog:
 
 # Homebrew tap — https://brew.sh
 # Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN. The tap repo must exist at
-# synchestra-io/homebrew-tap with a `main` branch.
+# specscore/homebrew-tap with a `main` branch.
 brews:
   - name: specscore
     ids:
@@ -64,7 +64,7 @@ brews:
     homepage: https://specscore.md
     license: Apache-2.0
     repository:
-      owner: synchestra-io
+      owner: specscore
       name: homebrew-tap
       branch: main
       token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
@@ -76,7 +76,8 @@ brews:
 # Scoop bucket — https://scoop.sh
 # Requires SPECSCORE_GORELEASER_GITHUB_TOKEN — a classic PAT with `public_repo`
 # scope (see release.yml for the rationale; cross-fork PRs to microsoft/winget-pkgs
-# rule out a fine-grained PAT). The bucket repo must exist with a `main` branch.
+# rule out a fine-grained PAT). The bucket repo must exist at
+# specscore/scoop-bucket with a `main` branch.
 scoops:
   - name: specscore
     ids:
@@ -84,9 +85,9 @@ scoops:
     description: "SpecScore CLI — lint, validate, and navigate Markdown specifications."
     homepage: https://specscore.md
     license: Apache-2.0
-    url_template: "https://github.com/synchestra-io/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/specscore/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     repository:
-      owner: synchestra-io
+      owner: specscore
       name: scoop-bucket
       branch: main
       token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
