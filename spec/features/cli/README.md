@@ -19,10 +19,13 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 | Directory | Description |
 |---|---|
 | [code/](code/README.md) | Source-code → SpecScore relationship queries |
+| [entity/](entity/README.md) | Entity Doc-Kind: lint enforcement, managed-section rendering, `specscore entity list/refs/tree` |
 | [feature/](feature/README.md) | Feature tree queries and scaffolding |
 | [idea/](idea/README.md) | Idea artifact scaffolding and lifecycle |
+| [init/](init/README.md) | `specscore init` scaffolds a SpecScore-managed project root: creates `specscore.yaml`, the `spec/` tree with lint-clean Ideas and Features indexes, and optional `spec/research`/`spec/decisions` trees. Refuses to clobber an existing `specscore.yaml` unless `--force`. |
 | [issue/](issue/README.md) | Issue artifact scaffolding, lifecycle, and listing |
 | [lifecycle-transitions/](lifecycle-transitions/README.md) | _Not a command group._ Shared contract every status-mutating verb satisfies (atomicity, rollback, output format, exit-code mapping). |
+| [property/](property/README.md) | Property Doc-Kind: lint enforcement, managed-section rendering, `specscore property list/refs` |
 | [spec/](spec/README.md) | Specification-tree validation and search |
 | [task/](task/README.md) | Task board management |
 | [version/](version/README.md) | CLI version reporting |
@@ -30,6 +33,10 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 ### code
 
 Queries relationships from source files to SpecScore resources. Scans `specscore:` annotations and URLs embedded in source comments and reports the features, plans, or docs those files depend on. Read-only.
+
+### entity
+
+CLI surface for the Entity Doc-Kind. Hosts the `entity-*` lint rules (frontmatter shape, additive-only inheritance, managed-section rendering for `## Properties` and `## Referenced by`) and three navigation verbs: `specscore entity list`, `specscore entity refs <id>`, `specscore entity tree`. Authoritative entity Doc-Kind contract lives in the meta-spec [entity Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md); this CLI Feature is the implementation surface.
 
 ### feature
 
@@ -51,6 +58,10 @@ Convenience alias group for change-request Ideas. `proposal new <feature-slug> <
 
 Not a command group — has no CLI surface of its own. Defines the shared cross-cutting contract every `specscore` verb that mutates an artifact's `Status` field satisfies: atomicity, rollback, output format, exit-code mapping, slug-positional argument, no coordination, and the scope boundary against coordination/concurrency concerns. Verb features (e.g., `cli/idea/approve`) reference this feature instead of restating these rules.
 
+### property
+
+CLI surface for the Property Doc-Kind. Hosts the `property-*` lint rules (frontmatter shape, `data_type` enumeration, check-key applicability, managed-section rendering for `## Referenced by`) and two navigation verbs: `specscore property list`, `specscore property refs <id>`. Authoritative property Doc-Kind contract lives in the meta-spec [property Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md); this CLI Feature is the implementation surface.
+
 ### spec
 
 Validates the specification tree. Hosts `spec lint`, which runs the full checker suite (structural conventions, adherence footers, OQ sections, index completeness, and Idea-specific rules) and optionally applies autofixes. Reports violations with severity levels.
@@ -62,7 +73,6 @@ Manages the project task board at `tasks/README.md` and individual task files un
 ### version
 
 Reports the CLI's build identity. `specscore version` prints the full human-readable line; `specscore --version` (and `-v`) prints the bare semver for scripts. See [version/README.md](version/README.md) for the full contract.
-| [init](init/README.md) | specscore init scaffolds a SpecScore-managed project root: creates specscore.yaml with the mandatory schema-pointer header, the spec/ tree with lint-clean Ideas and Features indexes, and optional spec/research and spec/decisions trees. Refuses to clobber existing specscore.yaml unless --force. |
 | [telemetry](telemetry/README.md) | TODO: Add description. |
 | [event](event/README.md) | TODO: Add description. |
 

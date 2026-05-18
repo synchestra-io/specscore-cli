@@ -195,6 +195,34 @@ Default output is text. `--format json` and `--format yaml` produce structured o
 
 `spec lint` MUST refuse to run when no `specscore.yaml` is found in the working directory or any of its ancestors. The command MUST exit `3` (NotFound) with a message that (1) names `specscore.yaml` as mandatory and (2) tells the caller to run `specscore init` to create it. The message MUST NOT mention the legacy `spec/features/` fallback used by other commands.
 
+### Doc-Kind rule families
+
+The lint package is the canonical registry for every rule that validates a SpecScore Doc-Kind instance. Each Doc-Kind owns a family of rules whose names share a kind-specific prefix (e.g., `idea-*`, `entity-*`, `property-*`). Authoritative contracts for each family live in the corresponding Doc-Kind's CLI Feature; the `spec lint` Feature carries the registration and discovery rules that every family must satisfy.
+
+#### REQ: entity-and-property-rules-registered
+
+The `entity-*` and `property-*` rule families MUST be present in `pkg/lint`'s canonical `allRuleNames` map, selectable via `--rules <name>`, and exercised by Go-level unit tests. The full list of `entity-*` rule names is enumerated in [cli/entity#lint-enforcement](../../entity/README.md#lint-enforcement); the full list of `property-*` rule names is enumerated in [cli/property#lint-enforcement](../../property/README.md#lint-enforcement). Adding a new rule to either family requires updating both the lint package's `allRuleNames` map AND the corresponding CLI Feature's rule table — drift between the two is a manual review concern in MVP (see the Outstanding Question on `lint-rule-table-completeness`).
+
+#### REQ: managed-section-rewrite-on-fix
+
+When `spec lint --fix` runs over a tree containing `*.entity.md` or `*.property.md` files, the fixer MUST rewrite every managed body wrapped in the canonical `<!-- managed-by: specscore lint --fix -->` / `<!-- end-managed -->` markers. The rewriter MUST be deterministic and idempotent — re-running `--fix` on a clean tree MUST produce zero further changes. The specific managed sections covered are enumerated in:
+
+- [cli/entity#req:properties-table-rendered](../../entity/README.md#req-properties-table-rendered) — the `## Properties` table on entity files.
+- [cli/entity#req:referenced-by-from-inheritance](../../entity/README.md#req-referenced-by-from-inheritance) — the `## Referenced by` section on entity files.
+- [cli/property#req:referenced-by-from-entities](../../property/README.md#req-referenced-by-from-entities) — the `## Referenced by` section on property files.
+
+This REQ extends [REQ: fix-is-idempotent](#req-fix-is-idempotent) — the second-pass-clean contract applies to managed-section rewrites in addition to adherence-footer and idea-sync rewrites.
+
+### Document-types-registry consumer-path parsing
+
+The upstream [document-types-registry](https://github.com/synchestra-io/specscore/blob/main/spec/features/document-types-registry/README.md) Feature relaxes the `Consumer Path` column in `spec/features/README.md` (in the meta-spec repo) to accept either a single glob or a **comma-separated list of globs** for Document-Kind rows. The CLI MUST honour this form wherever it parses a `Consumer Path` cell.
+
+#### REQ: consumer-path-multi-glob
+
+When `pkg/lint` or any other consumer parses a `Consumer Path` cell from a registry row, the parser MUST treat the cell value as a comma-separated list of globs. Whitespace surrounding each comma MUST be tolerated. The result MUST be the union of files matched by every glob in the list. An empty cell value (or the dash placeholder `—`) MUST yield an empty glob list — never an error. Empty entries between commas (leading commas, trailing commas, or doubled internal commas like `a,,b`) MUST be discarded silently regardless of position — the parser is permissive, not strict, because the goal is to forward-resolve the row, not to police whitespace.
+
+This REQ defines the parsing contract. The CLI rules that consume the parsed glob list today are the entity-location and property-location rules ([cli/entity#req:discovery-scope](../../entity/README.md#req-discovery-scope), [cli/property#req:discovery-scope](../../property/README.md#req-discovery-scope)); the parsing surface is forward-compatible — a future `every-feature-registered` rule that cross-checks every registry row would consume the same parser.
+
 ## Parameters
 
 None. All inputs are flags.
@@ -291,10 +319,30 @@ Given a `.github/workflows/dogfood.yml` that pins `SPECSCORE_VERSION: v0.2.0` wh
 **Requirements:** cli/spec/lint#req:specscore-yaml-required
 
 Running `specscore spec lint` in a directory tree that has no `specscore.yaml` in any ancestor exits `3`. The error message names `specscore.yaml` as mandatory and instructs the caller to run `specscore init` to create it. The presence of a bare `spec/features/` directory does NOT satisfy the gate.
+### AC: entity-and-property-rules-selectable
+
+**Requirements:** cli/spec/lint#req:entity-and-property-rules-registered
+
+`specscore spec lint --rules entity-location` and `specscore spec lint --rules property-frontmatter-required-fields` each run successfully (exit `0` on a clean tree) without rejecting the rule name. Each name in [cli/entity](../../entity/README.md)'s and [cli/property](../../property/README.md)'s rule tables is accepted by `--rules`; passing a misspelled name (e.g., `entity-locatoin`) exits `2` per [REQ: rules-whitelist](#req-rules-whitelist).
+
+### AC: managed-section-fix-idempotent
+
+**Requirements:** cli/spec/lint#req:managed-section-rewrite-on-fix, cli/spec/lint#req:fix-is-idempotent
+
+Given a tree containing entity files with stale `## Properties` tables and property files with stale `## Referenced by` sections, running `specscore spec lint --fix` once rewrites every managed body to its canonical rendering and exits `0`. Running `specscore spec lint --fix` a second time produces zero file changes and exits `0` with no violation lines printed.
+
+### AC: consumer-path-multi-glob-parsed
+
+**Requirements:** cli/spec/lint#req:consumer-path-multi-glob
+
+Given a registry row whose `Consumer Path` cell is `spec/features/**/*.entity.md, spec/features/**/*.property.md`, the CLI's parser produces a glob list of length two containing both globs. Whitespace around the comma is tolerated. A cell value of `—` (or the empty string) produces an empty glob list. Cell values with leading, trailing, or doubled commas (e.g. `,a,b`, `a,b,`, `a,,b`) MUST produce a glob list with the empty entries silently discarded, never an error.
+
 ## Open Questions
 
 - Should `spec lint` accept a path argument (`spec lint spec/features/cli/`) to lint a subtree, for faster feedback during development? Today the full tree is always scanned.
 - Should `--fix` have a paired `--dry-run` that prints the intended edits without applying them, so authors can preview fixes before accepting?
+- **Should a `lint-rule-table-completeness` rule fire when a Doc-Kind's CLI Feature's rule table drifts from `pkg/lint`'s `allRuleNames` map** (e.g., a rule is in `allRuleNames` but missing from the table, or vice versa)? Lean: yes, as a follow-on to the entity/property work — keeps the Feature spec and the code in lockstep.
+- **Should the multi-glob `Consumer Path` parser be exposed as a public helper in `pkg/projectdef`** (so consumers outside `pkg/lint` can use the same parser) or stay package-private to `pkg/lint`? Lean: package-private until a second caller emerges, per the meta-spec convention of deferring extraction.
 
 ---
 *This document follows the https://specscore.md/feature-specification*
