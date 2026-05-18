@@ -5,6 +5,7 @@
 > **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/spec/references/lint.md) · [local](../../../../../../ai-plugin-specscore/skills/spec/references/lint.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Stable
+**Source Ideas:** index-entries-autofix
 
 ## Summary
 
@@ -54,6 +55,12 @@ Every directory under `spec/features/` that contains a `README.md` is treated as
 - a child directory exists on disk (with its own `README.md`) but is not linked from the parent index.
 
 Both directions apply at every level of the feature tree, including the root `spec/features/README.md`. Hidden directories (starting with `.`) and underscore-prefixed convention directories (e.g. `_args/`) are excluded.
+
+#### REQ: index-entries-fix-deletes-phantom-rows
+
+When `index-entries` reports `Index mentions non-existent directory: <name>` and `spec lint` runs with `--fix`, the fixer MUST remove from the parent README's index table the single row whose link target ends in `<name>/README.md`. Surrounding rows, table delimiters, and the rest of the document MUST be preserved.
+
+The orphan-child direction — a child directory that exists on disk but is not linked from the parent index — remains report-only and MUST NOT be autofixed. Inserting a row requires reading `Status`, `Kind`, and a `Description` from the child README, which has no canonical parser today; choosing those values without one would violate `fix-is-safe-subset`.
 
 ### Severity filtering
 
@@ -161,6 +168,12 @@ Running `spec lint --fix` twice consecutively on the same tree yields no file ch
 **Requirements:** cli/spec/lint#req:adherence-footer-fix-rewrites-trailing-footer
 
 If a document ends with an adherence-footer block that uses the wrong `specscore.md/*-specification` URL, running `spec lint --fix` rewrites that block to the canonical URL and does not append a second footer block.
+
+### AC: index-entries-fix-removes-phantom-row
+
+**Requirements:** cli/spec/lint#req:index-entries-fix-deletes-phantom-rows
+
+Given a parent README whose index table contains a Markdown link whose target is `ghost/README.md` while no `ghost/` directory exists on disk, running `specscore spec lint --fix` removes that single row from the index table and leaves every other row intact. A second consecutive `spec lint --fix` produces no further changes (per `fix-is-idempotent`). An unlisted child directory in the same tree still produces an `index-entries` violation that the fixer does NOT repair.
 
 ### AC: index-entries-flags-orphan-child
 

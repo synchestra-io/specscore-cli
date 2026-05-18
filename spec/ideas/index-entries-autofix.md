@@ -1,9 +1,9 @@
 # Idea: index-entries autofix for spec lint --fix
 
-**Status:** Approved
+**Status:** Specified
 **Date:** 2026-05-18
 **Owner:** alexander.trakhimenok
-**Promotes To:** —
+**Promotes To:** cli/spec/lint
 **Supersedes:** —
 **Related Ideas:** —
 
