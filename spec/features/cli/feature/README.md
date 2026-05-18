@@ -8,7 +8,7 @@
 
 ## Summary
 
-`specscore feature` commands query, scaffold, and transition features. They provide structured access to the feature tree (list, info, tree), dependency traversal (deps, refs), creation (new), and lifecycle transitions (approve). Together they let authors, agents, and tools navigate and advance the spec without parsing Markdown by hand.
+`specscore feature` commands query, scaffold, and transition features. They provide structured access to the feature tree (list, info, tree), dependency traversal (deps, refs), creation (new), and lifecycle transitions (change-status). Together they let authors, agents, and tools navigate and advance the spec without parsing Markdown by hand.
 
 ## Problem
 
@@ -18,7 +18,7 @@ The feature tree is the primary organizing structure of a SpecScore repository. 
 
 | Directory | Description |
 |---|---|
-| [approve/](approve/README.md) | Transition a Feature from `Draft` or `Under Review` to `Approved` |
+| [change-status/](change-status/README.md) | Transition a Feature's status per the legal-transition matrix |
 | [deps/](deps/README.md) | Features that a given feature depends on |
 | [info/](info/README.md) | Feature metadata and section TOC |
 | [list/](list/README.md) | Flat list of all feature IDs |
@@ -26,9 +26,9 @@ The feature tree is the primary organizing structure of a SpecScore repository. 
 | [refs/](refs/README.md) | Features that reference a given feature |
 | [tree/](tree/README.md) | Feature hierarchy as an indented tree |
 
-### approve
+### change-status
 
-Transitions a Feature from `Draft` or `Under Review` to `Approved`. Implements the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract. Other source statuses — including `Approved`, `Implementing`, `Stable`, `Deprecated` — exit `4` (InvalidTransition) without modifying the file.
+Transitions a Feature per the kind's legal-transition matrix: `Draft → Under Review`, `{Draft, Under Review} → Approved`, `Approved → Implementing`, `Implementing → Stable`, `Stable → Deprecated`. Implements the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract. Illegal pairs (including re-running on the target status, skipping phases, or reverse transitions) exit `4` (InvalidTransition).
 
 ### deps
 

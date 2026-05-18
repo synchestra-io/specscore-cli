@@ -8,7 +8,7 @@
 
 ## Summary
 
-`specscore idea` commands manage SpecScore Idea artifacts — pre-spec, lintable one-pagers stored at `spec/ideas/<slug>.md`. The group covers scaffolding (`idea new`) and lifecycle transitions (`idea approve`, ...), each producing or maintaining lint-clean output.
+`specscore idea` commands manage SpecScore Idea artifacts — pre-spec, lintable one-pagers stored at `spec/ideas/<slug>.md`. The group covers scaffolding (`idea new`) and lifecycle transitions (`idea change-status`), each producing or maintaining lint-clean output.
 
 ## Problem
 
@@ -18,12 +18,12 @@ Ideas have a strict required-sections contract defined by the [idea](../../idea/
 
 | Directory | Description |
 |---|---|
-| [approve/](approve/README.md) | Transition an Idea from `Draft` to `Approved` |
+| [change-status/](change-status/README.md) | Transition an Idea's status per the legal-transition matrix; `--to=archived` also relocates the file under `spec/ideas/archived/` |
 | [new/](new/README.md) | Scaffold a new Idea artifact at `spec/ideas/<slug>.md` |
 
-### approve
+### change-status
 
-Transitions an Idea from `Draft` to `Approved`. The first verb implementing the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract (atomicity, rollback, output format, exit-code mapping, slug-positional). Illegal sources — including re-running on `Approved` — exit `4` (InvalidTransition) without modifying the file.
+Transitions an Idea per the kind's legal-transition matrix: `Draft → Approved`, and any active status → `Archived`. The `--to=archived` path additionally moves the file from `spec/ideas/<slug>.md` to `spec/ideas/archived/<slug>.md` (rollback covers both rewrite and relocation; collision exits `1`). Implements the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract. Illegal `(from, to)` pairs — including re-running on the target status — exit `4` (InvalidTransition).
 
 ### new
 

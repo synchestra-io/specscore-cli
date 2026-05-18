@@ -15,6 +15,8 @@ Every lifecycle/state-transition verb has the same skeleton: read the artifact's
 
 ## Behavior
 
+A note on REQ types in this contract: some REQs declare **runtime behavior** (e.g., `status-line-rewrite`, `index-sync-on-success`, `rollback-on-lint-failure`) and are verified by ACs in the verb specs that consume this contract. Others are **scoping or architectural** (e.g., `scope-status-mutation-only`, `no-coordination`, `scope-no-task-lifecycle`, `exit-code-fidelity`) — they constrain what this contract is and isn't, not what a verb does at runtime. Architectural REQs are verified by design adherence and code review rather than by per-verb ACs; per-verb specs MAY but need NOT cite them.
+
 ### Scope and applicability
 
 This contract applies to every verb under `specscore <kind> <verb>` whose effect is to mutate the `Status` field of a single SpecScore artifact. It does NOT apply to creation verbs (`<kind> new`), query verbs (`<kind> info`, `<kind> list`, `<kind> tree`, `<kind> deps`, `<kind> refs`), or `spec lint`.
@@ -45,7 +47,7 @@ Every verb MUST declare its legal source-status set and target status. Before an
 
 #### REQ: not-idempotent
 
-Lifecycle verbs MUST NOT special-case the case where the artifact is already in the target status. An artifact in the target status is, by definition, not in any legal source status (because no verb's legal-source set includes its own target), so the strict source check rejects it with exit `4`. Callers wanting idempotent behavior read state first (via the artifact's index row or by parsing the file).
+Lifecycle verbs MUST NOT special-case the case where the artifact is already in the target status. An artifact in the target status is, by definition, not in any legal source status (because no verb's legal-source set includes its own target), so the strict source check rejects it with exit `4`. This is a contract invariant: per-kind transition tables for any verb MUST NOT declare the verb's target status as one of its own legal source values. Callers wanting idempotent behavior read state first (via the artifact's index row or by parsing the file).
 
 ### Atomic mutation and index sync
 
@@ -57,7 +59,7 @@ On valid transition, the artifact's `**Status:** <old>` line MUST be rewritten t
 
 #### REQ: index-sync-on-success
 
-After a successful file rewrite, the verb MUST invoke `specscore spec lint --fix` scoped to the project root. The lint pass picks up the relevant `*-index-row-sync` rule (e.g., `idea-index-row-sync` for Idea transitions) and rewrites the corresponding row in the artifact's index file. The verb's exit code MUST be `0` only if the file rewrite AND the lint pass BOTH succeed.
+After a successful file rewrite, the verb MUST invoke `specscore spec lint --fix` scoped to the project root (full-tree today; see Outstanding Questions for future narrowing to the affected index row only). The lint pass picks up the relevant `*-index-row-sync` rule (e.g., `idea-index-row-sync` for Idea transitions) and rewrites the corresponding row in the artifact's index file. The verb's exit code MUST be `0` only if the file rewrite AND the lint pass BOTH succeed.
 
 #### REQ: rollback-on-lint-failure
 
@@ -65,15 +67,17 @@ If `spec lint --fix` reports any error-severity violation after the file rewrite
 
 ### Argument shape and output
 
-Every lifecycle verb takes a single positional slug-or-id argument identifying the target artifact. There is no list-of-slugs variant; batch transitions are out of scope per the source Idea.
+Every lifecycle verb takes a single positional identifier argument naming the target artifact. There is no list-of-identifiers variant; batch transitions are out of scope per the source Idea.
+
+Throughout this contract, **"slug"** is shorthand for the kind's canonical identifier — `<slug>` for Idea (the file basename), `<feature_id>` for Feature (the directory path, possibly nested). Per-verb specs name the kind-specific token in their Synopsis and Parameters tables.
 
 #### REQ: slug-positional
 
-The artifact identifier MUST be supplied as a single positional argument (`<slug>` for Idea, `<feature_id>` for Feature). Missing argument MUST exit `2` (InvalidArgs) per the shared exit-code contract. Flag-form arguments (e.g., `--slug`, `--feature`) MUST NOT be accepted by lifecycle verbs; this matches the `<kind> info <id>` and `idea new <slug>` precedents.
+The artifact identifier MUST be supplied as a single positional argument. Missing argument MUST exit `2` (InvalidArgs) per the shared exit-code contract. Flag-form arguments (e.g., `--slug`, `--feature`) MUST NOT be accepted by lifecycle verbs; this matches the `<kind> info <id>` and `idea new <slug>` precedents.
 
 #### REQ: slug-resolves-to-existing-artifact
 
-The slug MUST resolve to an existing artifact file at the kind's canonical path within the project root (autodetected per [CLI#req:project-autodetect](../README.md#req-project-autodetect), or set via `--project`). If no such file exists, the verb MUST exit `3` (NotFound) with a message naming the expected path. Archived artifacts (e.g., `spec/ideas/archived/<slug>.md`) MUST NOT be matched by the canonical lookup.
+The identifier MUST resolve to an existing artifact at the kind's canonical path within the project root (autodetected per [CLI#req:project-autodetect](../README.md#req-project-autodetect), or set via `--project`). If no such artifact exists, the verb MUST exit `3` (NotFound) with a message naming the expected path. Where the kind defines an archived location (e.g., `spec/ideas/archived/<slug>.md` for Idea), artifacts under that location MUST NOT be matched by the canonical lookup. Kinds without an archived-equivalent location (e.g., Feature) MUST simply consult their canonical path.
 
 #### REQ: success-output-format
 
@@ -105,7 +109,8 @@ A lifecycle verb MUST map errors to the codes above per their declared meanings.
 | [spec lint](../spec/lint/README.md) | Invoked internally by every successful lifecycle transition to keep the artifact's index row in sync via the appropriate `*-index-row-sync` rule. A lint failure after mutation triggers rollback. |
 | [idea](../../idea/README.md), [feature](../../feature/README.md) | Sources of truth for the artifact document structures, including the `**Status:**` header line that lifecycle verbs rewrite, and the legal status enumerations per doc kind. |
 | Source Idea: [lifecycle-verbs-for-idea-and-feature](../../../ideas/lifecycle-verbs-for-idea-and-feature.md) | This feature realizes the shared-infrastructure half of the source Idea. Per-verb features realize the kind-specific halves. |
-| [`cli/idea/approve`](../idea/approve/README.md) | First verb implementing this contract. Specifies only verb-specific REQs (legal-source set, target status, kind-specific slug resolution) and ACs. |
+| [`cli/idea/change-status`](../idea/change-status/README.md) | Verb implementing this contract for the Idea kind. Encodes the Idea legal-transition matrix (`Draft → Approved`; `{Draft, Under Review, Approved, Implementing, Specified} → Archived`) and extends the Meta with a `--to=archived` file-relocation side effect. |
+| [`cli/feature/change-status`](../feature/change-status/README.md) | Verb implementing this contract for the Feature kind. Encodes the Feature legal-transition matrix (`Draft → Under Review`, `{Draft, Under Review} → Approved`, `Approved → Implementing`, `Implementing → Stable`, `Stable → Deprecated`) and declares its dependency on the `feature-index-row-sync` lint rule. |
 | Synchestra `task` commands | Out-of-scope counterpart. Synchestra's task lifecycle owns concurrency, sync policy, and claim/release. `specscore` lifecycle verbs do not touch the task doc kind (see [REQ: scope-no-task-lifecycle](#req-scope-no-task-lifecycle)). |
 | `ai-plugin-specscore` skill wrappers _(planned, downstream)_ | When the plugin grows references for any lifecycle verb, each reference MUST include a Synchestra-presence pre-flight: if both `specscore` and a corresponding Synchestra command are installed on the user's machine, the skill SHOULD prefer the Synchestra command for that doc kind. Today no Synchestra equivalent exists for Idea or Feature lifecycle; `specscore` is the canonical path. |
 
