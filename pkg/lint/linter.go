@@ -59,6 +59,9 @@ func newLinter(opts Options) *linter {
 	// Register feature-index checker (feature-index-row-sync).
 	l.registerChecker(newFeatureIndexChecker())
 
+	// Register sidekick-seed checker.
+	l.registerChecker(newSidekickSeedChecker())
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

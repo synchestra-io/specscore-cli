@@ -151,10 +151,14 @@ func CheckIdeas(specRoot string, fix bool) ([]Violation, error) {
 }
 
 // findMisplacedIdeaFiles locates .md files under `spec/ideas/` but outside
-// the allowed positions (top-level or archived/).
+// the allowed positions (top-level, archived/, or seeds/). The seeds/
+// subdirectory holds sidekick-seed documents, which are a separate
+// document type validated by the sidekick-seed rule — files there are
+// not misplaced Ideas.
 func findMisplacedIdeaFiles(specRoot string) ([]string, error) {
 	ideasDir := filepath.Join(specRoot, "ideas")
 	archivedDir := filepath.Join(ideasDir, "archived")
+	seedsDir := filepath.Join(ideasDir, "seeds")
 	var out []string
 	err := filepath.Walk(ideasDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -167,7 +171,7 @@ func findMisplacedIdeaFiles(specRoot string) ([]string, error) {
 			return nil
 		}
 		dir := filepath.Dir(path)
-		if dir == ideasDir || dir == archivedDir {
+		if dir == ideasDir || dir == archivedDir || dir == seedsDir {
 			return nil
 		}
 		out = append(out, path)
