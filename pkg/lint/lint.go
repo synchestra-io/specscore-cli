@@ -136,6 +136,8 @@ var allRuleNames = map[string]bool{
 	"idea-feature-cross-reference":      true,
 	"idea-index-completeness":           true,
 	"idea-archived-index-chronological": true,
+	// Feature index lint rules.
+	"feature-index-row-sync": true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.

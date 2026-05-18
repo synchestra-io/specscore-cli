@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
 	"github.com/synchestra-io/specscore-cli/pkg/feature"
+	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
+	"github.com/synchestra-io/specscore-cli/pkg/lint"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,6 +33,7 @@ func featureCommand() *cobra.Command {
 		featureDepsCommand(),
 		featureRefsCommand(),
 		featureNewCommand(),
+		featureChangeStatusCommand(),
 	)
 	return cmd
 }
@@ -777,6 +780,174 @@ func gitCommitOnly(repoDir string, files []string, message string) error {
 	if out, err := commitCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git commit: %w\n%s", err, out)
 	}
+	return nil
+}
+
+// --- feature change-status ---
+
+// featureChangeStatusHelpMatrix is the rendered legal-transition table
+// for the Feature kind, embedded in `--help` so users see the matrix
+// at the point of invocation. Computed once at package load from the
+// authoritative lifecycle.LegalTargets data, so a future matrix change
+// keeps `--help` current automatically.
+var featureChangeStatusHelpMatrix = buildFeatureChangeStatusMatrix()
+
+func buildFeatureChangeStatusMatrix() string {
+	// Source ordering by lifecycle progression so the matrix reads
+	// top-down through the Feature lifecycle. lifecycle.LegalTargets
+	// returns its slice sorted alphabetically; we re-order the
+	// surrounding rows by hand-defined progression for readability.
+	froms := []lifecycle.Status{
+		lifecycle.FeatureDraft,
+		lifecycle.FeatureUnderReview,
+		lifecycle.FeatureApproved,
+		lifecycle.FeatureImplementing,
+		lifecycle.FeatureStable,
+	}
+	const fromWidth = 14
+	var b strings.Builder
+	b.WriteString("Legal transitions:\n\n")
+	b.WriteString(fmt.Sprintf("  %-*s To\n", fromWidth, "From"))
+	b.WriteString(fmt.Sprintf("  %-*s --\n", fromWidth, "-----"))
+	for _, f := range froms {
+		targets := lifecycle.LegalTargets(lifecycle.KindFeature, f)
+		if len(targets) == 0 {
+			continue
+		}
+		names := make([]string, len(targets))
+		for i, t := range targets {
+			names[i] = string(t)
+		}
+		b.WriteString(fmt.Sprintf("  %-*s %s\n", fromWidth, string(f), strings.Join(names, ", ")))
+	}
+	return b.String()
+}
+
+// featureChangeStatusCommand registers `specscore feature change-status`.
+// The verb implements the cli/lifecycle-transitions Meta contract for
+// the Feature kind: validate state-machine, rewrite the **Status:**
+// line, run `spec lint --fix` to sync the features-index row via
+// feature-index-row-sync, roll back on lint failure.
+func featureChangeStatusCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "change-status <feature_id>",
+		Short: "Transition a feature to a new lifecycle status",
+		Long: `Transitions a Feature artifact from its current **Status:** to the value
+named by --to, then runs ` + "`specscore spec lint --fix`" + ` to sync the
+features-index row via the feature-index-row-sync rule.
+
+The transition is strict: the (current, --to) pair MUST appear in the
+matrix below or the command exits 4 (InvalidTransition) with the file
+left unchanged. There is no idempotent shortcut — re-running with the
+current status as --to is rejected.
+
+` + featureChangeStatusHelpMatrix + `
+` + `
+On exit 0, exactly one line is written to stdout:
+
+    <feature_id>: <from> → <to>
+
+On lint failure after a successful rewrite, the original Status line is
+restored and the command exits 10.`,
+		// Argument validation is performed manually inside RunE so a
+		// missing positional yields a typed exit-2 error rather than
+		// cobra's default unwrapped error (which would surface as
+		// exit-1 via Fatal).
+		Args: cobra.ArbitraryArgs,
+		// Suppress cobra's usage-on-error dump so stdout stays empty
+		// on non-zero exits, per the lifecycle-transitions Meta REQ
+		// error-to-stderr / success-output-format guarantees that the
+		// single stdout line (or nothing) is what callers see.
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE:          runFeatureChangeStatus,
+	}
+	cmd.Flags().String("to", "", "target status (required; case-insensitive)")
+	cmd.Flags().String("project", "", "project root (autodetected from current directory if omitted)")
+	return cmd
+}
+
+func runFeatureChangeStatus(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return exitcode.InvalidArgsError("missing required positional argument: <feature_id>")
+	}
+	if len(args) > 1 {
+		return exitcode.InvalidArgsErrorf(
+			"too many positional arguments: change-status accepts exactly one <feature_id>, got %d", len(args),
+		)
+	}
+	featureID := args[0]
+
+	toFlag, _ := cmd.Flags().GetString("to")
+	if strings.TrimSpace(toFlag) == "" {
+		return exitcode.InvalidArgsError("missing required flag: --to=<status>")
+	}
+
+	projectFlag, _ := cmd.Flags().GetString("project")
+	featuresDir, err := resolveFeaturesDir(projectFlag)
+	if err != nil {
+		return err
+	}
+
+	result, err := feature.ChangeStatus(featuresDir, featureID, toFlag)
+	if err != nil {
+		return err
+	}
+
+	// Post-rewrite: run `spec lint --fix` against the project's spec
+	// tree to pick up the feature-index-row-sync rule. Per the Meta
+	// REQ rollback-on-lint-failure, ANY error-severity violation
+	// after `--fix` triggers rollback — pre-existing violations
+	// elsewhere in the tree included.
+	specRoot := filepath.Dir(featuresDir) // spec/features → spec/
+
+	if _, fixErr := lint.Lint(lint.Options{SpecRoot: specRoot, Fix: true}); fixErr != nil {
+		// Lint --fix itself errored; roll back so the on-disk state
+		// matches its pre-invocation snapshot, then map to exit-10.
+		if rbErr := result.Restore(); rbErr != nil {
+			return exitcode.UnexpectedErrorf(
+				"lint --fix failed: %v; rollback also failed: %v",
+				fixErr, rbErr,
+			)
+		}
+		return exitcode.UnexpectedErrorf("lint --fix failed: %v (rolled back)", fixErr)
+	}
+
+	violations, lintErr := lint.Lint(lint.Options{SpecRoot: specRoot})
+	if lintErr != nil {
+		if rbErr := result.Restore(); rbErr != nil {
+			return exitcode.UnexpectedErrorf(
+				"post-fix lint failed: %v; rollback also failed: %v",
+				lintErr, rbErr,
+			)
+		}
+		return exitcode.UnexpectedErrorf("post-fix lint failed: %v (rolled back)", lintErr)
+	}
+
+	var errs []lint.Violation
+	for _, v := range violations {
+		if v.Severity == "error" {
+			errs = append(errs, v)
+		}
+	}
+	if len(errs) > 0 {
+		if rbErr := result.Restore(); rbErr != nil {
+			return exitcode.UnexpectedErrorf(
+				"lint reported %d error-severity violation(s) after --fix; rollback also failed: %v",
+				len(errs), rbErr,
+			)
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "lint reported %d error-severity violation(s) after --fix (rolled back):\n", len(errs))
+		for _, v := range errs {
+			fmt.Fprintf(&sb, "  %s:%d [%s] %s\n", v.File, v.Line, v.Rule, v.Message)
+		}
+		return exitcode.UnexpectedError(sb.String())
+	}
+
+	// Success: exactly one line to stdout (Meta REQ
+	// success-output-format), using the unicode arrow.
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s → %s\n", featureID, string(result.From), string(result.To))
 	return nil
 }
 
