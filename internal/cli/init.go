@@ -250,7 +250,7 @@ func writeMissingIndex(root, relPath, content string) error {
 	return os.WriteFile(abs, []byte(content), 0o644)
 }
 
-// projectIDForView builds the SpecStudio view-link project identifier from
+// projectIDForView builds the SpecScore Studio view-link project identifier from
 // the config's project block. Uses "unknown" placeholders when fields are
 // missing — the resulting URL still resolves to a viewer page (just one
 // without graph context), which is preferable to emitting a broken link.
@@ -274,7 +274,7 @@ func specReadmeContent(cfg projectdef.SpecConfig) string {
 	pid := projectIDForView(cfg)
 	return fmt.Sprintf(`# Specifications
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=%s&path=spec) — graph, discussions, approvals
+> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec) — graph, discussions, approvals
 
 SpecScore-formatted specifications for this project.
 
@@ -295,7 +295,7 @@ func ideasIndexContent(cfg projectdef.SpecConfig) string {
 	pid := projectIDForView(cfg)
 	return fmt.Sprintf(`# Ideas
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=%s&path=spec%%2Fideas) — graph, discussions, approvals
+> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec%%2Fideas) — graph, discussions, approvals
 
 Pre-spec one-pagers. Each Idea is a lint-clean problem-direction-MVP one-pager that may later promote into one or more SpecScore Features under [`+"`features/`"+`](../features/README.md).
 
@@ -317,7 +317,7 @@ func featuresIndexContent(cfg projectdef.SpecConfig) string {
 	pid := projectIDForView(cfg)
 	return fmt.Sprintf(`# Features
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=%s&path=spec%%2Ffeatures) — graph, discussions, approvals
+> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec%%2Ffeatures) — graph, discussions, approvals
 
 Feature specifications for this project.
 

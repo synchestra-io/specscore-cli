@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	testViewerName = "SpecStudio"
-	testViewerURL  = "https://specstudio.synchestra.io"
+	testViewerName = "SpecScore Studio"
+	testViewerURL  = "https://specscore.studio"
 	testOwner      = "synchestra-io"
 	testRepo       = "specscore"
 )
@@ -54,7 +54,7 @@ func setupViewerProject(t *testing.T) string {
 }
 
 // setupDefaultViewerProject writes a header-only specscore.yaml — the
-// viewer block is omitted, so SpecStudio defaults apply.
+// viewer block is omitted, so SpecScore Studio defaults apply.
 func setupDefaultViewerProject(t *testing.T) string {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
@@ -139,6 +139,16 @@ func legacySpecStudioBlockquote(slug string) string {
 	return "> [View in Spec Studio](" + u + viewLinkSuffix
 }
 
+// legacySpecStudioNoSpaceBlockquote builds a "SpecStudio" (no space) era
+// blockquote — the consolidated form used between 2026-05-07 and the
+// 2026-05-18 rebrand to "SpecScore Studio". Seeds migration tests that
+// verify --fix moves opted-in repos forward to the current viewer name.
+func legacySpecStudioNoSpaceBlockquote(slug string) string {
+	r := gitremote.Remote{Owner: testOwner, Repo: testRepo, Host: "github.com"}
+	u := BuildViewURL("https://specstudio.synchestra.io", r, "spec/features/"+slug)
+	return "> [View in SpecStudio](" + u + viewLinkSuffix
+}
+
 // legacyHubBlockquote builds a Synchestra-Hub-era blockquote pointing at
 // the old hub host, used to seed pre-migration READMEs in tests.
 func legacyHubBlockquote(slug string) string {
@@ -203,8 +213,8 @@ func TestViewLink_DefaultsApplyWhenViewerOmitted(t *testing.T) {
 	if len(v) != 1 {
 		t.Fatalf("expected 1 violation under defaults, got %d: %+v", len(v), v)
 	}
-	if !strings.Contains(v[0].Message, "SpecStudio") {
-		t.Errorf("expected SpecStudio in message, got %q", v[0].Message)
+	if !strings.Contains(v[0].Message, "SpecScore Studio") {
+		t.Errorf("expected SpecScore Studio in message, got %q", v[0].Message)
 	}
 }
 
@@ -313,7 +323,7 @@ func TestViewLink_LegacyHubMarkerMigratedByFix(t *testing.T) {
 
 // Legacy "View in Spec Studio" (with space) markers must also be
 // classified as stale and migrated forward to the current name (e.g.
-// "SpecStudio" without space).
+// "SpecScore Studio").
 func TestViewLink_LegacySpecStudioMarkerMigratedByFix(t *testing.T) {
 	root := setupViewerProject(t)
 	path := writeViewFeatureReadme(t, root, "auth",
@@ -322,6 +332,27 @@ func TestViewLink_LegacySpecStudioMarkerMigratedByFix(t *testing.T) {
 	out, _ := os.ReadFile(path)
 	if strings.Contains(string(out), "View in Spec Studio") {
 		t.Errorf("legacy Spec Studio marker not removed: %s", out)
+	}
+	if !strings.Contains(string(out), expectedBlockquote("auth")) {
+		t.Errorf("expected current blockquote missing: %s", out)
+	}
+}
+
+// Legacy "View in SpecStudio" (no space, post-2026-05-07 consolidation
+// form) markers must be classified as stale and migrated forward to the
+// current "SpecScore Studio" name on --fix. This covers any opted-in
+// repo that ran the linter between the 2026-05-07 consolidation and the
+// 2026-05-18 rebrand.
+func TestViewLink_LegacySpecStudioNoSpaceMarkerMigratedByFix(t *testing.T) {
+	root := setupViewerProject(t)
+	path := writeViewFeatureReadme(t, root, "auth",
+		"# Feature: Auth\n\n"+legacySpecStudioNoSpaceBlockquote("auth")+"\n\n**Status:** Draft\n")
+	runViewFix(t, root)
+	out, _ := os.ReadFile(path)
+	// "SpecStudio" (no space) is a substring of "SpecScore Studio" —
+	// guard against false positive by checking the marker prefix only.
+	if strings.Contains(string(out), "> [View in SpecStudio](") {
+		t.Errorf("legacy SpecStudio (no-space) marker not removed: %s", out)
 	}
 	if !strings.Contains(string(out), expectedBlockquote("auth")) {
 		t.Errorf("expected current blockquote missing: %s", out)

@@ -16,14 +16,23 @@ import (
 const viewLinkSuffix = ") — graph, discussions, approvals"
 
 // legacyViewLinkMarkers are marker prefixes from previous incarnations
-// of this rule (when the linked surface was called Synchestra Hub, or
-// when the brand was rendered "Spec Studio" with a space). The
-// classifier flags them as stale; --fix replaces them with the current
-// marker so opted-in repos migrate forward in one CLI run. Append-only
-// — never remove an entry until every downstream repo has migrated.
+// of this rule. The history, oldest first:
+//
+//   - "View in Synchestra Hub" — before 2026-05-06, when per-feature
+//     view-links pointed at Synchestra Hub.
+//   - "View in Spec Studio" (with space) — between 2026-05-06 and
+//     2026-05-07, before the brand consolidated to one token.
+//   - "View in SpecStudio" — between 2026-05-07 (consolidation) and
+//     2026-05-18 (rebrand to "SpecScore Studio").
+//
+// The classifier flags them as stale; --fix replaces them with the
+// current marker so opted-in repos migrate forward in one CLI run.
+// Append-only — never remove an entry until every downstream repo has
+// migrated.
 var legacyViewLinkMarkers = []string{
 	"> [View in Synchestra Hub](",
 	"> [View in Spec Studio](",
+	"> [View in SpecStudio](",
 }
 
 // viewLinkMarker returns the marker prefix for a given viewer name. The
@@ -36,7 +45,7 @@ func viewLinkMarker(viewerName string) string {
 // viewLinkChecker verifies that every feature README carries a
 // "View in {viewer.name}" blockquote directly under its H1.
 //
-// The rule is always-on with SpecStudio defaults; only `viewer: null`
+// The rule is always-on with SpecScore Studio defaults; only `viewer: null`
 // in specscore.yaml suppresses it (repo-config#req:viewer-null-opts-out).
 type viewLinkChecker struct{}
 

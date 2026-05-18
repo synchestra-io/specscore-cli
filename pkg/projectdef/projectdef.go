@@ -26,8 +26,8 @@ const SchemaHeader = "# SpecScore Repo Config Schema: https://specscore.md/repo-
 const (
 	DefaultSpecsDirName = "specs"
 	DefaultDocsDirName  = "docs"
-	DefaultViewerName   = "SpecStudio"
-	DefaultViewerURL    = "https://specstudio.synchestra.io/"
+	DefaultViewerName   = "SpecScore Studio"
+	DefaultViewerURL    = "https://specscore.studio/"
 	DefaultModuleName   = "default"
 )
 
@@ -159,8 +159,8 @@ func (c SpecConfig) EffectiveDocsDirName() string {
 // EffectiveViewer reports the viewer to use for artifact links.
 // suppressed is true when `viewer: null` was set explicitly — callers
 // MUST omit any view link in that case (repo-config#req:viewer-null-opts-out).
-// When the block is omitted entirely, name and url default to SpecStudio
-// (repo-config#req:viewer-default-when-omitted).
+// When the block is omitted entirely, name and url default to SpecScore
+// Studio (repo-config#req:viewer-default-when-omitted).
 func (c SpecConfig) EffectiveViewer() (name, url string, suppressed bool) {
 	if c.viewerExplicitNull {
 		return "", "", true

@@ -2,7 +2,7 @@ package lint
 
 // Sidekick-seed lint rule.
 //
-// specscore: https://specstudio.synchestra.io/project/features?id=specstudio-skills@synchestra-io@github.com&path=spec%2Ffeatures%2Fsidekick-capture#req-seed-lint-rule
+// specscore: https://specscore.studio/project/features?id=specstudio-skills@specscore@github.com&path=spec%2Ffeatures%2Fsidekick-capture#req-seed-lint-rule
 //
 // Validates files matching `spec/ideas/seeds/*.md` against the
 // `sidekick-seed` document-type contract defined in the upstream
