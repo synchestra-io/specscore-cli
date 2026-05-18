@@ -1,3 +1,12 @@
+// specscore:feature/cli/spec/lint
+//
+// Implements the `index-entries` rule and its --fix support. The bidirectional
+// check (phantom links + orphan children) satisfies
+// REQ:index-entries-bidirectional. The fixer satisfies
+// REQ:index-entries-fix-deletes-phantom-rows (Phase 1) and
+// REQ:index-entries-fix-inserts-orphan-rows (Phase 2). All three REQs and
+// their ACs live under the "Features index synchronization" subsection of
+// the cli/spec/lint feature README.
 package lint
 
 import (
