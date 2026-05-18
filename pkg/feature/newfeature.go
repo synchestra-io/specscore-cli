@@ -125,7 +125,7 @@ func New(featuresDir string, opts NewOptions) (*NewResult, error) {
 	// Update feature index for top-level features.
 	if parentID == "" {
 		indexPath := filepath.Join(featuresDir, "README.md")
-		changed, err := UpdateFeatureIndex(indexPath, featureID, opts.Description)
+		changed, err := UpdateFeatureIndex(indexPath, featureID, status, opts.Description)
 		if err != nil {
 			return nil, exitcode.UnexpectedErrorf("updating feature index: %v", err)
 		}
@@ -248,7 +248,14 @@ func UpdateParentContents(parentReadmePath, childSlug, description string) (bool
 
 // UpdateFeatureIndex adds a new row to the feature index at
 // spec/features/README.md. Returns true if the file was modified.
-func UpdateFeatureIndex(indexPath, featureID, description string) (bool, error) {
+//
+// The emitted row is 4-cell: Feature link | Status | Kind | Description.
+// Status is sourced from the caller (the --status flag on `feature new`,
+// default Draft). Kind is a hand-maintained classification with no
+// per-feature source-of-truth in the README; a "—" placeholder is
+// written for new rows so they conform to the regex consumed by the
+// feature-index-row-sync lint rule.
+func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool, error) {
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -262,8 +269,12 @@ func UpdateFeatureIndex(indexPath, featureID, description string) (bool, error) 
 	if desc == "" {
 		desc = "TODO: Add description."
 	}
+	statusCell := status
+	if statusCell == "" {
+		statusCell = "Draft"
+	}
 
-	newRow := fmt.Sprintf("| [%s](%s/README.md) | %s |", featureID, featureID, desc)
+	newRow := fmt.Sprintf("| [%s](%s/README.md) | %s | — | %s |", featureID, featureID, statusCell, desc)
 
 	tableEnd := -1
 	inTable := false
