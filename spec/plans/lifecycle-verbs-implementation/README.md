@@ -1,6 +1,6 @@
 # Plan: Lifecycle Verbs Implementation
 
-**Status:** draft
+**Status:** approved
 **Features:**
   - [cli/lifecycle-transitions](../../features/cli/lifecycle-transitions/README.md)
   - [cli/idea/change-status](../../features/cli/idea/change-status/README.md)
@@ -8,7 +8,9 @@
 **Source type:** feature
 **Source:** [cli/lifecycle-transitions](../../features/cli/lifecycle-transitions/README.md), [cli/idea/change-status](../../features/cli/idea/change-status/README.md), [cli/feature/change-status](../../features/cli/feature/change-status/README.md)
 **Author:** alexander.trakhimenok
+**Approver:** alexander.trakhimenok
 **Created:** 2026-05-18
+**Approved:** 2026-05-18
 **Effort:** M
 **Impact:** high
 

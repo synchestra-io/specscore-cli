@@ -6,7 +6,7 @@ Canonical index of all plans in this repository. Each plan lives in its own dire
 
 | Plan | Status | Features | Effort | Impact | Author | Approved |
 |---|---|---|---|---|---|---|
-| [lifecycle-verbs-implementation](lifecycle-verbs-implementation/README.md) | draft | lifecycle-transitions, idea/change-status, feature/change-status | M | high | alexander.trakhimenok | - |
+| [lifecycle-verbs-implementation](lifecycle-verbs-implementation/README.md) | approved | lifecycle-transitions, idea/change-status, feature/change-status | M | high | alexander.trakhimenok | 2026-05-18 |
 
 ### lifecycle-verbs-implementation
 
