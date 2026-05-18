@@ -138,6 +138,8 @@ var allRuleNames = map[string]bool{
 	"idea-archived-index-chronological": true,
 	// Feature index lint rules.
 	"feature-index-row-sync": true,
+	// Sidekick-seed lint rule.
+	"sidekick-seed": true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.

@@ -18,7 +18,16 @@ func (c *readmeExistsChecker) severity() string { return "error" }
 func (c *readmeExistsChecker) check(specRoot string) ([]Violation, error) {
 	var violations []Violation
 
+	// `spec/ideas/seeds/` is created lazily on first sidekick-seed
+	// capture (see upstream sidekick-capture Feature, REQ
+	// seed-path-convention) and has no index README. Excluded from
+	// the readme-exists rule.
+	seedsRel := filepath.Join("ideas", "seeds")
+
 	err := walkSpecDirs(specRoot, func(dirPath, relPath string) error {
+		if relPath == seedsRel {
+			return nil
+		}
 		readmePath := filepath.Join(dirPath, "README.md")
 		if _, err := os.Stat(readmePath); err != nil {
 			violations = append(violations, Violation{

@@ -78,7 +78,9 @@ func Discover(specRoot string) ([]Discovered, error) {
 }
 
 // FindIdeaDirectories returns directories that exist at `spec/ideas/<slug>/`
-// (violation per REQ: single-file). Ignores the reserved `archived/` dir.
+// (violation per REQ: single-file). Ignores the reserved `archived/` and
+// `seeds/` directories — `seeds/` holds sidekick-seed documents, which
+// are a separate document type, not malformed Ideas.
 func FindIdeaDirectories(specRoot string) ([]string, error) {
 	ideasDir := filepath.Join(specRoot, "ideas")
 	info, err := os.Stat(ideasDir)
@@ -94,7 +96,7 @@ func FindIdeaDirectories(specRoot string) ([]string, error) {
 		if !e.IsDir() {
 			continue
 		}
-		if e.Name() == "archived" {
+		if e.Name() == "archived" || e.Name() == "seeds" {
 			continue
 		}
 		out = append(out, filepath.Join(ideasDir, e.Name()))
