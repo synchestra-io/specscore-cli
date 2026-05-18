@@ -93,6 +93,12 @@ var docTypeTargets = []docTypeTarget{
 		severity:    "warn",
 		walk:        walkDecisionsIndex,
 	},
+	{
+		description: "Property file",
+		url:         "https://specscore.md/property-specification",
+		severity:    "warn",
+		walk:        walkPropertyFiles,
+	},
 }
 
 // adherenceFooterChecker verifies that every SpecScore document of a
@@ -409,6 +415,15 @@ func walkScenarioFiles(specRoot string, fn func(path string, content []byte)) er
 		fn(path, content)
 		return nil
 	})
+}
+
+// walkPropertyFiles invokes fn for every *.property.md file under
+// specRoot/features/, skipping hidden and underscore-prefixed directories.
+func walkPropertyFiles(specRoot string, fn func(path string, content []byte)) error {
+	featuresDir := filepath.Join(specRoot, "features")
+	return walkMatchingFiles(featuresDir, func(_ string, _ int, name string) bool {
+		return strings.HasSuffix(name, ".property.md")
+	}, fn)
 }
 
 // walkMatchingFiles enumerates files under root, invoking fn for each file

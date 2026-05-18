@@ -98,6 +98,13 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = ic2
 	}
 
+	// Register property checker under every property-* rule name.
+	pc := newPropertyChecker()
+	pc.autofix = opts.Fix
+	for _, n := range propertyRuleNames {
+		l.ruleSet[n] = pc
+	}
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

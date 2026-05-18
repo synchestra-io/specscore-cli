@@ -198,6 +198,18 @@ var allRuleNames = map[string]bool{
 	"I-013": true,
 	"I-014": true,
 	"I-015": true,
+	// Property lint rules.
+	"property-location":                    true,
+	"property-slug-format":                 true,
+	"property-single-file":                 true,
+	"property-frontmatter-required":        true,
+	"property-frontmatter-required-fields": true,
+	"property-id-equals-slug":              true,
+	"property-data-type-values":            true,
+	"property-checks-shape":                true,
+	"property-title-format":                true,
+	"property-required-sections":           true,
+	"property-referenced-by-managed":       true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.
