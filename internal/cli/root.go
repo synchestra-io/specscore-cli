@@ -36,9 +36,11 @@ func Run(args []string) error {
 
 	rootCmd.AddCommand(
 		versionCommand(),
-		featureCommand(),
-		specCommand(),
 		codeCommand(),
+		entityCommand(),
+		featureCommand(),
+		propertyCommand(),
+		specCommand(),
 		taskCommand(),
 		ideaCommand(),
 		decisionCommand(),
