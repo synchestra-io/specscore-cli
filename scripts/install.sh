@@ -2,7 +2,7 @@
 # SpecScore CLI installer
 #
 # Usage:
-#   curl -fsSL https://specscore.md/get-cli | sh
+#   curl -fsSL https://specscore.md/install/get-cli | sh
 #
 # Environment variables:
 #   SPECSCORE_VERSION      Version tag to install (default: latest)
@@ -55,10 +55,10 @@ VER_NO_V="${VERSION#v}"
 EXT="tar.gz"
 [ "$OS" = "windows" ] && EXT="zip"
 
-ARCHIVE="specscore_${VER_NO_V}_${OS}_${ARCH}.${EXT}"
+ARCHIVE="${BIN_NAME}_${VER_NO_V}_${OS}_${ARCH}.${EXT}"
 BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
 ARCHIVE_URL="${BASE_URL}/${ARCHIVE}"
-CHECKSUMS_URL="${BASE_URL}/specscore_${VER_NO_V}_checksums.txt"
+CHECKSUMS_URL="${BASE_URL}/${BIN_NAME}_${VER_NO_V}_checksums.txt"
 
 # --- Resolve install directory --------------------------------------------
 if [ -n "${SPECSCORE_INSTALL_DIR:-}" ]; then
@@ -74,10 +74,10 @@ fi
 mkdir -p "$INSTALL_DIR" || die "cannot create $INSTALL_DIR"
 
 # --- Download, verify, install --------------------------------------------
-TMP="$(mktemp -d 2>/dev/null || mktemp -d -t specscore)"
+TMP="$(mktemp -d 2>/dev/null || mktemp -d -t "$BIN_NAME")"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
-log "specscore ${VERSION} (${OS}/${ARCH})"
+log "${BIN_NAME} ${VERSION} (${OS}/${ARCH})"
 log "  archive: ${ARCHIVE_URL}"
 
 curl -fsSL "$ARCHIVE_URL" -o "$TMP/$ARCHIVE" \

@@ -53,6 +53,26 @@ changelog:
       - Merge pull request
       - Merge branch
 
+# Homebrew tap — https://brew.sh
+# Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN. The tap repo must exist at
+# synchestra-io/homebrew-tap with a `main` branch.
+brews:
+  - name: specscore
+    ids:
+      - specscore
+    description: "SpecScore CLI — lint, validate, and navigate Markdown specifications."
+    homepage: https://specscore.md
+    license: Apache-2.0
+    repository:
+      owner: synchestra-io
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
+    install: |
+      bin.install "specscore"
+    test: |
+      system "#{bin}/specscore", "--version"
+
 # Scoop bucket — https://scoop.sh
 # Requires SPECSCORE_GORELEASER_GITHUB_TOKEN — a classic PAT with `public_repo`
 # scope (see release.yml for the rationale; cross-fork PRs to microsoft/winget-pkgs

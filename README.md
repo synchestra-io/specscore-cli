@@ -4,11 +4,34 @@ CLI for [SpecScore](https://specscore.md) — lint, query, and scaffold SpecScor
 
 ## Install
 
+### macOS / Linux — curl
+
 ```bash
-curl -fsSL https://specscore.md/get-cli | sh
+curl -fsSL https://specscore.md/install/get-cli | sh
 ```
 
-See [installation docs](https://specscore.md/installation) for options (version pinning, custom install dir).
+### Windows — PowerShell
+
+```powershell
+powershell -c "irm https://specscore.md/install/get-cli.ps1 | iex"
+```
+
+### macOS — Homebrew
+
+```bash
+brew install synchestra-io/tap/specscore
+```
+
+### Windows — Scoop / WinGet
+
+```powershell
+scoop bucket add synchestra-io https://github.com/synchestra-io/scoop-bucket
+scoop install specscore
+# or
+winget install Synchestra.SpecScore
+```
+
+See [installation docs](https://specscore.md/install) for options (version pinning, custom install dir).
 
 ## Usage
 

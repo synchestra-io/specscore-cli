@@ -1,7 +1,7 @@
 # SpecScore CLI installer (Windows / PowerShell)
 #
 # Usage:
-#   powershell -c "irm https://specscore.md/get-cli.ps1 | iex"
+#   powershell -c "irm https://specscore.md/install/get-cli.ps1 | iex"
 #
 # Environment variables:
 #   SPECSCORE_VERSION      Version tag to install (default: latest)
@@ -16,7 +16,8 @@ try {
 } catch {}
 
 $Repo    = 'synchestra-io/specscore-cli'
-$BinName = 'specscore.exe'
+$Project = 'specscore'
+$BinName = "$Project.exe"
 
 function Write-Info($msg) { Write-Host $msg }
 function Die($msg) { Write-Error $msg; exit 1 }
@@ -45,25 +46,25 @@ if ($version -eq 'latest') {
 }
 $verNoV = $version.TrimStart('v')
 
-$archive       = "specscore_${verNoV}_windows_${arch}.zip"
+$archive       = "${Project}_${verNoV}_windows_${arch}.zip"
 $baseUrl       = "https://github.com/$Repo/releases/download/$version"
 $archiveUrl    = "$baseUrl/$archive"
-$checksumsUrl  = "$baseUrl/specscore_${verNoV}_checksums.txt"
+$checksumsUrl  = "$baseUrl/${Project}_${verNoV}_checksums.txt"
 
 # --- Resolve install directory --------------------------------------------
 $installDir = if ($env:SPECSCORE_INSTALL_DIR) {
     $env:SPECSCORE_INSTALL_DIR
 } else {
-    Join-Path $env:LOCALAPPDATA 'Programs\specscore\bin'
+    Join-Path $env:LOCALAPPDATA "Programs\$Project\bin"
 }
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 
 # --- Download, verify, install --------------------------------------------
-$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specscore-" + [guid]::NewGuid())
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("$Project-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 
 try {
-    Write-Info "specscore $version (windows/$arch)"
+    Write-Info "$Project $version (windows/$arch)"
     Write-Info "  archive: $archiveUrl"
 
     $archivePath = Join-Path $tmp $archive
@@ -104,7 +105,7 @@ try {
     $dst = Join-Path $installDir $BinName
     Copy-Item -Path $src -Destination $dst -Force
 
-    Write-Info "installed specscore $version to $dst"
+    Write-Info "installed $Project $version to $dst"
 }
 finally {
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
