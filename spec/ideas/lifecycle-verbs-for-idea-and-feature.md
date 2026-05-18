@@ -13,7 +13,9 @@ How might we let the specscore CLI mutate the lifecycle Status of Idea and Featu
 
 ## Context
 
-Today the `specscore` CLI is read-only after `<kind> new` for every document kind. The command tree (per `specscore --help` v0.17.0) exposes `feature`, `idea`, `task`, `code`, `spec`, and `init` — and every mutation surface is creation-only. Transitioning an Idea `Draft → Approved` is a hand-edit of the `**Status:**` line followed by `specscore spec lint --fix` to sync the ideas-index row. There is no command to validate that the transition is legal, no shared state-machine package, and no way for downstream tooling (CI, agent skills, web dashboards) to advance state programmatically.
+> **Implementation note.** Both `change-status` verbs and the shared `pkg/lifecycle/` package have shipped — `cli/idea/change-status`, `cli/feature/change-status`, and `cli/lifecycle-transitions` are all live Features with `**Source Ideas:** lifecycle-verbs-for-idea-and-feature`. The walker fix in d7b52fa unblocked the auto-derivation that promoted this Idea from Approved to Implementing. The original-state framing below is preserved as the design rationale for the shipped contract; it is no longer a description of the present.
+
+Before this Idea, the `specscore` CLI was read-only after `<kind> new` for every document kind. The command tree exposed `feature`, `idea`, `task`, `code`, `spec`, and `init` — and every mutation surface was creation-only. Transitioning an Idea `Draft → Approved` required hand-editing the `**Status:**` line followed by `specscore spec lint --fix` to sync the ideas-index row. There was no command to validate that the transition was legal, no shared state-machine package, and no way for downstream tooling (CI, agent skills, web dashboards) to advance state programmatically.
 
 The CLI's own task command spec ([`spec/features/cli/task/README.md:41`](../features/cli/task/README.md)) names this gap directly: *"transition semantics (who can claim, how conflicts are resolved, when status becomes terminal) warrant their own feature spec."* Its Outstanding Questions list asks: *"When should lifecycle commands (`task claim`, `task release`, `task status`) land?"* This Idea is the architectural answer to that question — but only for Idea and Feature; Task is deliberately deferred per the positioning below.
 
@@ -107,10 +109,15 @@ One cycle. Implement `specscore idea change-status` and `specscore feature chang
 
 ## Outstanding Questions
 
-- **Plugin-skill Synchestra-detection rule — exact mechanism.** Is `command -v synchestra` sufficient, or does the skill probe a specific subcommand (e.g., `synchestra <kind> change-status --help` returns 0) for kind-by-kind detection? Latter is more precise but slower.
-- **Should `idea reopen` (`Approved → Draft`) ship in MVP?** Rare but the entity-and-property-definitions Idea (in-flight) is the kind of artifact where a substantial post-approval rework might justify a status rollback. Lean: defer; observe demand.
-- **Should `--reason` (or `--message`) become a flag on transitions in MVP?** Audit-trail value is real even without event emission. The git commit captures the *what*; `--reason` would capture the *why* in a machine-readable way (front-matter or commit body). Lean: defer.
-- **Should `feature deprecate` require the deprecation reason and a successor reference in MVP?** Deprecation without a successor link is a footgun. Either bake it in via mandatory flags or document the convention and enforce via lint.
+Resolved post-ship (the shipped Features carry the canonical answers; this list is the historical record):
+
+- **`idea reopen` (`Approved → Draft`) in MVP?** Deferred; not in the legal-transition matrix that shipped. Tracked in [cli/idea/change-status#outstanding-questions](../features/cli/idea/change-status/README.md).
+- **`--reason` / `--message` flag in MVP?** Deferred; verbs ship without it. Tracked in [cli/idea/change-status#outstanding-questions](../features/cli/idea/change-status/README.md) and [cli/feature/change-status#outstanding-questions](../features/cli/feature/change-status/README.md).
+- **`feature deprecate` requires reason + successor in MVP?** Deferred; deprecation transition ships unconditionally. Tracked in [cli/feature/change-status#outstanding-questions](../features/cli/feature/change-status/README.md).
+
+Still open (downstream / cross-repo, not gated by this Idea):
+
+- **Plugin-skill Synchestra-detection rule — exact mechanism.** Is `command -v synchestra` sufficient, or does the skill probe a specific subcommand (e.g. `synchestra <kind> change-status --help` returns 0) for kind-by-kind detection? Latter is more precise but slower. Belongs in the corresponding `ai-plugin-specscore` skill update PR.
 
 ---
 *This document follows the https://specscore.md/idea-specification*
