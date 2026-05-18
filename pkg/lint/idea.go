@@ -583,6 +583,20 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 				"Status":      newStatus,
 				"Promotes To": newPromotes,
 			}); err == nil {
+				// Reflect the on-disk rewrite into the in-memory `parsed`
+				// state so downstream rules in the same lint pass (the
+				// ideas-index sync below) see the post-rewrite values.
+				// Without this, idea-index-row-sync runs against stale
+				// data and the index README sync only happens on a
+				// SECOND `--fix` pass, breaking fix-is-idempotent.
+				if hf, ok := p.FieldByName["Status"]; ok {
+					hf.Value = newStatus
+					p.FieldByName["Status"] = hf
+				}
+				if hf, ok := p.FieldByName["Promotes To"]; ok {
+					hf.Value = newPromotes
+					p.FieldByName["Promotes To"] = hf
+				}
 				fixed = true
 				continue
 			}

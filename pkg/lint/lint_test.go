@@ -352,6 +352,92 @@ func TestIndexEntries_FixKeepsRowWithMixedLinks(t *testing.T) {
 	}
 }
 
+// REQ: fix-is-idempotent — when `--fix` derives a new Status / Promotes To
+// for an Idea (because a Feature's Source Ideas references it), the
+// single-pass run MUST also sync the spec/ideas/README.md row. A SECOND
+// `--fix` pass MUST be a no-op. Regression test for the orchestration bug
+// where ideaSyncRules rewrote the Idea file on disk but the in-memory
+// parsed[] map was not refreshed, so ideaIndexRules in the same pass saw
+// stale data and skipped the index rewrite.
+func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		// Feature references the Idea via Source Ideas. Status is Stable so
+		// the derivation expects Idea.Status == "Specified".
+		"features/auth/README.md": "# Feature: Auth\n\n" +
+			"**Status:** Stable\n" +
+			"**Source Ideas:** auth-overhaul\n\n" +
+			"## Summary\n\nPlaceholder.\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"---\n*This document follows the https://specscore.md/feature-specification*\n",
+
+		// Idea is stuck at Approved/—. Expected to be auto-derived to
+		// Specified / auth.
+		"ideas/auth-overhaul.md": "# Idea: Auth Overhaul\n\n" +
+			"**Status:** Approved\n" +
+			"**Date:** 2026-05-18\n" +
+			"**Owner:** tester\n" +
+			"**Promotes To:** —\n" +
+			"**Supersedes:** —\n" +
+			"**Related Ideas:** —\n\n" +
+			"## Problem Statement\n\nHow might we test idempotency.\n\n" +
+			"## Context\n\nx\n\n" +
+			"## Recommended Direction\n\nx\n\n" +
+			"## Alternatives Considered\n\nx\n\n" +
+			"## MVP Scope\n\nx\n\n" +
+			"## Not Doing (and Why)\n\n- nothing — placeholder.\n\n" +
+			"## Key Assumptions to Validate\n\n" +
+			"| Tier | Assumption | How to validate |\n|---|---|---|\n" +
+			"| Must-be-true | placeholder | placeholder |\n\n" +
+			"## SpecScore Integration\n\n- placeholder\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"---\n*This document follows the https://specscore.md/idea-specification*\n",
+
+		// Index row is also stale (Approved/—). Must end up Specified/auth
+		// after a SINGLE --fix pass.
+		"ideas/README.md": "# Ideas\n\n## Index\n\n" +
+			"| Idea | Status | Date | Owner | Promotes To |\n" +
+			"|------|--------|------|-------|-------------|\n" +
+			"| [auth-overhaul](auth-overhaul.md) | Approved | 2026-05-18 | tester | — |\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+	})
+
+	// Pass 1: apply --fix. setupSpecTree treats `root` as the spec root.
+	if _, err := Lint(Options{SpecRoot: root, Fix: true, Severity: "info"}); err != nil {
+		t.Fatalf("lint pass 1: %v", err)
+	}
+
+	// Snapshot post-pass-1 state.
+	ideaAfter1, _ := os.ReadFile(filepath.Join(root, "ideas", "auth-overhaul.md"))
+	indexAfter1, _ := os.ReadFile(filepath.Join(root, "ideas", "README.md"))
+
+	if !strings.Contains(string(ideaAfter1), "**Status:** Specified") {
+		t.Errorf("pass 1: Idea Status not derived to Specified:\n%s", ideaAfter1)
+	}
+	if !strings.Contains(string(ideaAfter1), "**Promotes To:** auth") {
+		t.Errorf("pass 1: Idea Promotes To not derived to auth:\n%s", ideaAfter1)
+	}
+	if !strings.Contains(string(indexAfter1), "| Specified |") {
+		t.Errorf("pass 1: ideas index row not synced to Specified (single-pass idempotency violated):\n%s", indexAfter1)
+	}
+	if !strings.Contains(string(indexAfter1), "| auth |") {
+		t.Errorf("pass 1: ideas index row not synced to auth in Promotes To column:\n%s", indexAfter1)
+	}
+
+	// Pass 2 MUST be a no-op.
+	if _, err := Lint(Options{SpecRoot: root, Fix: true, Severity: "info"}); err != nil {
+		t.Fatalf("lint pass 2: %v", err)
+	}
+	ideaAfter2, _ := os.ReadFile(filepath.Join(root, "ideas", "auth-overhaul.md"))
+	indexAfter2, _ := os.ReadFile(filepath.Join(root, "ideas", "README.md"))
+	if string(ideaAfter2) != string(ideaAfter1) {
+		t.Errorf("pass 2 mutated the Idea file (idempotency violation):\npass1:\n%s\npass2:\n%s", ideaAfter1, ideaAfter2)
+	}
+	if string(indexAfter2) != string(indexAfter1) {
+		t.Errorf("pass 2 mutated the ideas index (idempotency violation):\npass1:\n%s\npass2:\n%s", indexAfter1, indexAfter2)
+	}
+}
+
 func TestIndexEntries_ChildNotListed(t *testing.T) {
 	// A child directory with a README exists on disk, but the parent index
 	// does not link to it. The checker MUST flag the orphan.
