@@ -42,6 +42,19 @@ Without `--rules` or `--ignore`, `spec lint` MUST execute every registered rule 
 
 `--rules` and `--ignore` MUST NOT be combined. Supplying both MUST exit `2`.
 
+### Features index synchronization
+
+Every directory under `spec/features/` that contains a `README.md` is treated as a feature index for its immediate sub-features. The `index-entries` rule keeps the index in sync with the filesystem in both directions.
+
+#### REQ: index-entries-bidirectional
+
+`index-entries` MUST report a violation when:
+
+- the index contains a Markdown link to a child README (link target ending in `<dirname>/README.md`) but that directory does not exist on disk, OR
+- a child directory exists on disk (with its own `README.md`) but is not linked from the parent index.
+
+Both directions apply at every level of the feature tree, including the root `spec/features/README.md`. Hidden directories (starting with `.`) and underscore-prefixed convention directories (e.g. `_args/`) are excluded.
+
 ### Severity filtering
 
 Each rule has a built-in severity (`error`, `warning`, `info`). `--severity` sets the minimum severity reported.
@@ -148,6 +161,12 @@ Running `spec lint --fix` twice consecutively on the same tree yields no file ch
 **Requirements:** cli/spec/lint#req:adherence-footer-fix-rewrites-trailing-footer
 
 If a document ends with an adherence-footer block that uses the wrong `specscore.md/*-specification` URL, running `spec lint --fix` rewrites that block to the canonical URL and does not append a second footer block.
+
+### AC: index-entries-flags-orphan-child
+
+**Requirements:** cli/spec/lint#req:index-entries-bidirectional
+
+Given a feature tree where `spec/features/orphan/README.md` exists on disk but `spec/features/README.md` does not link to `orphan/`, running `specscore spec lint` exits `1` with an `index-entries` violation on `features/README.md` whose message names the unlisted child directory.
 
 ### AC: missing-specscore-yaml-exits-3
 

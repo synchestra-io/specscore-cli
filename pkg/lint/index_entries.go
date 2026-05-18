@@ -53,7 +53,7 @@ func (c *indexEntriesChecker) check(specRoot string) ([]Violation, error) {
 		}
 
 		mentioned, parseErr := extractChildRefsFromReadme(readmePath)
-		if parseErr != nil || mentioned == nil {
+		if parseErr != nil {
 			return nil
 		}
 
@@ -72,6 +72,23 @@ func (c *indexEntriesChecker) check(specRoot string) ([]Violation, error) {
 					Severity: "error",
 					Rule:     "index-entries",
 					Message:  "Index mentions non-existent directory: " + m,
+				})
+			}
+		}
+
+		// Flag child directories that are not mentioned in the index.
+		mentionedSet := make(map[string]bool, len(mentioned))
+		for _, m := range mentioned {
+			mentionedSet[m] = true
+		}
+		for _, a := range actualChildren {
+			if !mentionedSet[a] {
+				violations = append(violations, Violation{
+					File:     relPath,
+					Line:     0,
+					Severity: "error",
+					Rule:     "index-entries",
+					Message:  "Child directory not listed in index: " + a,
 				})
 			}
 		}

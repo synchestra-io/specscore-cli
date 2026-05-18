@@ -237,6 +237,55 @@ func TestIndexEntries_NonExistentDir(t *testing.T) {
 	}
 }
 
+func TestIndexEntries_ChildNotListed(t *testing.T) {
+	// A child directory with a README exists on disk, but the parent index
+	// does not link to it. The checker MUST flag the orphan.
+	root := setupSpecTree(t, map[string]string{
+		"features/README.md":           "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
+		"features/orphan/README.md":    "# Orphan Feature\n",
+		"features/listed/README.md":    "# Listed\n",
+		"features/cli/README.md":       "# CLI\n\n| Dir | Desc |\n|---|---|\n| [listed](listed/README.md) | Linked child |\n",
+	})
+	// The cli index links 'listed' but not 'orphan'; cli has only the
+	// already-listed dir, so the violation belongs to the root index.
+	if err := os.WriteFile(filepath.Join(root, "features", "README.md"),
+		[]byte("# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [cli](cli/README.md) | Implementing | Command | parent |\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newIndexEntriesChecker()
+	v, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expect exactly one violation: features/README.md doesn't list 'orphan'
+	// or 'listed'. We seeded both for the cli subtree but they sit at root
+	// too — so the root README is missing both.
+	var orphanFound, listedFound bool
+	for _, viol := range v {
+		if viol.Rule != "index-entries" {
+			t.Errorf("unexpected rule %q in %v", viol.Rule, viol)
+		}
+		if !strings.Contains(viol.Message, "not listed in index") {
+			continue
+		}
+		if strings.Contains(viol.Message, "orphan") {
+			orphanFound = true
+		}
+		if strings.Contains(viol.Message, "listed") {
+			listedFound = true
+		}
+	}
+	if !orphanFound {
+		t.Errorf("expected 'not listed in index: orphan' violation, got %v", v)
+	}
+	if !listedFound {
+		t.Errorf("expected 'not listed in index: listed' violation, got %v", v)
+	}
+}
+
 // --- linter orchestration ---
 
 func TestLinter_RulesFilter(t *testing.T) {
