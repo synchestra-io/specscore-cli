@@ -12,6 +12,7 @@ import (
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
 	"github.com/synchestra-io/specscore-cli/pkg/feature"
 	"github.com/synchestra-io/specscore-cli/pkg/idea"
+	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
 	"github.com/synchestra-io/specscore-cli/pkg/lint"
 	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
@@ -22,8 +23,135 @@ func ideaCommand() *cobra.Command {
 		Use:   "idea",
 		Short: "Idea management — scaffold new Idea artifacts",
 	}
-	cmd.AddCommand(ideaNewCommand())
+	cmd.AddCommand(ideaChangeStatusCommand(), ideaNewCommand())
 	return cmd
+}
+
+// ideaChangeStatusCommand transitions an Idea's **Status:** field via the
+// shared lifecycle state-machine contract. The verb extends the Meta with
+// a kind-specific archive file-relocation side effect when --to=archived.
+// See spec/features/cli/idea/change-status/README.md.
+func ideaChangeStatusCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "change-status <slug> --to=<status>",
+		Short: "Transition an Idea's Status (and, for --to=archived, move the file)",
+		Long: `Transitions spec/ideas/<slug>.md from its current **Status:** to the value
+named by --to. The transition is validated against the Idea legal-transition
+matrix below; illegal (from, to) pairs exit 4. On success, the verb runs
+` + "`specscore spec lint --fix`" + ` to keep the ideas-index README in sync,
+prints "<slug>: <from> → <to>" to stdout, and exits 0.
+
+When --to=archived, the file is additionally moved from
+spec/ideas/<slug>.md to spec/ideas/archived/<slug>.md. A pre-existing file
+at the archived path is a collision (exit 1) — the source file's status
+line is restored to its original value before exiting.
+
+If anything fails after the status rewrite (collision, file-move failure,
+lint failure, I/O error), the on-disk state is restored to its pre-
+invocation form (status line restored AND, if the file was moved, moved
+back) before the verb exits.
+
+` + idea.LegalTransitionMatrix() + `
+Examples:
+
+  specscore idea change-status foo --to=approved
+  specscore idea change-status foo --to=archived
+  specscore idea change-status foo --to=Archived   (case-insensitive)
+`,
+		Args: cobra.ExactArgs(1),
+		RunE: runIdeaChangeStatus,
+	}
+	cmd.Flags().String("to", "", "target status (required). Legal values: "+
+		strings.Join(idea.LegalChangeStatusTargetNames(), ", ")+
+		" (case-insensitive).")
+	_ = cmd.MarkFlagRequired("to")
+	cmd.Flags().String("project", "", "project root (autodetected from current directory if omitted)")
+	return cmd
+}
+
+func runIdeaChangeStatus(cmd *cobra.Command, args []string) error {
+	slug := args[0]
+	if err := idea.ValidateSlug(slug); err != nil {
+		return exitcode.InvalidArgsErrorf("invalid slug %q: %v", slug, err)
+	}
+
+	toRaw, _ := cmd.Flags().GetString("to")
+	to, ok := lifecycle.ParseStatus(lifecycle.KindIdea, toRaw)
+	if !ok {
+		return exitcode.InvalidArgsErrorf(
+			"unrecognized --to value %q for idea; legal values: %s",
+			toRaw, strings.Join(idea.LegalChangeStatusTargetNames(), ", "))
+	}
+	// Even within the recognized Idea statuses, only those that appear
+	// as a To column in the matrix are valid as --to values. Reject
+	// e.g. --to=draft at flag-parse time (exit 2), BEFORE state-machine
+	// check (which would otherwise return exit 4). See REQ:
+	// target-status-flag and AC: unrecognized-to-value-rejected.
+	if !idea.IsLegalChangeStatusTarget(to) {
+		return exitcode.InvalidArgsErrorf(
+			"--to value %q is not a user-settable Idea target; legal values: %s",
+			toRaw, strings.Join(idea.LegalChangeStatusTargetNames(), ", "))
+	}
+
+	projectFlag, _ := cmd.Flags().GetString("project")
+	specRoot, err := resolveSpecRoot(projectFlag)
+	if err != nil {
+		return err
+	}
+
+	result, err := idea.ChangeStatus(idea.ChangeStatusOptions{
+		SpecRoot:     specRoot,
+		Slug:         slug,
+		To:           to,
+		PostMutation: lintPostMutationHook(filepath.Join(specRoot, "spec")),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s → %s\n",
+		result.Slug, string(result.From), string(result.To))
+	return nil
+}
+
+// lintPostMutationHook returns the standard spec-lint post-mutation hook
+// invoked by lifecycle verbs. It first runs lint --fix to sync any
+// index rows touched by the status rewrite, then re-runs lint in
+// verify mode to surface any remaining error-severity violations.
+//
+// Per lifecycle-transitions#REQ:rollback-on-lint-failure, ANY error-
+// severity violation after the fix pass triggers rollback — not just
+// violations touching the mutated file. The filter here is `severity
+// == "error"` across the whole tree.
+//
+// Returned error is wrapped via exitcode.UnexpectedErrorf (exit 10) so
+// the caller surfaces a uniform exit code regardless of which lint
+// path failed.
+func lintPostMutationHook(specSub string) idea.PostMutationHook {
+	return func() error {
+		if _, err := lint.Lint(lint.Options{SpecRoot: specSub, Fix: true}); err != nil {
+			return exitcode.UnexpectedErrorf("running lint --fix: %v", err)
+		}
+		violations, err := lint.Lint(lint.Options{SpecRoot: specSub})
+		if err != nil {
+			return exitcode.UnexpectedErrorf("running lint: %v", err)
+		}
+		var errs []lint.Violation
+		for _, v := range violations {
+			if v.Severity == "error" {
+				errs = append(errs, v)
+			}
+		}
+		if len(errs) > 0 {
+			var sb strings.Builder
+			sb.WriteString("lint failed after status rewrite (rollback applied):\n")
+			for _, v := range errs {
+				fmt.Fprintf(&sb, "  %s:%d [%s] %s\n", v.File, v.Line, v.Rule, v.Message)
+			}
+			return exitcode.UnexpectedError(sb.String())
+		}
+		return nil
+	}
 }
 
 // ideaNewCommand scaffolds a lint-clean Idea artifact at spec/ideas/<slug>.md.

@@ -56,6 +56,11 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = ic
 	}
 
+	// Register feature-index checker (feature-index-row-sync).
+	fic := newFeatureIndexChecker()
+	fic.autofix = opts.Fix
+	l.registerChecker(fic)
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

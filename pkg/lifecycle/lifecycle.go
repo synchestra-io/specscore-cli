@@ -1,0 +1,279 @@
+// Package lifecycle hosts a kind-parameterized state machine for SpecScore
+// artifact Status transitions. It is the shared implementation layer that
+// the per-kind `change-status` CLI verbs consume.
+//
+// The package is deliberately kind-agnostic: Idea, Feature, and any future
+// doc kind plug their own legal-transition matrix into the package's lookup
+// tables. Verb-specific logic (archive relocation, feature-id resolution,
+// cobra wiring, exit-code mapping) lives in the calling CLI verbs, not here.
+//
+// Architectural contract implemented by this package (see
+// spec/features/cli/lifecycle-transitions/README.md):
+//
+//   - REQ: state-machine-strictness — Transition rejects any (from, to) pair
+//     not declared in the kind's matrix.
+//   - REQ: not-idempotent — the matrix MUST NOT contain a self-loop
+//     (from == to). The package's init step panics if a self-loop is
+//     declared, so corruption is caught at startup rather than runtime.
+//   - REQ: status-line-rewrite — Rewrite mutates only the **Status:** line,
+//     preserving every other byte (including line endings and trailing
+//     whitespace).
+//   - REQ: rollback-on-lint-failure — Rollback restores the original
+//     **Status:** line byte-for-byte.
+package lifecycle
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Kind names a doc kind that participates in the lifecycle state machine.
+type Kind string
+
+const (
+	KindIdea    Kind = "idea"
+	KindFeature Kind = "feature"
+)
+
+// Status is a domain-scoped status value. The set of legal Status values is
+// per-Kind and validated by the kind's transition table; callers SHOULD use
+// ParseStatus to obtain a canonical Status from a raw flag string.
+type Status string
+
+// Idea statuses.
+const (
+	IdeaDraft        Status = "Draft"
+	IdeaUnderReview  Status = "Under Review"
+	IdeaApproved     Status = "Approved"
+	IdeaImplementing Status = "Implementing"
+	IdeaSpecified    Status = "Specified"
+	IdeaArchived     Status = "Archived"
+)
+
+// Feature statuses.
+const (
+	FeatureDraft        Status = "Draft"
+	FeatureUnderReview  Status = "Under Review"
+	FeatureApproved     Status = "Approved"
+	FeatureImplementing Status = "Implementing"
+	FeatureStable       Status = "Stable"
+	FeatureDeprecated   Status = "Deprecated"
+)
+
+// ErrInvalidTransition is returned by Transition (and Validate) when the
+// requested (from, to) pair is not present in the kind's matrix.
+//
+// The error carries the kind, source status, target status, and the legal
+// target set from the current source, so the CLI layer can render a
+// user-friendly message without re-querying the matrix.
+var ErrInvalidTransition = errors.New("invalid lifecycle transition")
+
+// InvalidTransitionError is a typed error carrying the context of a rejected
+// transition. It wraps ErrInvalidTransition, so callers can use errors.Is to
+// detect this category.
+type InvalidTransitionError struct {
+	Kind         Kind
+	From         Status
+	To           Status
+	LegalTargets []Status
+}
+
+// Error implements the error interface. The message is human-readable and
+// names both endpoints plus the legal target set from the current source.
+func (e *InvalidTransitionError) Error() string {
+	targets := make([]string, len(e.LegalTargets))
+	for i, t := range e.LegalTargets {
+		targets[i] = string(t)
+	}
+	if len(targets) == 0 {
+		return fmt.Sprintf("invalid lifecycle transition for kind %q: %q has no legal targets (cannot transition to %q)",
+			string(e.Kind), string(e.From), string(e.To))
+	}
+	return fmt.Sprintf("invalid lifecycle transition for kind %q: %q → %q not allowed; legal targets from %q: {%s}",
+		string(e.Kind), string(e.From), string(e.To), string(e.From), strings.Join(targets, ", "))
+}
+
+// Unwrap exposes ErrInvalidTransition so errors.Is(err, ErrInvalidTransition)
+// returns true.
+func (e *InvalidTransitionError) Unwrap() error { return ErrInvalidTransition }
+
+// transitionRow describes a single legal arc in the matrix.
+type transitionRow struct {
+	From Status
+	To   Status
+}
+
+// transitionMatrix maps each Kind to its legal arcs.
+//
+// IMPORTANT: per REQ: not-idempotent, no row in any kind's table may have
+// From == To. validateMatrix enforces the invariant at init time.
+var transitionMatrix = map[Kind][]transitionRow{
+	KindIdea: {
+		{From: IdeaDraft, To: IdeaApproved},
+		{From: IdeaDraft, To: IdeaArchived},
+		{From: IdeaUnderReview, To: IdeaArchived},
+		{From: IdeaApproved, To: IdeaArchived},
+		{From: IdeaImplementing, To: IdeaArchived},
+		{From: IdeaSpecified, To: IdeaArchived},
+	},
+	KindFeature: {
+		{From: FeatureDraft, To: FeatureUnderReview},
+		{From: FeatureDraft, To: FeatureApproved},
+		{From: FeatureUnderReview, To: FeatureApproved},
+		{From: FeatureApproved, To: FeatureImplementing},
+		{From: FeatureImplementing, To: FeatureStable},
+		{From: FeatureStable, To: FeatureDeprecated},
+	},
+}
+
+// kindStatuses enumerates every Status that is recognized for a kind. This
+// is the union of all From and To values in the kind's matrix, used by the
+// CLI layer to validate a --to flag value BEFORE running the state-machine
+// check (so unrecognized status names exit 2 InvalidArgs, not 4
+// InvalidTransition). It is computed once at init time.
+var kindStatuses = map[Kind][]Status{}
+
+func init() {
+	for kind, rows := range transitionMatrix {
+		if err := validateMatrix(rows); err != nil {
+			panic(fmt.Sprintf("lifecycle: transition matrix for kind %q is invalid: %v", string(kind), err))
+		}
+		kindStatuses[kind] = computeStatusUnion(rows)
+	}
+}
+
+// validateMatrix enforces REQ: not-idempotent on a transition table. It
+// returns an error if any row's From equals its To. The function is also
+// invoked by tests against deliberately-bad rows to assert the invariant
+// fires (without mutating the production matrix).
+func validateMatrix(rows []transitionRow) error {
+	for _, r := range rows {
+		if r.From == r.To {
+			return fmt.Errorf("self-loop forbidden: %q → %q", string(r.From), string(r.To))
+		}
+	}
+	return nil
+}
+
+// computeStatusUnion returns every Status that appears in any row of the
+// matrix (either as From or To), sorted alphabetically for deterministic
+// output.
+func computeStatusUnion(rows []transitionRow) []Status {
+	seen := make(map[Status]struct{}, 2*len(rows))
+	for _, r := range rows {
+		seen[r.From] = struct{}{}
+		seen[r.To] = struct{}{}
+	}
+	out := make([]Status, 0, len(seen))
+	for s := range seen {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return string(out[i]) < string(out[j]) })
+	return out
+}
+
+// Transition validates that (from, to) is a legal transition in kind's
+// matrix. It returns nil on success and a wrapped ErrInvalidTransition on
+// failure. The wrapped error carries the legal target set from the current
+// source so callers can render a useful message.
+//
+// Transition does NOT touch the filesystem; it is pure matrix lookup.
+func Transition(kind Kind, from Status, to Status) error {
+	rows, ok := transitionMatrix[kind]
+	if !ok {
+		return &InvalidTransitionError{Kind: kind, From: from, To: to}
+	}
+	for _, r := range rows {
+		if r.From == from && r.To == to {
+			return nil
+		}
+	}
+	return &InvalidTransitionError{
+		Kind:         kind,
+		From:         from,
+		To:           to,
+		LegalTargets: LegalTargets(kind, from),
+	}
+}
+
+// LegalTargets returns the legal target statuses reachable from (kind, from),
+// sorted alphabetically. The empty slice is returned (never nil for an
+// unknown kind, but never nil for a known kind either) when from is not a
+// legal source state in the kind's matrix.
+func LegalTargets(kind Kind, from Status) []Status {
+	rows, ok := transitionMatrix[kind]
+	if !ok {
+		return []Status{}
+	}
+	var out []Status
+	for _, r := range rows {
+		if r.From == from {
+			out = append(out, r.To)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return string(out[i]) < string(out[j]) })
+	if out == nil {
+		return []Status{}
+	}
+	return out
+}
+
+// LegalSources is the inverse of LegalTargets: which from-states can
+// transition INTO to. Used by error-message construction when target is
+// valid as a status name but invalid for the current source state.
+func LegalSources(kind Kind, to Status) []Status {
+	rows, ok := transitionMatrix[kind]
+	if !ok {
+		return []Status{}
+	}
+	var out []Status
+	for _, r := range rows {
+		if r.To == to {
+			out = append(out, r.From)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return string(out[i]) < string(out[j]) })
+	if out == nil {
+		return []Status{}
+	}
+	return out
+}
+
+// LegalStatuses returns every recognized status for a kind (the union of
+// every From and To in its matrix), sorted alphabetically. Used by the CLI
+// layer to validate a --to flag value before invoking the state-machine
+// check.
+func LegalStatuses(kind Kind) []Status {
+	out, ok := kindStatuses[kind]
+	if !ok {
+		return []Status{}
+	}
+	// Return a copy so callers cannot mutate the package-level slice.
+	cp := make([]Status, len(out))
+	copy(cp, out)
+	return cp
+}
+
+// ParseStatus does case-insensitive parsing of a raw flag-string against the
+// kind's recognized statuses, returning the canonical title-cased Status on
+// success.
+//
+// Whitespace is trimmed; case is folded (so "draft", "Draft", "DRAFT", and
+// "  Draft  " all match). Multi-word statuses ("Under Review") match
+// case-insensitively but the internal-whitespace shape MUST match (i.e.,
+// "underreview" without a space does NOT match "Under Review"). This is the
+// least-surprising behavior for a CLI flag.
+func ParseStatus(kind Kind, raw string) (Status, bool) {
+	needle := strings.TrimSpace(raw)
+	if needle == "" {
+		return "", false
+	}
+	for _, s := range LegalStatuses(kind) {
+		if strings.EqualFold(string(s), needle) {
+			return s, true
+		}
+	}
+	return "", false
+}

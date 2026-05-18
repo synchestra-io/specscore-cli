@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -261,6 +262,237 @@ func TestIdeaNew_AncestorIndexesIdempotent(t *testing.T) {
 
 	if string(specBefore) != string(specAfter) {
 		t.Errorf("spec/README.md mutated by second idea new:\nbefore=%q\nafter=%q", specBefore, specAfter)
+	}
+}
+
+// =====================================================================
+// idea change-status CLI tests
+// =====================================================================
+//
+// Per-AC mapping (matches spec/features/cli/idea/change-status/README.md):
+//
+//   TestIdeaChangeStatus_DraftToApprovedHappyPath_CLI -> draft-to-approved-happy-path
+//   TestIdeaChangeStatus_ArchiveHappyPath_CLI         -> archive-from-approved-happy-path
+//   TestIdeaChangeStatus_MissingSlugRejected_CLI      -> missing-slug-rejected
+//   TestIdeaChangeStatus_MissingToFlagRejected_CLI    -> missing-to-flag-rejected
+//   TestIdeaChangeStatus_UnrecognizedToValueRejected_CLI -> unrecognized-to-value-rejected
+//   TestIdeaChangeStatus_SlugNotFound_CLI             -> slug-not-found
+//
+// Logic-level coverage of the remaining ACs lives in
+// pkg/idea/transitions_test.go.
+
+// stageActiveIdea creates a lint-clean spec tree at root and writes a
+// single Idea file at spec/ideas/<slug>.md with the given status. The
+// tree is materialized via `specscore idea new` plus a hand-written
+// spec/features/README.md so that running `spec lint` across the whole
+// tree (which the verb's post-mutation hook does) finds no error-
+// severity violations. The status line is then patched in place and a
+// final lint --fix syncs the indexes. A subsequent CLI run won't trip
+// the post-mutation rollback on pre-existing violations.
+//
+// extraHeader is injected into the Idea's header block (just after the
+// Status line, BEFORE the first `## ` section) so the Idea parser
+// picks it up as a header field — used by archive tests to add the
+// **Archive Reason:** field that idea-archive-reason requires for
+// Status: Archived.
+func stageActiveIdea(t *testing.T, slug, status string, extraHeader string) string {
+	t.Helper()
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+	// Bootstrap via `idea new` so spec/README.md and spec/ideas/README.md
+	// land via the same template the production CLI uses.
+	if _, _, err := runIdea(t, "new", slug, "--owner", "tester"); err != nil {
+		t.Fatalf("idea new: %v", err)
+	}
+	// idea new does NOT materialize spec/features/README.md (that's
+	// init's job). Hand-write a minimal lint-clean Features index so
+	// lint passes across the whole tree.
+	featuresReadme := "# Features\n\n## Index\n\n| Feature | Status |\n|---------|--------|\n\n_No features yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	if err := os.WriteFile(
+		filepath.Join(root, "spec", "features", "README.md"),
+		[]byte(featuresReadme), 0o644); err != nil {
+		t.Fatalf("write features README: %v", err)
+	}
+	// Patch the status line and (optionally) inject extra header fields
+	// directly after it, so they land in the header block (above the
+	// first `## ` section) where the Idea parser scans for fields.
+	path := filepath.Join(root, "spec", "ideas", slug+".md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read idea: %v", err)
+	}
+	newStatusLine := "**Status:** " + status
+	if extraHeader != "" {
+		newStatusLine += "\n" + strings.TrimRight(extraHeader, "\n")
+	}
+	patched := strings.Replace(string(raw),
+		"**Status:** Draft",
+		newStatusLine, 1)
+	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+		t.Fatalf("write patched idea: %v", err)
+	}
+	// Sync indexes via lint --fix so the active index reflects the
+	// patched status.
+	if _, err := lint.Lint(lint.Options{
+		SpecRoot: filepath.Join(root, "spec"),
+		Fix:      true,
+	}); err != nil {
+		t.Fatalf("initial lint --fix: %v", err)
+	}
+	// Verify no error-severity lint violations exist before our test
+	// runs — otherwise the post-mutation rollback would fire on
+	// pre-existing tree errors and the test wouldn't actually exercise
+	// the verb under test.
+	vs, err := lint.Lint(lint.Options{SpecRoot: filepath.Join(root, "spec")})
+	if err != nil {
+		t.Fatalf("verify lint: %v", err)
+	}
+	for _, v := range vs {
+		if v.Severity == "error" {
+			t.Fatalf("pre-existing lint error in test fixture: %s:%d [%s] %s",
+				v.File, v.Line, v.Rule, v.Message)
+		}
+	}
+	return root
+}
+
+// AC: draft-to-approved-happy-path (CLI level — exercises the full
+// cobra → idea.ChangeStatus → lint --fix path).
+func TestIdeaChangeStatus_DraftToApprovedHappyPath_CLI(t *testing.T) {
+	root := stageActiveIdea(t, "foo", "Draft", "")
+
+	stdout, stderr, err := runIdea(t, "change-status", "foo", "--to=approved")
+	if err != nil {
+		t.Fatalf("change-status: %v (stderr=%s)", err, stderr)
+	}
+	// Stdout MUST be exactly "<slug>: <from> → <to>\n" — nothing else.
+	want := "foo: Draft → Approved\n"
+	if stdout != want {
+		t.Errorf("stdout = %q; want %q", stdout, want)
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "spec", "ideas", "foo.md"))
+	if !strings.Contains(string(body), "**Status:** Approved") {
+		t.Errorf("status not rewritten:\n%s", body)
+	}
+	// Index row MUST reflect the new status.
+	idx, _ := os.ReadFile(filepath.Join(root, "spec", "ideas", "README.md"))
+	if !strings.Contains(string(idx), "Approved") {
+		t.Errorf("index not synced:\n%s", idx)
+	}
+}
+
+// AC: archive-from-approved-happy-path (CLI level).
+//
+// idea-archive-reason (the existing Idea lint rule) requires a non-empty
+// **Archive Reason:** for Status: Archived files. Real users will set
+// the field via a separate edit before invoking change-status (or, in a
+// later iteration, via a --reason flag — currently OQ). For this test
+// we pre-stage the field; the verb itself doesn't synthesize one.
+func TestIdeaChangeStatus_ArchiveHappyPath_CLI(t *testing.T) {
+	extra := "**Archive Reason:** test scenario — superseded by follow-up idea."
+	root := stageActiveIdea(t, "foo", "Approved", extra)
+
+	stdout, stderr, err := runIdea(t, "change-status", "foo", "--to=archived")
+	if err != nil {
+		t.Fatalf("change-status: %v (stderr=%s)", err, stderr)
+	}
+	want := "foo: Approved → Archived\n"
+	if stdout != want {
+		t.Errorf("stdout = %q; want %q", stdout, want)
+	}
+	// File moved.
+	if _, err := os.Stat(filepath.Join(root, "spec", "ideas", "foo.md")); !os.IsNotExist(err) {
+		t.Errorf("active file should be gone: err=%v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "spec", "ideas", "archived", "foo.md"))
+	if err != nil {
+		t.Fatalf("archived file missing: %v", err)
+	}
+	if !strings.Contains(string(body), "**Status:** Archived") {
+		t.Errorf("archived file missing status line:\n%s", body)
+	}
+}
+
+// AC: missing-slug-rejected — no positional argument. Cobra's
+// ExactArgs(1) rejects this and returns an error; the CLI's Fatal
+// helper maps that to exit 2.
+func TestIdeaChangeStatus_MissingSlugRejected_CLI(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, stderr, err := runIdea(t, "change-status", "--to=approved")
+	if err == nil {
+		t.Fatal("expected error for missing positional")
+	}
+	// Cobra prints a usage error to stderr; we just confirm SOME
+	// rejection happened. Exit-code mapping for ExactArgs is exit 2
+	// at the CLI top-level (cobra's default).
+	if stderr == "" && err.Error() == "" {
+		t.Errorf("expected non-empty error/stderr; got err=%v stderr=%q", err, stderr)
+	}
+}
+
+// AC: missing-to-flag-rejected.
+func TestIdeaChangeStatus_MissingToFlagRejected_CLI(t *testing.T) {
+	root := stageActiveIdea(t, "foo", "Draft", "")
+	_ = root
+
+	_, stderr, err := runIdea(t, "change-status", "foo")
+	if err == nil {
+		t.Fatal("expected error for missing --to flag")
+	}
+	// Cobra's MarkFlagRequired error message names the missing flag.
+	combined := err.Error() + stderr
+	if !strings.Contains(combined, "to") {
+		t.Errorf("expected error/stderr to name `to`; got err=%v stderr=%q", err, stderr)
+	}
+}
+
+// AC: unrecognized-to-value-rejected (CLI level — exit 2 BEFORE
+// state-machine check).
+func TestIdeaChangeStatus_UnrecognizedToValueRejected_CLI(t *testing.T) {
+	root := stageActiveIdea(t, "foo", "Draft", "")
+	_ = root
+
+	_, _, err := runIdea(t, "change-status", "foo", "--to=banana")
+	if err == nil {
+		t.Fatal("expected error for --to=banana")
+	}
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 2 {
+		t.Errorf("exit code = %d; want 2", got)
+	}
+	if !strings.Contains(err.Error(), "banana") {
+		t.Errorf("error message missing %q: %v", "banana", err)
+	}
+}
+
+// AC: slug-not-found (CLI level).
+func TestIdeaChangeStatus_SlugNotFound_CLI(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+	// Pre-existing archived file does NOT satisfy active lookup.
+	if err := os.WriteFile(
+		filepath.Join(root, "spec", "ideas", "archived", "nonexistent.md"),
+		[]byte("# x\n**Status:** Archived\n"), 0o644); err != nil {
+		t.Fatalf("write archived: %v", err)
+	}
+
+	_, _, err := runIdea(t, "change-status", "nonexistent", "--to=approved")
+	if err == nil {
+		t.Fatal("expected error for missing active file")
+	}
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 3 {
+		t.Errorf("exit code = %d; want 3", got)
 	}
 }
 
