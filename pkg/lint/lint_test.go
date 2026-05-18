@@ -237,6 +237,121 @@ func TestIndexEntries_NonExistentDir(t *testing.T) {
 	}
 }
 
+// AC: index-entries-fix-removes-phantom-row — `--fix` deletes the row
+// whose link target points at a non-existent child dir. Idempotent on
+// a second pass. The orphan-child direction is NOT autofixed.
+func TestIndexEntries_FixDeletesPhantomRow(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": "# CLI\n\n" +
+			"| Dir | Desc |\n" +
+			"|---|---|\n" +
+			"| [real](real/README.md) | Real |\n" +
+			"| [ghost](ghost/README.md) | Phantom — to delete |\n" +
+			"| [also-real](also-real/README.md) | Also real |\n",
+		"features/cli/real/README.md":      "# Real\n",
+		"features/cli/also-real/README.md": "# Also Real\n",
+	})
+
+	c := newIndexEntriesChecker().(*indexEntriesChecker)
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(got)
+	if strings.Contains(s, "ghost") {
+		t.Errorf("phantom row not removed:\n%s", s)
+	}
+	if !strings.Contains(s, "[real](real/README.md)") || !strings.Contains(s, "[also-real](also-real/README.md)") {
+		t.Errorf("real rows must be preserved:\n%s", s)
+	}
+	if !strings.Contains(s, "|---|---|") {
+		t.Errorf("table header/delimiter must be preserved:\n%s", s)
+	}
+
+	// fix-is-idempotent: second pass MUST yield no further changes.
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix (pass 2): %v", err)
+	}
+	got2, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if string(got2) != s {
+		t.Errorf("second --fix pass mutated file (idempotency violation):\nbefore:\n%s\nafter:\n%s", s, got2)
+	}
+
+	// post-fix check pass MUST report 0 phantom-link violations.
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range violations {
+		if strings.Contains(v.Message, "non-existent") {
+			t.Errorf("phantom-link violation survived --fix: %v", v)
+		}
+	}
+}
+
+// AC: index-entries-fix-removes-phantom-row (second half) — `--fix` does NOT
+// repair the orphan-child direction. The unlisted child stays a violation.
+func TestIndexEntries_FixLeavesOrphanChildAlone(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": "# CLI\n\n" +
+			"| Dir | Desc |\n" +
+			"|---|---|\n" +
+			"| [real](real/README.md) | Real |\n",
+		"features/cli/real/README.md":   "# Real\n",
+		"features/cli/orphan/README.md": "# Orphan\n",
+	})
+
+	c := newIndexEntriesChecker().(*indexEntriesChecker)
+	before, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	after, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if string(before) != string(after) {
+		t.Errorf("fix MUST NOT touch index when only orphan-child violations exist:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var orphanReported bool
+	for _, v := range violations {
+		if strings.Contains(v.Message, "not listed in index: orphan") {
+			orphanReported = true
+		}
+	}
+	if !orphanReported {
+		t.Errorf("orphan-child violation must still be reported after --fix; got %v", violations)
+	}
+}
+
+// Defends against the row that links a real child AND a phantom on the same
+// line. The fixer MUST keep the row because deleting it would lose the real
+// link.
+func TestIndexEntries_FixKeepsRowWithMixedLinks(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": "# CLI\n\n" +
+			"| Dir | Linked phantom | Desc |\n" +
+			"|---|---|---|\n" +
+			"| [real](real/README.md) | see also [ghost](ghost/README.md) | Mixed |\n",
+		"features/cli/real/README.md": "# Real\n",
+	})
+
+	c := newIndexEntriesChecker().(*indexEntriesChecker)
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(root, "features", "cli", "README.md"))
+	if !strings.Contains(string(got), "[real](real/README.md)") {
+		t.Errorf("row linking a real child was deleted: %s", got)
+	}
+}
+
 func TestIndexEntries_ChildNotListed(t *testing.T) {
 	// A child directory with a README exists on disk, but the parent index
 	// does not link to it. The checker MUST flag the orphan.

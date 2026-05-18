@@ -9,7 +9,7 @@
 
 ## Summary
 
-`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, view links, idea sync / index / archived-order rules).
+`specscore spec lint` scans the specification tree and reports violations of structural conventions. Violations are categorized by severity (error, warning, info). `--fix` applies autofixes for rules that support them (adherence footers, view links, idea sync / index / archived-order rules, phantom rows in feature indices).
 
 ## Synopsis
 

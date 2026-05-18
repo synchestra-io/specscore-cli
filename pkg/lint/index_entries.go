@@ -99,6 +99,141 @@ func (c *indexEntriesChecker) check(specRoot string) ([]Violation, error) {
 	return violations, err
 }
 
+// fix implements the index-entries-fix-deletes-phantom-rows REQ: for every
+// feature README index that links a child directory which does not exist on
+// disk, the row referencing that phantom child is removed. The orphan-child
+// direction (a real directory not listed in the index) is NOT autofixed —
+// inserting a populated row would require reading Status/Kind/Description
+// from the child README, which violates fix-is-safe-subset until a canonical
+// feature-metadata parser exists.
+func (c *indexEntriesChecker) fix(specRoot string) error {
+	featureDir := filepath.Join(specRoot, "features")
+	info, err := os.Stat(featureDir)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+
+	return filepath.Walk(featureDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !info.IsDir() {
+			return nil
+		}
+
+		readmePath := filepath.Join(path, "README.md")
+		if _, statErr := os.Stat(readmePath); statErr != nil {
+			return nil
+		}
+
+		// Collect actual child dirs so we know which mentioned slugs are phantoms.
+		entries, readErr := os.ReadDir(path)
+		if readErr != nil {
+			return nil
+		}
+		actualSet := make(map[string]bool)
+		for _, e := range entries {
+			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") && !strings.HasPrefix(e.Name(), "_") {
+				actualSet[e.Name()] = true
+			}
+		}
+
+		content, err := os.ReadFile(readmePath)
+		if err != nil {
+			return nil
+		}
+		rewritten, changed := dropPhantomIndexRows(string(content), actualSet)
+		if !changed {
+			return nil
+		}
+		return os.WriteFile(readmePath, []byte(rewritten), 0o644)
+	})
+}
+
+// dropPhantomIndexRows returns content with every table row removed whose
+// Markdown link target ends in `<dirname>/README.md` where <dirname> is not
+// present in actualSet. Lines outside fenced code blocks are considered. Only
+// lines starting with `|` (whitespace-trimmed) are eligible for deletion, so
+// inline prose references — which the index-entries check parses for read but
+// would never sit on a table row — are left untouched. Returns the same
+// content and false when nothing was dropped.
+func dropPhantomIndexRows(content string, actualSet map[string]bool) (string, bool) {
+	lines := strings.Split(content, "\n")
+	out := make([]string, 0, len(lines))
+	inCodeBlock := false
+	changed := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") {
+			inCodeBlock = !inCodeBlock
+			out = append(out, line)
+			continue
+		}
+		if inCodeBlock || !strings.HasPrefix(trimmed, "|") {
+			out = append(out, line)
+			continue
+		}
+		if dirname, ok := phantomDirInTableRow(line, actualSet); ok {
+			changed = true
+			_ = dirname // dropped line; no further bookkeeping needed
+			continue
+		}
+		out = append(out, line)
+	}
+	if !changed {
+		return content, false
+	}
+	return strings.Join(out, "\n"), true
+}
+
+// phantomDirInTableRow inspects a single line that is known to start with `|`
+// and returns (dirname, true) if it contains a Markdown link whose target is
+// of the form `<dirname>/README.md` and <dirname> is NOT in actualSet.
+// Returns ("", false) otherwise. If the row links multiple children and any
+// one of them is real, the row is kept (false) — the row carries live data
+// for the real child and should not be silently deleted.
+func phantomDirInTableRow(line string, actualSet map[string]bool) (string, bool) {
+	rest := line
+	var phantom string
+	for {
+		idx := strings.Index(rest, "](")
+		if idx < 0 {
+			break
+		}
+		after := rest[idx+2:]
+		end := strings.Index(after, ")")
+		if end < 0 {
+			break
+		}
+		target := after[:end]
+		rest = after[end+1:]
+
+		if !strings.HasSuffix(target, "/README.md") {
+			continue
+		}
+		parts := strings.Split(strings.TrimPrefix(target, "./"), "/")
+		if len(parts) != 2 {
+			continue
+		}
+		dirname := parts[0]
+		if dirname == "." || dirname == ".." || strings.HasPrefix(dirname, "_") {
+			continue
+		}
+		if actualSet[dirname] {
+			// Row links a real child — keep it even if it also links a phantom;
+			// deleting would lose the real link.
+			return "", false
+		}
+		if phantom == "" {
+			phantom = dirname
+		}
+	}
+	if phantom == "" {
+		return "", false
+	}
+	return phantom, true
+}
+
 // extractChildRefsFromReadme scans a README for markdown links pointing to
 // child directories (e.g. `[name](dirname/README.md)`).
 func extractChildRefsFromReadme(readmePath string) ([]string, error) {
