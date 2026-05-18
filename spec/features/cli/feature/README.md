@@ -8,7 +8,7 @@
 
 ## Summary
 
-`specscore feature` commands query and scaffold features. They provide structured access to the feature tree (list, info, tree), dependency traversal (deps, refs), and creation (new). Together they let authors, agents, and tools navigate the spec without parsing Markdown by hand.
+`specscore feature` commands query, scaffold, and transition features. They provide structured access to the feature tree (list, info, tree), dependency traversal (deps, refs), creation (new), and lifecycle transitions (approve). Together they let authors, agents, and tools navigate and advance the spec without parsing Markdown by hand.
 
 ## Problem
 
@@ -18,12 +18,17 @@ The feature tree is the primary organizing structure of a SpecScore repository. 
 
 | Directory | Description |
 |---|---|
+| [approve/](approve/README.md) | Transition a Feature from `Draft` or `Under Review` to `Approved` |
 | [deps/](deps/README.md) | Features that a given feature depends on |
 | [info/](info/README.md) | Feature metadata and section TOC |
 | [list/](list/README.md) | Flat list of all feature IDs |
 | [new/](new/README.md) | Scaffold a new feature directory |
 | [refs/](refs/README.md) | Features that reference a given feature |
 | [tree/](tree/README.md) | Feature hierarchy as an indented tree |
+
+### approve
+
+Transitions a Feature from `Draft` or `Under Review` to `Approved`. Implements the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract. Other source statuses — including `Approved`, `Implementing`, `Stable`, `Deprecated` — exit `4` (InvalidTransition) without modifying the file.
 
 ### deps
 

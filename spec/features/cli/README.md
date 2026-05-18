@@ -20,7 +20,8 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 |---|---|
 | [code/](code/README.md) | Source-code → SpecScore relationship queries |
 | [feature/](feature/README.md) | Feature tree queries and scaffolding |
-| [idea/](idea/README.md) | Idea artifact scaffolding |
+| [idea/](idea/README.md) | Idea artifact scaffolding and lifecycle |
+| [lifecycle-transitions/](lifecycle-transitions/README.md) | _Not a command group._ Shared contract every status-mutating verb satisfies (atomicity, rollback, output format, exit-code mapping). |
 | [spec/](spec/README.md) | Specification-tree validation and search |
 | [task/](task/README.md) | Task board management |
 | [version/](version/README.md) | CLI version reporting |
@@ -35,7 +36,11 @@ Queries the feature tree: list every feature, inspect a feature's metadata and s
 
 ### idea
 
-Scaffolds Idea artifacts at `spec/ideas/<slug>.md`. Hosts `idea new`, which emits a lint-clean Idea skeleton with HTML-comment prompts for every required section. Future artifact kinds (Plan, Decision) will live in their own resource groups (`specscore plan new`, `specscore decision new`) following the same pattern.
+Scaffolds Idea artifacts at `spec/ideas/<slug>.md` and hosts lifecycle verbs (`idea new`, `idea approve`, planned `idea archive`). `idea new` emits a lint-clean Idea skeleton with HTML-comment prompts for every required section. Lifecycle verbs follow the [lifecycle-transitions](lifecycle-transitions/README.md) shared contract. Future artifact kinds (Plan, Decision) will live in their own resource groups (`specscore plan new`, `specscore decision new`) following the same pattern.
+
+### lifecycle-transitions
+
+Not a command group — has no CLI surface of its own. Defines the shared cross-cutting contract every `specscore` verb that mutates an artifact's `Status` field satisfies: atomicity, rollback, output format, exit-code mapping, slug-positional argument, no coordination, and the architectural positioning vs Synchestra. Verb features (e.g., `cli/idea/approve`) reference this feature instead of restating these rules.
 
 ### spec
 

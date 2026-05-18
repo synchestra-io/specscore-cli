@@ -8,7 +8,7 @@
 
 ## Summary
 
-`specscore idea` commands manage SpecScore Idea artifacts — pre-spec, lintable one-pagers stored at `spec/ideas/<slug>.md`. The MVP surface is `idea new`, which scaffolds a fresh Idea with every required section in lint-clean form.
+`specscore idea` commands manage SpecScore Idea artifacts — pre-spec, lintable one-pagers stored at `spec/ideas/<slug>.md`. The group covers scaffolding (`idea new`) and lifecycle transitions (`idea approve`, ...), each producing or maintaining lint-clean output.
 
 ## Problem
 
@@ -18,7 +18,12 @@ Ideas have a strict required-sections contract defined by the [idea](../../idea/
 
 | Directory | Description |
 |---|---|
+| [approve/](approve/README.md) | Transition an Idea from `Draft` to `Approved` |
 | [new/](new/README.md) | Scaffold a new Idea artifact at `spec/ideas/<slug>.md` |
+
+### approve
+
+Transitions an Idea from `Draft` to `Approved`. The first verb implementing the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract (atomicity, rollback, output format, exit-code mapping, slug-positional). Illegal sources — including re-running on `Approved` — exit `4` (InvalidTransition) without modifying the file.
 
 ### new
 

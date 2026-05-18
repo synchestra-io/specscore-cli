@@ -1,0 +1,121 @@
+# Feature: Lifecycle Transitions (Shared Contract)
+
+> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Flifecycle-transitions) — graph, discussions, approvals
+
+**Status:** Approved
+**Source Ideas:** lifecycle-verbs-for-idea-and-feature
+
+## Summary
+
+This is **not a command group** — it has no CLI surface of its own. It is the shared cross-cutting contract every `specscore` verb that mutates the `Status` field of a SpecScore artifact MUST satisfy: atomicity, rollback, output format, exit-code mapping, and the architectural positioning vs Synchestra. Verb features (e.g., [`cli/idea/approve`](../idea/approve/README.md), planned `cli/idea/archive`, `cli/feature/approve`, etc.) reference this feature instead of restating these rules.
+
+## Problem
+
+Every lifecycle/state-transition verb has the same skeleton: read the artifact's current status, validate the source state against the verb's legal transitions, rewrite the `**Status:**` line, run `specscore spec lint --fix` to sync the corresponding index row, roll back on failure, print a uniform success line, map errors to standard exit codes. The [source Idea](../../../ideas/lifecycle-verbs-for-idea-and-feature.md) plans seven such verbs across two doc kinds. Restating the skeleton in seven feature specs would (a) bloat each spec, (b) guarantee drift over time as one verb's rules update without the others, and (c) make it harder for future doc kinds to inherit the contract. A single Meta feature, referenced by every verb, fixes all three.
+
+## Behavior
+
+### Scope and applicability
+
+This contract applies to every verb under `specscore <kind> <verb>` whose effect is to mutate the `Status` field of a single SpecScore artifact. It does NOT apply to creation verbs (`<kind> new`), query verbs (`<kind> info`, `<kind> list`, `<kind> tree`, `<kind> deps`, `<kind> refs`), or `spec lint`.
+
+#### REQ: scope-status-mutation-only
+
+A verb that mutates fields other than `Status` (e.g., a future `owner-change` verb) is OUT of scope for this contract. Owner mutation is a field overwrite, not a state-machine transition, and is governed by its own (future) feature spec.
+
+### Architectural positioning vs Synchestra
+
+`specscore` is the local-file mutation primitive. [Synchestra](https://github.com/synchestra-io/synchestra) layers concurrency, sync policies, claim/release semantics, and multi-agent coordination on top — today only for the `task` doc kind. For doc kinds where local-file mutation IS the value (Idea, Feature) — transitions are deliberate, single-actor, contention-free — `specscore` is the canonical surface.
+
+#### REQ: no-coordination
+
+Lifecycle verbs MUST NOT acquire locks (advisory or mandatory), push to remote git, consult a sync policy, or assume any cross-process coordination. Concurrent modification of the target file by another process is undefined behavior. Callers needing coordinated workflows over the spec graph use a Synchestra-equivalent verb when one exists.
+
+#### REQ: scope-no-task-lifecycle
+
+Lifecycle verbs governed by this contract MUST NOT target the `task` doc kind. Task lifecycle is Synchestra's domain (see [`synchestra task`](https://github.com/synchestra-io/synchestra/tree/main/spec/features/cli/task) for the canonical surface). Whether `specscore` should later mirror a thin `task status` primitive for standalone-OSS users is a separate Idea per the source Idea's Not Doing list.
+
+### State-machine semantics
+
+The contract enforces a strict, declared-transition state machine per verb. Idempotence is NOT carved out — re-running a verb on an artifact already in the target state is an illegal transition.
+
+#### REQ: state-machine-strictness
+
+Every verb MUST declare its legal source-status set and target status. Before any mutation, the verb MUST read the artifact's current `**Status:**` value and confirm it appears in the declared legal-source set. If not, the verb MUST exit `4` (InvalidTransition) per the [shared exit-code contract](../README.md#shared-exit-code-contract) and leave the artifact unchanged. The stderr message MUST name both the artifact's current status and the legal source-status set for the verb.
+
+#### REQ: not-idempotent
+
+Lifecycle verbs MUST NOT special-case the case where the artifact is already in the target status. An artifact in the target status is, by definition, not in any legal source status (because no verb's legal-source set includes its own target), so the strict source check rejects it with exit `4`. Callers wanting idempotent behavior read state first (via the artifact's index row or by parsing the file).
+
+### Atomic mutation and index sync
+
+A lifecycle transition is a two-step operation — file rewrite, then `spec lint --fix` to sync the corresponding index. Both MUST succeed for the verb to exit `0`. A failure in either step MUST leave the on-disk state observably identical to its pre-invocation state.
+
+#### REQ: status-line-rewrite
+
+On valid transition, the artifact's `**Status:** <old>` line MUST be rewritten to `**Status:** <new>`. The rewrite MUST be line-targeted: every other line in the file (including ordering, indentation, and trailing whitespace) MUST remain byte-identical to its pre-mutation content. The rewrite uses the same artifact parser the lint layer uses, so format detection is shared.
+
+#### REQ: index-sync-on-success
+
+After a successful file rewrite, the verb MUST invoke `specscore spec lint --fix` scoped to the project root. The lint pass picks up the relevant `*-index-row-sync` rule (e.g., `idea-index-row-sync` for Idea transitions) and rewrites the corresponding row in the artifact's index file. The verb's exit code MUST be `0` only if the file rewrite AND the lint pass BOTH succeed.
+
+#### REQ: rollback-on-lint-failure
+
+If `spec lint --fix` reports any error-severity violation after the file rewrite — including violations introduced by the rewrite itself or pre-existing violations elsewhere that prevent index sync from completing — the verb MUST restore the original `**Status:**` line in the artifact file and exit `10` (UnexpectedError) per the shared exit-code contract. The stderr message MUST name the lint violation(s) that caused the rollback. Partial state (artifact says new status, index says old) MUST NOT be observable after the command returns.
+
+### Argument shape and output
+
+Every lifecycle verb takes a single positional slug-or-id argument identifying the target artifact. There is no list-of-slugs variant; batch transitions are out of scope per the source Idea.
+
+#### REQ: slug-positional
+
+The artifact identifier MUST be supplied as a single positional argument (`<slug>` for Idea, `<feature_id>` for Feature). Missing argument MUST exit `2` (InvalidArgs) per the shared exit-code contract. Flag-form arguments (e.g., `--slug`, `--feature`) MUST NOT be accepted by lifecycle verbs; this matches the `<kind> info <id>` and `idea new <slug>` precedents.
+
+#### REQ: slug-resolves-to-existing-artifact
+
+The slug MUST resolve to an existing artifact file at the kind's canonical path within the project root (autodetected per [CLI#req:project-autodetect](../README.md#req-project-autodetect), or set via `--project`). If no such file exists, the verb MUST exit `3` (NotFound) with a message naming the expected path. Archived artifacts (e.g., `spec/ideas/archived/<slug>.md`) MUST NOT be matched by the canonical lookup.
+
+#### REQ: success-output-format
+
+On exit `0`, the verb MUST write exactly one line to stdout: `<id>: <from-status> → <to-status>\n` (using the artifact's slug or feature-id, the unicode arrow `→`, and the two status values). Nothing else MUST be written to stdout. This format is greppable and pipeable; structured output (`--format yaml|json`) is deferred to a later iteration and MUST NOT be added without amending this contract.
+
+#### REQ: error-to-stderr
+
+Non-zero exits write a human-readable explanation to stderr per [CLI#req:error-on-stderr](../README.md#req-error-on-stderr). stdout MUST remain empty on non-zero exits so pipelines consuming the structured success line are not corrupted by error prose.
+
+### Shared exit-code mapping
+
+| Exit code | Condition |
+|---|---|
+| `0` | Transition succeeded and index synced. |
+| `2` | Missing or malformed positional slug, or an unknown flag. |
+| `3` | No artifact file found at the expected path. |
+| `4` | Source status was not in the verb's legal-source set (illegal transition, including re-running on the target status). |
+| `10` | I/O failure during read/write, or `spec lint --fix` failed after a successful file rewrite (rollback applied). |
+
+#### REQ: exit-code-fidelity
+
+A lifecycle verb MUST map errors to the codes above per their declared meanings. Codes `1` (Conflict) and `5–9` are NOT used by this contract: lifecycle verbs have no notion of concurrent-modification conflict (see [REQ: no-coordination](#req-no-coordination)), and `5–9` are reserved for future standard codes per the [CLI exit-code contract](../README.md#shared-exit-code-contract).
+
+## Interaction with Other Features
+
+| Feature | Interaction |
+|---|---|
+| [CLI](../README.md) | Inherits the shared exit-code contract, including the pre-reserved code `4` for invalid state transitions and code `10` for unexpected/runtime errors. Inherits the `--project` autodetect rule. Inherits `REQ: error-on-stderr`. |
+| [spec lint](../spec/lint/README.md) | Invoked internally by every successful lifecycle transition to keep the artifact's index row in sync via the appropriate `*-index-row-sync` rule. A lint failure after mutation triggers rollback. |
+| [idea](../../idea/README.md), [feature](../../feature/README.md) | Sources of truth for the artifact document structures, including the `**Status:**` header line that lifecycle verbs rewrite, and the legal status enumerations per doc kind. |
+| Source Idea: [lifecycle-verbs-for-idea-and-feature](../../../ideas/lifecycle-verbs-for-idea-and-feature.md) | This feature realizes the shared-infrastructure half of the source Idea. Per-verb features realize the kind-specific halves. |
+| [`cli/idea/approve`](../idea/approve/README.md) | First verb implementing this contract. Specifies only verb-specific REQs (legal-source set, target status, kind-specific slug resolution) and ACs. |
+| Synchestra `task` commands | Out-of-scope counterpart. Synchestra's task lifecycle owns concurrency, sync policy, and claim/release. `specscore` lifecycle verbs do not touch the task doc kind (see [REQ: scope-no-task-lifecycle](#req-scope-no-task-lifecycle)). |
+| `ai-plugin-specscore` skill wrappers _(planned, downstream)_ | When the plugin grows references for any lifecycle verb, each reference MUST include a Synchestra-presence pre-flight: if both `specscore` and a corresponding Synchestra command are installed on the user's machine, the skill SHOULD prefer the Synchestra command for that doc kind. Today no Synchestra equivalent exists for Idea or Feature lifecycle; `specscore` is the canonical path. |
+
+## Outstanding Questions
+
+- Should `--reason "<text>"` become a shared flag on lifecycle verbs in a future revision, captured in the git commit body or in an audit-trail file? Currently deferred per the source Idea.
+- Should `--format yaml|json` be added in a future revision so tooling consumes structured output (returning the artifact's full front-matter)? Currently text-only.
+- Is `spec lint --fix` scope narrowed to only the affected index row (faster on large repos) or kept full-tree (safer)? Today's lint is fast enough that full-tree is acceptable, but measurement on representative consumer repos will decide if a narrow-scope path is worth the complexity.
+- When a new doc kind grows lifecycle verbs (e.g., the planned `entity` and `property` Doc-Kinds from the meta-spec's [entity-and-property-definitions](https://github.com/synchestra-io/specscore/blob/main/spec/ideas/entity-and-property-definitions.md) Idea), does it inherit this contract directly, or does the contract abstract a shared "index sync rule" parameter? Today every supported doc kind uses a `*-index-row-sync` rule, so direct inheritance works.
+- Batch transitions (`specscore idea approve <slug-1> <slug-2> ...`) are out of MVP. If they land later, are they atomic-per-slug or all-or-nothing? This affects whether [REQ: rollback-on-lint-failure](#req-rollback-on-lint-failure) extends partial-batch rollback or only single-slug.
+
+---
+*This document follows the https://specscore.md/feature-specification*
