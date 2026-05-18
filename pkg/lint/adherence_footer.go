@@ -99,6 +99,12 @@ var docTypeTargets = []docTypeTarget{
 		severity:    "warn",
 		walk:        walkPropertyFiles,
 	},
+	{
+		description: "Entity file",
+		url:         "https://specscore.md/entity-specification",
+		severity:    "warn",
+		walk:        walkEntityFiles,
+	},
 }
 
 // adherenceFooterChecker verifies that every SpecScore document of a

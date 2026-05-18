@@ -105,6 +105,13 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = pc
 	}
 
+	// Register entity checker under every entity-* rule name.
+	ec := newEntityChecker()
+	ec.autofix = opts.Fix
+	for _, n := range entityRuleNames {
+		l.ruleSet[n] = ec
+	}
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

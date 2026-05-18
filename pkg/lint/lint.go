@@ -210,6 +210,22 @@ var allRuleNames = map[string]bool{
 	"property-title-format":                true,
 	"property-required-sections":           true,
 	"property-referenced-by-managed":       true,
+	// Entity lint rules.
+	"entity-location":                    true,
+	"entity-slug-format":                 true,
+	"entity-single-file":                 true,
+	"entity-frontmatter-required":        true,
+	"entity-frontmatter-required-fields": true,
+	"entity-id-equals-slug":              true,
+	"entity-properties-list-shape":       true,
+	"entity-ref-target-exists":           true,
+	"entity-inherits-additive-only":      true,
+	"entity-inherits-target-exists":      true,
+	"entity-inherits-acyclic":            true,
+	"entity-title-format":                true,
+	"entity-required-sections":           true,
+	"entity-properties-table-managed":    true,
+	"entity-referenced-by-managed":       true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.
