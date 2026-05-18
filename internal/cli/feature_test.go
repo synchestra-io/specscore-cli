@@ -234,18 +234,42 @@ func TestFeatureChangeStatus_NestedFeatureID(t *testing.T) {
 	}
 	// The parent `cli` and `cli/idea` directories also need READMEs
 	// for forward-link checkers; minimal placeholders satisfy the
-	// adherence-footer + OQ rules.
-	for _, parent := range []string{
-		filepath.Join(root, "spec", "features", "cli"),
-		filepath.Join(root, "spec", "features", "cli", "idea"),
-	} {
-		readme := "# Feature: " + filepath.Base(parent) + "\n\n" +
+	// adherence-footer + OQ rules. Each parent must also link its
+	// immediate child directory so `index-entries` stays bidirectionally
+	// clean.
+	parents := []struct {
+		dir   string
+		child string
+	}{
+		{filepath.Join(root, "spec", "features", "cli"), "idea"},
+		{filepath.Join(root, "spec", "features", "cli", "idea"), "change-status"},
+	}
+	for _, p := range parents {
+		readme := "# Feature: " + filepath.Base(p.dir) + "\n\n" +
 			"**Status:** Approved\n\n## Summary\n\nPlaceholder.\n\n" +
-			"## Contents\n\n## Outstanding Questions\n\nNone at this time.\n\n" +
+			"## Contents\n\n" +
+			"- [" + p.child + "](" + p.child + "/README.md)\n\n" +
+			"## Outstanding Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/feature-specification*\n"
-		if err := os.WriteFile(filepath.Join(parent, "README.md"), []byte(readme), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(p.dir, "README.md"), []byte(readme), 0o644); err != nil {
 			t.Fatalf("write parent: %v", err)
 		}
+	}
+	// The top-level features-index README, seeded by setupFeatureSpec with
+	// only `auth`, must also list `cli` now that we created that subtree.
+	idxPath := filepath.Join(root, "spec", "features", "README.md")
+	idxData, err := os.ReadFile(idxPath)
+	if err != nil {
+		t.Fatalf("read features index: %v", err)
+	}
+	idxWithCLI := strings.Replace(
+		string(idxData),
+		"| [auth](auth/README.md) |",
+		"| [cli](cli/README.md) | Approved | Command | desc-cli |\n| [auth](auth/README.md) |",
+		1,
+	)
+	if err := os.WriteFile(idxPath, []byte(idxWithCLI), 0o644); err != nil {
+		t.Fatalf("rewrite features index: %v", err)
 	}
 
 	out, errOut, err := runFeature(t, "change-status", "cli/idea/change-status", "--to=approved")
