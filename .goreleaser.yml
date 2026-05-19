@@ -94,10 +94,16 @@ scoops:
 
 # WinGet — https://github.com/microsoft/winget-pkgs
 # Reuses SPECSCORE_GORELEASER_GITHUB_TOKEN. GoReleaser pushes a manifest branch
-# to synchestra-io/winget-pkgs (a fork of microsoft/winget-pkgs), then opens a
+# to specscore/winget-pkgs (a fork of microsoft/winget-pkgs), then opens a
 # PR upstream. The cross-fork PR step requires a classic PAT with `public_repo`
 # scope — fine-grained PATs cannot grant Pull-requests:write on third-party
 # repos like microsoft/winget-pkgs, so they 403 at the PR-creation step.
+#
+# Note: publisher / package_identifier (Synchestra / Synchestra.SpecScore) are
+# the user-visible WinGet identifiers and intentionally unchanged here —
+# Microsoft's reviewers gate package_identifier ownership, so renaming is a
+# separate decision with re-approval cost. Updating just the fork location
+# is cosmetic / no user impact.
 winget:
   - name: SpecScore
     publisher: Synchestra
@@ -110,9 +116,9 @@ winget:
       SpecScore is a CLI for working with Markdown-based specifications:
       validate spec trees against structural conventions, search across
       features, and inspect feature/plan/task relationships.
-    url_template: "https://github.com/synchestra-io/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/specscore/specscore-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     repository:
-      owner: synchestra-io
+      owner: specscore
       name: winget-pkgs
       branch: "specscore-{{.Version}}"
       token: "{{ .Env.SPECSCORE_GORELEASER_GITHUB_TOKEN }}"
