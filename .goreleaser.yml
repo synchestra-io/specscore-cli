@@ -99,16 +99,21 @@ scoops:
 # scope — fine-grained PATs cannot grant Pull-requests:write on third-party
 # repos like microsoft/winget-pkgs, so they 403 at the PR-creation step.
 #
-# Note: publisher / package_identifier (Synchestra / Synchestra.SpecScore) are
-# the user-visible WinGet identifiers and intentionally unchanged here —
-# Microsoft's reviewers gate package_identifier ownership, so renaming is a
-# separate decision with re-approval cost. Updating just the fork location
-# is cosmetic / no user impact.
+# 2026-05-19 rebrand cutover: publisher changed Synchestra → SpecScore and
+# package_identifier changed Synchestra.SpecScore → SpecScore.CLI to align
+# WinGet's user-visible names with the new brand stack. The legacy
+# Synchestra.SpecScore package (last published at v0.0.1) becomes an
+# orphan entry in microsoft/winget-pkgs — existing `winget install
+# Synchestra.SpecScore` users will not auto-upgrade to SpecScore.CLI;
+# they will see "no updates available" on the orphaned package. Microsoft's
+# reviewers may require additional ownership validation on the new
+# SpecScore.* identifier prefix at the first PR; build the next release
+# expecting a possible review-cycle delay.
 winget:
   - name: SpecScore
-    publisher: Synchestra
+    publisher: SpecScore
     publisher_url: https://specscore.md
-    package_identifier: Synchestra.SpecScore
+    package_identifier: SpecScore.CLI
     license: Apache-2.0
     homepage: https://specscore.md
     short_description: "Lint, validate, and navigate Markdown specifications."
