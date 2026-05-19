@@ -249,12 +249,14 @@ func UpdateParentContents(parentReadmePath, childSlug, description string) (bool
 // UpdateFeatureIndex adds a new row to the feature index at
 // spec/features/README.md. Returns true if the file was modified.
 //
-// The emitted row is 4-cell: Feature link | Status | Kind | Description.
-// Status is sourced from the caller (the --status flag on `feature new`,
-// default Draft). Kind is a hand-maintained classification with no
-// per-feature source-of-truth in the README; a "—" placeholder is
-// written for new rows so they conform to the regex consumed by the
-// feature-index-row-sync lint rule.
+// The emitted row's column count matches the existing table header so
+// repos with different schemas (4-column `Feature|Status|Kind|Description`,
+// 7-column `Feature|Status|Kind|URL|Consumer Path|Index|Description`, etc.)
+// all get well-formed rows. Per-column values are inferred from known
+// header names (see indexRowCellFor); unknown columns get a `—` placeholder
+// for human curation. When no header can be parsed, the function falls back
+// to a 4-cell `Feature | Status | Kind | Description` row — the historical
+// default emitted by `specscore feature new`.
 func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool, error) {
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -265,30 +267,34 @@ func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool,
 	}
 
 	lines := strings.Split(string(content), "\n")
-	desc := description
-	if desc == "" {
-		desc = "TODO: Add description."
-	}
 	statusCell := status
 	if statusCell == "" {
 		statusCell = "Draft"
 	}
-
-	newRow := fmt.Sprintf("| [%s](%s/README.md) | %s | — | %s |", featureID, featureID, statusCell, desc)
-
-	tableEnd := -1
-	inTable := false
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "|") && strings.Contains(trimmed, "|") {
-			inTable = true
-			tableEnd = i
-		} else if inTable && trimmed == "" {
-			break
-		} else if inTable && strings.HasPrefix(trimmed, "## ") {
-			break
-		}
+	desc := description
+	if desc == "" {
+		desc = "TODO: Add description."
 	}
+
+	// featureDir is the parent dir of the index — child feature READMEs
+	// live at <featureDir>/<slug>/README.md. Used to read the target's
+	// adherence-footer URL when the index has a URL column.
+	featureDir := filepath.Dir(indexPath)
+
+	headers, headerLine := findIndexTableHeader(lines)
+	var newRow string
+	if headers != nil {
+		cells := make([]string, len(headers))
+		for i, h := range headers {
+			cells[i] = indexRowCellFor(strings.ToLower(strings.TrimSpace(h)), featureID, statusCell, desc, featureDir)
+		}
+		newRow = "| " + strings.Join(cells, " | ") + " |"
+	} else {
+		// No header parseable — fall back to the legacy 4-cell shape.
+		newRow = fmt.Sprintf("| [%s](%s/README.md) | %s | — | %s |", featureID, featureID, statusCell, desc)
+	}
+
+	tableEnd := findLastTableRow(lines, headerLine)
 
 	if tableEnd >= 0 {
 		insertIdx := tableEnd + 1
@@ -303,4 +309,137 @@ func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool,
 		return false, err
 	}
 	return true, nil
+}
+
+// findIndexTableHeader scans `lines` for the first table-header row — a
+// `|`-bounded line immediately followed by a separator row like
+// `|---|---|`. Returns the parsed header cells (trimmed, NOT lowercased)
+// and the line index of the header. Returns (nil, -1) when no header is
+// found.
+func findIndexTableHeader(lines []string) ([]string, int) {
+	for i := 0; i < len(lines)-1; i++ {
+		header := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(header, "|") || !strings.HasSuffix(header, "|") {
+			continue
+		}
+		next := strings.TrimSpace(lines[i+1])
+		if !isTableSeparatorRow(next) {
+			continue
+		}
+		return splitTableRow(header), i
+	}
+	return nil, -1
+}
+
+// isTableSeparatorRow reports whether s is a markdown table separator row
+// like `|---|---|` or `| :--- | ---: |`. Every cell must be non-empty and
+// composed of `-`, `:`, and whitespace only.
+func isTableSeparatorRow(s string) bool {
+	if !strings.HasPrefix(s, "|") || !strings.HasSuffix(s, "|") {
+		return false
+	}
+	cells := splitTableRow(s)
+	if len(cells) == 0 {
+		return false
+	}
+	for _, c := range cells {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			return false
+		}
+		for _, r := range c {
+			if r != '-' && r != ':' && r != ' ' && r != '\t' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// splitTableRow trims outer `|` and splits on `|`, returning the per-cell
+// strings. Cells are NOT trimmed.
+func splitTableRow(s string) []string {
+	inner := strings.TrimPrefix(strings.TrimSuffix(s, "|"), "|")
+	return strings.Split(inner, "|")
+}
+
+// findLastTableRow returns the line index of the last `|`-prefixed row in
+// the table that starts at headerLine. If headerLine is -1, falls back to
+// scanning every line (legacy behavior). Returns -1 when no row is found.
+func findLastTableRow(lines []string, headerLine int) int {
+	start := 0
+	if headerLine >= 0 {
+		start = headerLine
+	}
+	tableEnd := -1
+	inTable := false
+	for i := start; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(trimmed, "|") {
+			inTable = true
+			tableEnd = i
+		} else if inTable && trimmed == "" {
+			break
+		} else if inTable && strings.HasPrefix(trimmed, "## ") {
+			break
+		}
+	}
+	return tableEnd
+}
+
+// indexRowCellFor returns the cell value for a column whose header (already
+// lowercased and trimmed) is h. Unknown headers get `—` so the row remains
+// structurally valid and a human can fill it in. The slug is used both for
+// the feature link and as the basis for the conventional spec URL.
+//
+// featureDir is the parent directory of the index file; the target feature
+// README is read from `<featureDir>/<slug>/README.md` when needed (e.g. to
+// extract the adherence-footer URL for the URL column).
+func indexRowCellFor(h, slug, status, description, featureDir string) string {
+	switch h {
+	case "feature", "name", "child":
+		return fmt.Sprintf("[%s](%s/README.md)", slug, slug)
+	case "status":
+		return status
+	case "description", "desc":
+		return description
+	case "kind":
+		if strings.HasSuffix(slug, "-index") {
+			return "Index"
+		}
+		return "—"
+	case "url":
+		if u := readAdherenceFooterURL(filepath.Join(featureDir, slug, "README.md")); u != "" {
+			return u
+		}
+		return "—"
+	default:
+		return "—"
+	}
+}
+
+// readAdherenceFooterURL reads the target feature README and returns the
+// canonical spec URL declared in its adherence footer
+// (`*This document follows the https://specscore.md/<x>-specification*`).
+// Returns "" when no such footer is found.
+func readAdherenceFooterURL(readmePath string) string {
+	data, err := os.ReadFile(readmePath)
+	if err != nil {
+		return ""
+	}
+	const marker = "*This document follows the "
+	idx := strings.LastIndex(string(data), marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := string(data)[idx+len(marker):]
+	end := strings.Index(rest, "*")
+	if end < 0 {
+		return ""
+	}
+	url := strings.TrimSpace(rest[:end])
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return ""
+	}
+	return url
 }

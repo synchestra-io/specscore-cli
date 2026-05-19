@@ -804,3 +804,131 @@ func TestResolveFields_TitleAndQuestions(t *testing.T) {
 		t.Errorf("Questions = %v, want [Q1? Q2?]", ef.Questions)
 	}
 }
+
+// TestUpdateFeatureIndex_FourColumnLegacy asserts the historical 4-column
+// shape `| Feature | Status | Kind | Description |` still gets a 4-cell row
+// (no regression for the existing CLI test fixtures and for repos that
+// haven't adopted the richer schema).
+func TestUpdateFeatureIndex_FourColumnLegacy(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte(
+		"# Features\n\n"+
+			"| Feature | Status | Kind | Description |\n"+
+			"|---------|--------|------|-------------|\n"+
+			"| [auth](auth/README.md) | Implementing | Command | linked |\n\n"+
+			"## Outstanding Questions\n\nNone at this time.\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "billing", "Stable", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("expected file to be modified")
+	}
+	got, _ := os.ReadFile(indexPath)
+	want := "| [billing](billing/README.md) | Stable | — | TODO: Add description. |"
+	if !strings.Contains(string(got), want) {
+		t.Errorf("4-column row missing or wrong shape.\nwant: %s\ngot:\n%s", want, got)
+	}
+}
+
+// TestUpdateFeatureIndex_SevenColumnSchema is the regression test for the
+// features-index autofix bug: when the index uses the 7-column schema
+// `Feature|Status|Kind|URL|Consumer Path|Index|Description`, the inserted
+// row MUST also have 7 cells. Previously the autofix emitted a 4-cell row
+// that broke the table.
+func TestUpdateFeatureIndex_SevenColumnSchema(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte(
+		"# Features\n\n"+
+			"| Feature | Status | Kind | URL | Consumer Path | Index | Description |\n"+
+			"|---------|--------|------|-----|---------------|-------|-------------|\n"+
+			"| [idea](idea/README.md) | Conceptual | Document | `https://specscore.md/idea-specification` | `spec/ideas/*.md` | [ideas-index](ideas-index/README.md) | Pre-spec one-pager |\n\n"+
+			"## Outstanding Questions\n\nNone.\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := UpdateFeatureIndex(indexPath, "decision", "Draft", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(indexPath)
+	// The new row must have exactly 7 pipe-delimited cells.
+	wantRow := "| [decision](decision/README.md) | Draft | — | — | — | — | TODO: Add description. |"
+	if !strings.Contains(string(got), wantRow) {
+		t.Errorf("7-column row missing or wrong shape.\nwant: %s\ngot:\n%s", wantRow, got)
+	}
+	// Belt-and-braces: count cells on the inserted line directly.
+	for _, line := range strings.Split(string(got), "\n") {
+		if strings.Contains(line, "[decision](decision/README.md)") {
+			cells := strings.Split(strings.TrimPrefix(strings.TrimSuffix(strings.TrimSpace(line), "|"), "|"), "|")
+			if len(cells) != 7 {
+				t.Errorf("inserted row has %d cells, want 7: %q", len(cells), line)
+			}
+		}
+	}
+}
+
+// TestUpdateFeatureIndex_KindIndexInferredFromSlug verifies the small Kind
+// inference: when the slug ends with `-index`, the Kind cell is `Index`
+// (the only inference rule the autofix applies; everything else is `—`
+// for human curation per the bug-report's scoping).
+func TestUpdateFeatureIndex_KindIndexInferredFromSlug(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte(
+		"# Features\n\n"+
+			"| Feature | Status | Kind | Description |\n"+
+			"|---|---|---|---|\n"+
+			"| [feature](feature/README.md) | Stable | Document | first |\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := UpdateFeatureIndex(indexPath, "tasks-index", "Draft", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(indexPath)
+	want := "| [tasks-index](tasks-index/README.md) | Draft | Index | TODO: Add description. |"
+	if !strings.Contains(string(got), want) {
+		t.Errorf("Kind not inferred as Index for -index slug.\nwant: %s\ngot:\n%s", want, got)
+	}
+}
+
+// TestUpdateFeatureIndex_URLFromAdherenceFooter verifies the URL column is
+// populated from the target feature's adherence-footer line when present.
+func TestUpdateFeatureIndex_URLFromAdherenceFooter(t *testing.T) {
+	dir := t.TempDir()
+	// Target feature README with an adherence footer that declares its URL.
+	if err := os.MkdirAll(filepath.Join(dir, "plan"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "plan", "README.md"), []byte(
+		"# Feature: Plan\n\n**Status:** Stable\n\n"+
+			"---\n*This document follows the https://specscore.md/plan-specification*\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte(
+		"# Features\n\n"+
+			"| Feature | Status | Kind | URL | Description |\n"+
+			"|---|---|---|---|---|\n"+
+			"| [feature](feature/README.md) | Stable | Document | `https://specscore.md/feature-specification` | first |\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := UpdateFeatureIndex(indexPath, "plan", "Stable", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "https://specscore.md/plan-specification") {
+		t.Errorf("URL not pulled from adherence footer.\ngot:\n%s", got)
+	}
+}

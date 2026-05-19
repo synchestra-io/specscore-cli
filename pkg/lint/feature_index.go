@@ -157,14 +157,16 @@ type featureIndexRow struct {
 	lineNum int
 }
 
-// featureIndexRowRe matches one row of the features-index table:
+// featureIndexRowRe matches one row of the features-index table whose
+// first cell is a `[<slug>](<slug>/README.md)` link and whose second
+// cell is the row's Status. Trailing cells (Kind, URL, Consumer Path,
+// Index, Description, ... — schemas vary across repos) are matched but
+// not captured here; rewriteFeatureIndexStatuses preserves them verbatim
+// by splitting the row on `|` rather than re-emitting from captures.
 //
-//	| [<slug>](<slug>/README.md) | <status> | <kind> | <description> |
-//
-// Cells are trimmed; we tolerate any amount of inner whitespace.
-// The link target is `<slug>/README.md` (directory-based) rather than
-// `<slug>.md` (file-based, used by the ideas index).
-var featureIndexRowRe = regexp.MustCompile(`^\|\s*\[[^\]]+\]\(([^)]+)/README\.md\)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*$`)
+// At least three cells (link, status, one more) are required so that
+// the match cannot accidentally fire on an isolated link line.
+var featureIndexRowRe = regexp.MustCompile(`^\|\s*\[[^\]]+\]\(([^)]+)/README\.md\)\s*\|\s*([^|]*?)\s*\|.+\|\s*$`)
 
 // readFeatureIndexRows scans the features-index README and returns one
 // featureIndexRow per row of the top-level table. Header and separator
@@ -198,9 +200,11 @@ func readFeatureIndexRows(path string) ([]featureIndexRow, error) {
 }
 
 // rewriteFeatureIndexStatuses rewrites the `Status` cell of each row in
-// the features-index whose slug appears in `updates`. The `Feature`
-// link and `Description` cells are preserved verbatim — only the
-// `Status` column is touched. Unmatched rows are left alone.
+// the features-index whose slug appears in `updates`. Every other cell
+// is preserved byte-for-byte by splitting the row on `|` and substituting
+// only cell index 2 (cell 1 is the link, cell 2 is Status). This keeps
+// the function schema-agnostic — 3-cell, 4-cell, 7-cell rows all work
+// the same way.
 func rewriteFeatureIndexStatuses(path string, updates map[string]string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -222,10 +226,18 @@ func rewriteFeatureIndexStatuses(path string, updates map[string]string) error {
 		if strings.TrimSpace(m[2]) == newStatus {
 			continue
 		}
-		// Reassemble preserving the original kind and description cells.
-		kind := strings.TrimSpace(m[3])
-		desc := strings.TrimSpace(m[4])
-		lines[i] = fmt.Sprintf("| [%s](%s/README.md) | %s | %s | %s |", slug, slug, newStatus, kind, desc)
+		// Cells: trailing `|` then leading `|` produces empty first/last
+		// strings after Split — splice the Status cell (index 2) and
+		// rejoin without re-emitting the link cell, so any extra cells
+		// (kind/url/consumer-path/index/description) round-trip exactly.
+		// Preserve the original surrounding whitespace by re-padding the
+		// Status cell with a single space on each side.
+		parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(trimmed, "|"), "|"), "|")
+		if len(parts) < 3 {
+			continue
+		}
+		parts[1] = " " + newStatus + " "
+		lines[i] = "|" + strings.Join(parts, "|") + "|"
 		changed = true
 	}
 	if !changed {
