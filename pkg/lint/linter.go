@@ -62,6 +62,14 @@ func newLinter(opts Options) *linter {
 	// Register sidekick-seed checker.
 	l.registerChecker(newSidekickSeedChecker())
 
+	// Register plan-rules checker under all four rule IDs (P-001..P-004).
+	// The single checker emits violations for all four rules; deduping by
+	// pointer identity in lint() ensures it runs once per pass.
+	pc := newPlanRulesChecker()
+	for _, n := range []string{"P-001", "P-002", "P-003", "P-004"} {
+		l.ruleSet[n] = pc
+	}
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

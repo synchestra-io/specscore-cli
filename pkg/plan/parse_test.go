@@ -1,0 +1,452 @@
+package plan
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// writePlan writes a Plan-shaped file at plansDir/<slug>.md and returns its path.
+func writePlan(t *testing.T, plansDir, slug, content string) string {
+	t.Helper()
+	if err := os.MkdirAll(plansDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(plansDir, slug+".md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestParse_FullModeMinimal(t *testing.T) {
+	dir := t.TempDir()
+	plansDir := filepath.Join(dir, "plans")
+	body := `# Plan: Sample
+
+**Status:** Draft
+**Source Feature:** sample
+**Mode:** full
+
+## Summary
+
+Sample plan.
+
+## Tasks
+
+### Task 1: First task
+
+**Verifies:** sample#ac:one
+**Status:** pending
+**Depends-On:** —
+
+Body prose.
+
+### Task 2: Second task
+
+**Verifies:** sample#ac:two
+**Depends-On:** 1
+
+Some prose.
+`
+	p, err := Parse(writePlan(t, plansDir, "sample", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.HasPlanTitle {
+		t.Fatal("expected HasPlanTitle=true")
+	}
+	if p.Title != "Sample" {
+		t.Fatalf("got title %q", p.Title)
+	}
+	if p.SourceFeature != "sample" {
+		t.Fatalf("got source feature %q", p.SourceFeature)
+	}
+	if p.Mode != ModeFull || !p.ModeValueValid {
+		t.Fatalf("got mode %q valid=%v", p.Mode, p.ModeValueValid)
+	}
+	if len(p.Tasks) != 2 {
+		t.Fatalf("got %d tasks", len(p.Tasks))
+	}
+	t1 := p.Tasks[0]
+	if t1.Number != 1 || t1.Name != "First task" {
+		t.Fatalf("task1 = %+v", t1)
+	}
+	if len(t1.Verifies) != 1 || t1.Verifies[0] != "sample#ac:one" {
+		t.Fatalf("task1 verifies = %v", t1.Verifies)
+	}
+	if t1.Status != StatusPending || !t1.StatusValueValid {
+		t.Fatalf("task1 status = %v valid=%v", t1.Status, t1.StatusValueValid)
+	}
+	if len(t1.DependsOn) != 0 || !t1.DependsOnValid {
+		t.Fatalf("task1 depends-on = %v valid=%v", t1.DependsOn, t1.DependsOnValid)
+	}
+	t2 := p.Tasks[1]
+	// Status absent → default pending.
+	if t2.Status != StatusPending {
+		t.Fatalf("task2 default status = %v", t2.Status)
+	}
+	if t2.StatusPresent {
+		t.Fatal("task2 status should not be marked present")
+	}
+	if len(t2.DependsOn) != 1 || t2.DependsOn[0] != 1 {
+		t.Fatalf("task2 depends-on = %v", t2.DependsOn)
+	}
+}
+
+func TestParse_ModeAbsentDefaultsFull(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: NoMode
+
+**Source Feature:** foo
+
+## Tasks
+
+### Task 1: Only
+
+**Verifies:** foo#ac:x
+`
+	p, err := Parse(writePlan(t, dir, "no-mode", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Mode != ModeFull {
+		t.Fatalf("default mode = %v", p.Mode)
+	}
+	if p.ModeRawPresent {
+		t.Fatal("ModeRawPresent should be false when Mode field absent")
+	}
+}
+
+func TestParse_StubModeValid(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: Stubby
+
+**Source Feature:** foo
+**Mode:** stub
+
+## Tasks
+
+### Task 1: Pending stub task
+
+**Verifies:** foo#ac:x
+**Status:** pending
+**Depends-On:** —
+
+<!-- implement: pending -->
+`
+	p, err := Parse(writePlan(t, dir, "stubby", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Mode != ModeStub || !p.ModeValueValid {
+		t.Fatalf("got mode %q valid=%v", p.Mode, p.ModeValueValid)
+	}
+	if !p.Tasks[0].HasPlaceholder {
+		t.Fatal("expected placeholder detected")
+	}
+}
+
+func TestParse_InvalidModeValue(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: BadMode
+
+**Source Feature:** foo
+**Mode:** sketch
+
+## Tasks
+
+### Task 1: One
+
+**Verifies:** foo#ac:x
+`
+	p, err := Parse(writePlan(t, dir, "bad-mode", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.ModeValueValid {
+		t.Fatal("expected ModeValueValid=false for 'sketch'")
+	}
+	if p.ModeRaw != "sketch" {
+		t.Fatalf("got raw %q", p.ModeRaw)
+	}
+	// Default mode preserved so other rules can keep running.
+	if p.Mode != ModeFull {
+		t.Fatalf("expected default mode preserved, got %v", p.Mode)
+	}
+}
+
+func TestParse_InvalidStatusValue(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: Bad
+
+**Source Feature:** foo
+
+## Tasks
+
+### Task 1: Weird
+
+**Verifies:** foo#ac:x
+**Status:** waiting
+`
+	p, err := Parse(writePlan(t, dir, "bad-status", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t1 := p.Tasks[0]
+	if t1.StatusValueValid {
+		t.Fatal("expected StatusValueValid=false")
+	}
+	if t1.StatusRaw != "waiting" {
+		t.Fatalf("got raw %q", t1.StatusRaw)
+	}
+}
+
+func TestParse_DependsOnVariants(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: Deps
+
+**Source Feature:** foo
+
+## Tasks
+
+### Task 1: A
+**Verifies:** foo#ac:x
+**Depends-On:** —
+
+### Task 2: B
+**Verifies:** foo#ac:y
+**Depends-On:** 1
+
+### Task 3: C
+**Verifies:** foo#ac:z
+**Depends-On:** 1, 2,
+
+### Task 4: D
+**Verifies:** foo#ac:w
+**Depends-On:** 1, abc, 3
+`
+	p, err := Parse(writePlan(t, dir, "deps", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Tasks) != 4 {
+		t.Fatalf("got %d tasks", len(p.Tasks))
+	}
+	if got := p.Tasks[0].DependsOn; len(got) != 0 || !p.Tasks[0].DependsOnValid {
+		t.Fatalf("t1 deps = %v valid=%v", got, p.Tasks[0].DependsOnValid)
+	}
+	if got := p.Tasks[1].DependsOn; len(got) != 1 || got[0] != 1 {
+		t.Fatalf("t2 deps = %v", got)
+	}
+	if got := p.Tasks[2].DependsOn; len(got) != 2 || got[0] != 1 || got[1] != 2 {
+		t.Fatalf("t3 deps = %v", got)
+	}
+	if !p.Tasks[2].DependsOnValid {
+		t.Fatal("t3 should be valid (trailing comma tolerated)")
+	}
+	if p.Tasks[3].DependsOnValid {
+		t.Fatal("t4 should be invalid (abc token)")
+	}
+}
+
+func TestParse_DeferredACsParsed(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Plan: D
+
+**Source Feature:** foo
+
+## Tasks
+
+### Task 1: One
+
+**Verifies:** foo#ac:a
+
+## Deferred AC Coverage
+
+- foo#ac:b — post-MVP
+- foo#ac:c — defer per scope cut
+`
+	p, err := Parse(writePlan(t, dir, "d", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.DeferredACs) != 2 {
+		t.Fatalf("got %d deferred", len(p.DeferredACs))
+	}
+	if p.DeferredACs[0].ACID != "foo#ac:b" {
+		t.Fatalf("got %q", p.DeferredACs[0].ACID)
+	}
+}
+
+func TestParse_NotAPlanReturnsHasPlanTitleFalse(t *testing.T) {
+	dir := t.TempDir()
+	body := `# Random notes
+
+just some markdown
+`
+	p, err := Parse(writePlan(t, dir, "notes", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.HasPlanTitle {
+		t.Fatal("non-plan file should have HasPlanTitle=false")
+	}
+}
+
+func TestParse_PlaceholderByteExact(t *testing.T) {
+	cases := []struct {
+		body  string
+		match bool
+	}{
+		{"<!-- implement: pending -->", true},
+		{"  <!-- implement: pending -->  ", true}, // surrounding whitespace OK
+		{"<!--implement: pending-->", false},
+		{"<!-- IMPLEMENT: pending -->", false},
+		{"<!-- implement:pending -->", false},
+	}
+	for _, tc := range cases {
+		dir := t.TempDir()
+		body := `# Plan: T
+
+**Source Feature:** foo
+**Mode:** stub
+
+## Tasks
+
+### Task 1: X
+**Verifies:** foo#ac:a
+**Status:** pending
+
+` + tc.body + "\n"
+		p, err := Parse(writePlan(t, dir, "t", body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := p.Tasks[0].HasPlaceholder
+		if got != tc.match {
+			t.Errorf("body=%q want=%v got=%v", tc.body, tc.match, got)
+		}
+	}
+}
+
+func TestIsSingleFilePlanPath(t *testing.T) {
+	plansDir := filepath.Join("spec", "plans")
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{filepath.Join("spec", "plans", "auth.md"), true},
+		{filepath.Join("spec", "plans", "auth", "README.md"), false},
+		{filepath.Join("spec", "plans", "README.md"), false},
+		{filepath.Join("spec", "plans", "auth.txt"), false},
+		{filepath.Join("spec", "plans", "nested", "deep.md"), false},
+	}
+	for _, tc := range cases {
+		got := IsSingleFilePlanPath(plansDir, tc.path)
+		if got != tc.want {
+			t.Errorf("path=%q want=%v got=%v", tc.path, tc.want, got)
+		}
+	}
+}
+
+func TestParse_NonLinearTaskNumbering(t *testing.T) {
+	// Parser preserves the heading numbers as-given; P-003 will report
+	// the non-linear case.
+	dir := t.TempDir()
+	body := `# Plan: G
+
+**Source Feature:** foo
+
+## Tasks
+
+### Task 1: A
+**Verifies:** foo#ac:a
+
+### Task 3: B
+**Verifies:** foo#ac:b
+
+### Task 5: C
+**Verifies:** foo#ac:c
+`
+	p, err := Parse(writePlan(t, dir, "g", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Tasks) != 3 {
+		t.Fatalf("got %d tasks", len(p.Tasks))
+	}
+	got := []int{p.Tasks[0].Number, p.Tasks[1].Number, p.Tasks[2].Number}
+	if got[0] != 1 || got[1] != 3 || got[2] != 5 {
+		t.Fatalf("preserved numbers = %v", got)
+	}
+}
+
+func TestParse_HeaderFieldsExtractedOnlyFromHeader(t *testing.T) {
+	// A `**Source Feature:**` accidentally appearing in body text MUST NOT
+	// override the header value.
+	dir := t.TempDir()
+	body := `# Plan: H
+
+**Source Feature:** real
+
+## Tasks
+
+### Task 1: A
+**Verifies:** real#ac:a
+
+This task mentions **Source Feature:** fake in its prose.
+`
+	p, err := Parse(writePlan(t, dir, "h", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.SourceFeature != "real" {
+		t.Fatalf("got %q", p.SourceFeature)
+	}
+}
+
+func TestParseDependsOn_EmDashSentinel(t *testing.T) {
+	deps, ok := parseDependsOn("—")
+	if !ok || len(deps) != 0 {
+		t.Fatalf("em-dash: deps=%v ok=%v", deps, ok)
+	}
+	deps, ok = parseDependsOn("")
+	if !ok || len(deps) != 0 {
+		t.Fatalf("empty: deps=%v ok=%v", deps, ok)
+	}
+	deps, ok = parseDependsOn("-")
+	if !ok || len(deps) != 0 {
+		t.Fatalf("ascii-: deps=%v ok=%v", deps, ok)
+	}
+}
+
+func TestParse_PlaceholderBodyTokenAfterFields(t *testing.T) {
+	// Placeholder appears after the task's required body fields.
+	body := `# Plan: P
+
+**Source Feature:** foo
+**Mode:** stub
+
+## Tasks
+
+### Task 1: Pending
+**Verifies:** foo#ac:a
+**Status:** pending
+**Depends-On:** —
+
+<!-- implement: pending -->
+`
+	dir := t.TempDir()
+	p, err := Parse(writePlan(t, dir, "p", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.Tasks[0].HasPlaceholder {
+		t.Fatal("expected placeholder detected")
+	}
+	if !strings.Contains(strings.Join(p.Tasks[0].BodyLines, "\n"), PlaceholderBodyToken) {
+		t.Fatal("placeholder line missing from body lines")
+	}
+}

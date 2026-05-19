@@ -140,6 +140,12 @@ var allRuleNames = map[string]bool{
 	"feature-index-row-sync": true,
 	// Sidekick-seed lint rule.
 	"sidekick-seed": true,
+	// Plan lint rules (single-file Plans at spec/plans/<slug>.md, per the
+	// SpecStudio plan-Feature contract). Implemented by planRulesChecker.
+	"P-001": true,
+	"P-002": true,
+	"P-003": true,
+	"P-004": true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.
