@@ -1,6 +1,6 @@
 # Feature: Lifecycle Transitions (Shared Contract)
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Flifecycle-transitions) — graph, discussions, approvals
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/lifecycle-transitions?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/lifecycle-transitions?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/lifecycle-transitions?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/lifecycle-transitions?op=request-change) |
 
 **Status:** Approved
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature

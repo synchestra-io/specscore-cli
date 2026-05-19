@@ -3,6 +3,3 @@
 project:
   title: SpecScore CLI
 
-viewer:
-  name: SpecStudio
-  url: https://specstudio.synchestra.io/

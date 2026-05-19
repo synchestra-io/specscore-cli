@@ -1,6 +1,6 @@
 # Feature: Init (CLI)
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Finit) — graph, discussions, approvals
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/init?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/init?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/init?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/init?op=request-change) |
 
 **Status:** Approved
 

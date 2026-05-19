@@ -17,7 +17,7 @@ func writeRaw(t *testing.T, dir, body string) {
 	}
 }
 
-func TestRoundTripWithProjectAndViewer(t *testing.T) {
+func TestRoundTripWithProjectAndStudio(t *testing.T) {
 	dir := t.TempDir()
 	cfg := SpecConfig{
 		Project: &ProjectConfig{
@@ -26,7 +26,7 @@ func TestRoundTripWithProjectAndViewer(t *testing.T) {
 				{URL: "https://github.com/test/code.git", Roles: []Role{RoleCode}},
 			},
 		},
-		Viewer: &ViewerConfig{Name: "AcmeDocs", URL: "https://docs.acme.example/"},
+		Studio: &StudioConfig{Name: "AcmeDocs", URL: "https://docs.acme.example/"},
 	}
 	if err := WriteSpecConfig(dir, cfg); err != nil {
 		t.Fatalf("WriteSpecConfig: %v", err)
@@ -38,8 +38,8 @@ func TestRoundTripWithProjectAndViewer(t *testing.T) {
 	if got.Project == nil || got.Project.Title != "Test Project" {
 		t.Errorf("Project.Title round-trip failed: %+v", got.Project)
 	}
-	if got.Viewer == nil || got.Viewer.Name != "AcmeDocs" || got.Viewer.URL != "https://docs.acme.example/" {
-		t.Errorf("Viewer round-trip failed: %+v", got.Viewer)
+	if got.Studio == nil || got.Studio.Name != "AcmeDocs" || got.Studio.URL != "https://docs.acme.example/" {
+		t.Errorf("Studio round-trip failed: %+v", got.Studio)
 	}
 	if len(got.Project.Repositories) != 1 ||
 		got.Project.Repositories[0].URL != "https://github.com/test/code.git" ||
@@ -76,8 +76,12 @@ func TestEmptyConfigWithHeaderValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected empty header-only config to be valid, got %v", err)
 	}
-	if name, url, suppressed := cfg.EffectiveViewer(); suppressed || name != DefaultViewerName || url != DefaultViewerURL {
-		t.Errorf("expected SpecStudio defaults; got name=%q url=%q suppressed=%v", name, url, suppressed)
+	if name, url, suppressed := cfg.EffectiveStudio(); suppressed || name != DefaultStudioName || url != DefaultStudioURL {
+		t.Errorf("expected SpecScore.Studio defaults; got name=%q url=%q suppressed=%v", name, url, suppressed)
+	}
+	// sanity-check the literal default values per the studio-toolbar Feature
+	if DefaultStudioName != "SpecScore.Studio" || DefaultStudioURL != "https://specscore.studio/" {
+		t.Errorf("default studio constants drifted: name=%q url=%q", DefaultStudioName, DefaultStudioURL)
 	}
 	if cfg.EffectiveSpecsDirName() != DefaultSpecsDirName || cfg.EffectiveDocsDirName() != DefaultDocsDirName {
 		t.Errorf("dir-name defaults wrong: specs=%q docs=%q", cfg.EffectiveSpecsDirName(), cfg.EffectiveDocsDirName())
@@ -88,26 +92,26 @@ func TestEmptyConfigWithHeaderValid(t *testing.T) {
 	}
 }
 
-func TestViewerExplicitNullSuppresses(t *testing.T) {
+func TestStudioExplicitNullSuppresses(t *testing.T) {
 	dir := t.TempDir()
-	writeRaw(t, dir, SchemaHeader+"\nviewer: null\n")
+	writeRaw(t, dir, SchemaHeader+"\nstudio: null\n")
 	cfg, err := ReadSpecConfig(dir)
 	if err != nil {
 		t.Fatalf("ReadSpecConfig: %v", err)
 	}
-	if !cfg.IsViewerSuppressed() {
-		t.Fatal("expected viewer: null to be detected as suppressed")
+	if !cfg.IsStudioSuppressed() {
+		t.Fatal("expected studio: null to be detected as suppressed")
 	}
-	name, url, suppressed := cfg.EffectiveViewer()
+	name, url, suppressed := cfg.EffectiveStudio()
 	if !suppressed || name != "" || url != "" {
-		t.Errorf("EffectiveViewer should report suppressed; got name=%q url=%q suppressed=%v", name, url, suppressed)
+		t.Errorf("EffectiveStudio should report suppressed; got name=%q url=%q suppressed=%v", name, url, suppressed)
 	}
 }
 
-func TestViewerTildeAndEmptyAreNull(t *testing.T) {
+func TestStudioTildeAndEmptyAreNull(t *testing.T) {
 	for _, body := range []string{
-		SchemaHeader + "\nviewer: ~\n",
-		SchemaHeader + "\nviewer:\n",
+		SchemaHeader + "\nstudio: ~\n",
+		SchemaHeader + "\nstudio:\n",
 	} {
 		dir := t.TempDir()
 		writeRaw(t, dir, body)
@@ -115,20 +119,64 @@ func TestViewerTildeAndEmptyAreNull(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ReadSpecConfig(%q): %v", body, err)
 		}
-		if !cfg.IsViewerSuppressed() {
-			t.Errorf("body %q: expected viewer suppressed", body)
+		if !cfg.IsStudioSuppressed() {
+			t.Errorf("body %q: expected studio suppressed", body)
 		}
 	}
 }
 
-func TestViewerPartialMappingFailsValidation(t *testing.T) {
-	cfg := SpecConfig{Viewer: &ViewerConfig{Name: "AcmeDocs"}} // url missing
+func TestStudioPartialMappingFailsValidation(t *testing.T) {
+	// Use a URL that has the proper trailing-slash form so the failure
+	// path is purely partial-mapping, not trailing-slash.
+	cfg := SpecConfig{Studio: &StudioConfig{Name: "AcmeDocs"}} // url missing
 	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for viewer with name but no url")
+		t.Fatal("expected error for studio with name but no url")
 	}
-	cfg = SpecConfig{Viewer: &ViewerConfig{URL: "https://x/"}}
+	cfg = SpecConfig{Studio: &StudioConfig{URL: "https://x.example/"}}
 	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for viewer with url but no name")
+		t.Fatal("expected error for studio with url but no name")
+	}
+}
+
+// TestViewerBlockRejected covers repo-config#req:viewer-block-rejected — any
+// form of the legacy `viewer:` block (mapping, null, tilde, bare) MUST be
+// rejected at parse time with a migration message.
+func TestViewerBlockRejected(t *testing.T) {
+	bodies := []string{
+		SchemaHeader + "\nviewer:\n  name: X\n  url: https://x.example/\n",
+		SchemaHeader + "\nviewer: null\n",
+		SchemaHeader + "\nviewer:\n",
+		SchemaHeader + "\nviewer: ~\n",
+	}
+	for _, body := range bodies {
+		dir := t.TempDir()
+		writeRaw(t, dir, body)
+		_, err := ReadSpecConfig(dir)
+		if err == nil {
+			t.Errorf("expected viewer: rejection for body %q, got nil", body)
+			continue
+		}
+		if !strings.Contains(err.Error(), "viewer: block is no longer supported") {
+			t.Errorf("expected migration error for body %q; got %v", body, err)
+		}
+	}
+}
+
+// TestStudioURLMustHaveTrailingSlash covers
+// repo-config#req:studio-url-trailing-slash.
+func TestStudioURLMustHaveTrailingSlash(t *testing.T) {
+	cfg := SpecConfig{Studio: &StudioConfig{Name: "X", URL: "https://no.slash.example"}}
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected trailing-slash error")
+	}
+	if !strings.Contains(err.Error(), "studio.url must end with exactly one '/'") {
+		t.Errorf("expected trailing-slash citation; got %v", err)
+	}
+	// Two trailing slashes also rejected.
+	cfg = SpecConfig{Studio: &StudioConfig{Name: "X", URL: "https://x.example//"}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error for double-trailing-slash")
 	}
 }
 

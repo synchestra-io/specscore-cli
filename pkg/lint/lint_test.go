@@ -71,6 +71,15 @@ func TestValidateRuleNames(t *testing.T) {
 	if err := ValidateRuleNames([]string{"nonexistent-rule"}); err == nil {
 		t.Error("expected error for unknown rule")
 	}
+	// view-link → studio-toolbar migration message
+	// (studio-toolbar#req:studio-toolbar-lint-removes-view-link)
+	err := ValidateRuleNames([]string{"view-link"})
+	if err == nil {
+		t.Fatal("expected migration error for view-link")
+	}
+	if !strings.Contains(err.Error(), "studio-toolbar") {
+		t.Errorf("view-link error should name studio-toolbar as replacement; got %v", err)
+	}
 }
 
 func TestViolation_JSONRoundTrip(t *testing.T) {

@@ -47,7 +47,7 @@ func newLinter(opts Options) *linter {
 	l.registerChecker(newPlanHierarchyChecker())
 	l.registerChecker(newPlanROIChecker())
 	l.registerChecker(newAdherenceFooterChecker())
-	l.registerChecker(newViewLinkChecker())
+	l.registerChecker(newStudioToolbarChecker())
 
 	// Register idea checker under every idea-* rule name.
 	ic := newIdeaChecker()

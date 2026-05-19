@@ -1,6 +1,6 @@
 # Feature: Feature Deps
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Ffeature%2Fdeps) — graph, discussions, approvals
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/feature/deps?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/feature/deps?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/feature/deps?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/feature/deps?op=request-change) |
 >
 > **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/feature/references/deps.md) · [local](../../../../../../ai-plugin-specscore/skills/feature/references/deps.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 

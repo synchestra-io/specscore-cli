@@ -250,31 +250,12 @@ func writeMissingIndex(root, relPath, content string) error {
 	return os.WriteFile(abs, []byte(content), 0o644)
 }
 
-// projectIDForView builds the SpecScore Studio view-link project identifier from
-// the config's project block. Uses "unknown" placeholders when fields are
-// missing — the resulting URL still resolves to a viewer page (just one
-// without graph context), which is preferable to emitting a broken link.
-func projectIDForView(cfg projectdef.SpecConfig) string {
-	repo, org, host := "unknown", "unknown", "unknown"
-	if cfg.Project != nil {
-		if cfg.Project.Repo != "" {
-			repo = cfg.Project.Repo
-		}
-		if cfg.Project.Org != "" {
-			org = cfg.Project.Org
-		}
-		if cfg.Project.Host != "" {
-			host = cfg.Project.Host
-		}
-	}
-	return fmt.Sprintf("%s@%s@%s", repo, org, host)
-}
-
-func specReadmeContent(cfg projectdef.SpecConfig) string {
-	pid := projectIDForView(cfg)
-	return fmt.Sprintf(`# Specifications
-
-> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec) — graph, discussions, approvals
+// specReadmeContent / ideasIndexContent / featuresIndexContent render the
+// canonical index files for `specscore init`. Index files do NOT carry a
+// studio toolbar — toolbars are scoped to feature artifact READMEs by the
+// studio-toolbar Feature.
+func specReadmeContent(_ projectdef.SpecConfig) string {
+	return `# Specifications
 
 SpecScore-formatted specifications for this project.
 
@@ -282,22 +263,19 @@ SpecScore-formatted specifications for this project.
 
 | Directory | Purpose |
 |---|---|
-| [`+"`features/`"+`](features/README.md) | Feature specifications — one per sub-system |
-| [`+"`ideas/`"+`](ideas/README.md) | Pre-spec one-pagers exploring problem-direction-MVP |
+| [` + "`features/`" + `](features/README.md) | Feature specifications — one per sub-system |
+| [` + "`ideas/`" + `](ideas/README.md) | Pre-spec one-pagers exploring problem-direction-MVP |
 
 ## Outstanding Questions
 
 None at this time.
-`, pid)
+`
 }
 
-func ideasIndexContent(cfg projectdef.SpecConfig) string {
-	pid := projectIDForView(cfg)
-	return fmt.Sprintf(`# Ideas
+func ideasIndexContent(_ projectdef.SpecConfig) string {
+	return `# Ideas
 
-> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec%%2Fideas) — graph, discussions, approvals
-
-Pre-spec one-pagers. Each Idea is a lint-clean problem-direction-MVP one-pager that may later promote into one or more SpecScore Features under [`+"`features/`"+`](../features/README.md).
+Pre-spec one-pagers. Each Idea is a lint-clean problem-direction-MVP one-pager that may later promote into one or more SpecScore Features under [` + "`features/`" + `](../features/README.md).
 
 ## Index
 
@@ -310,14 +288,11 @@ None at this time.
 
 ---
 *This document follows the https://specscore.md/ideas-index-specification*
-`, pid)
+`
 }
 
-func featuresIndexContent(cfg projectdef.SpecConfig) string {
-	pid := projectIDForView(cfg)
-	return fmt.Sprintf(`# Features
-
-> [View in SpecScore Studio](https://specscore.studio/project/features?id=%s&path=spec%%2Ffeatures) — graph, discussions, approvals
+func featuresIndexContent(_ projectdef.SpecConfig) string {
+	return `# Features
 
 Feature specifications for this project.
 
@@ -332,5 +307,5 @@ None at this time.
 
 ---
 *This document follows the https://specscore.md/features-index-specification*
-`, pid)
+`
 }

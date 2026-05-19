@@ -286,11 +286,11 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 
 // ensureIdeaAncestorIndexes materializes spec/README.md and
 // spec/ideas/README.md when they don't already exist, using the same
-// project-aware templates as `specscore init`. Project metadata is
-// read from specscore.yaml when present; on absence we fall back to
-// an empty SpecConfig, which yields placeholder view-link IDs — the
-// resulting files are still lint-clean. Existing files are left
-// untouched per cli/idea/new#req:ancestor-indexes-materialized.
+// templates as `specscore init`. Project metadata is read from
+// specscore.yaml when present; on absence we fall back to an empty
+// SpecConfig — the resulting index files are lint-clean regardless.
+// Existing files are left untouched per
+// cli/idea/new#req:ancestor-indexes-materialized.
 func ensureIdeaAncestorIndexes(root string) error {
 	cfg, err := projectdef.ReadSpecConfig(root)
 	if err != nil {

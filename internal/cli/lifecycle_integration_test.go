@@ -35,9 +35,14 @@ import (
 // contains any error-severity lint violations. Used between every
 // happy-path transition to enforce the plan's "lint is clean at every
 // checkpoint" acceptance criterion.
+//
+// Runs with Fix=true so that auto-fixable rules (adherence-footer,
+// studio-toolbar, etc.) are materialized first — mirroring the real
+// workflow where `specscore spec lint --fix` is run before the
+// "clean" check.
 func assertLintClean(t *testing.T, root, label string) {
 	t.Helper()
-	violations, err := lint.Lint(lint.Options{SpecRoot: filepath.Join(root, "spec")})
+	violations, err := lint.Lint(lint.Options{SpecRoot: filepath.Join(root, "spec"), Fix: true})
 	if err != nil {
 		t.Fatalf("[%s] lint invocation failed: %v", label, err)
 	}
@@ -113,7 +118,15 @@ func TestLifecycleIntegration(t *testing.T) {
 	withCwd(t, root)
 
 	// Step 1: specscore init.
-	if _, errOut, err := runInitCmd(t, nil, "--project", root); err != nil {
+	// Pass explicit project identity via flags so that downstream
+	// feature READMEs get a resolvable studio-toolbar URL grammar even
+	// without a real git remote in the tmpdir.
+	if _, errOut, err := runInitCmd(t, nil,
+		"--project", root,
+		"--host", "github.com",
+		"--org", "test",
+		"--repo", "lifecycle",
+	); err != nil {
 		t.Fatalf("step 1: init failed: %v\nstderr=%s", err, errOut)
 	}
 	if _, err := os.Stat(filepath.Join(root, "specscore.yaml")); err != nil {

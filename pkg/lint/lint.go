@@ -113,7 +113,7 @@ var allRuleNames = map[string]bool{
 	"plan-hierarchy":     true,
 	"plan-roi-metadata":  true,
 	"adherence-footer":   true,
-	"view-link":          true,
+	"studio-toolbar":     true,
 	// Idea lint rules.
 	"idea-location":                     true,
 	"idea-slug-format":                  true,
@@ -152,10 +152,16 @@ func AllRuleNames() map[string]bool {
 	return result
 }
 
-// ValidateRuleNames checks that all names are known rules.
+// ValidateRuleNames checks that all names are known rules. The legacy
+// `view-link` rule was removed by the studio-toolbar Feature; flagging
+// it surfaces a migration message naming `studio-toolbar` as the
+// replacement (studio-toolbar#req:studio-toolbar-lint-removes-view-link).
 func ValidateRuleNames(names []string) error {
 	for _, name := range names {
 		if !allRuleNames[name] {
+			if name == "view-link" {
+				return fmt.Errorf("unknown rule %q (removed in this release — use \"studio-toolbar\" instead)", name)
+			}
 			return fmt.Errorf("unknown rule %q", name)
 		}
 	}

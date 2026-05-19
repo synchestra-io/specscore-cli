@@ -26,8 +26,8 @@ const SchemaHeader = "# SpecScore Repo Config Schema: https://specscore.md/repo-
 const (
 	DefaultSpecsDirName = "specs"
 	DefaultDocsDirName  = "docs"
-	DefaultViewerName   = "SpecScore Studio"
-	DefaultViewerURL    = "https://specscore.studio/"
+	DefaultStudioName   = "SpecScore.Studio"
+	DefaultStudioURL    = "https://specscore.studio/"
 	DefaultModuleName   = "default"
 )
 
@@ -37,15 +37,15 @@ type SpecConfig struct {
 	Projects     []string       `yaml:"projects,omitempty"`
 	SpecsDirName string         `yaml:"specs_dir_name,omitempty"`
 	DocsDirName  string         `yaml:"docs_dir_name,omitempty"`
-	Viewer       *ViewerConfig  `yaml:"viewer,omitempty"`
+	Studio       *StudioConfig  `yaml:"studio,omitempty"`
 	Modules      []ModuleConfig `yaml:"modules,omitempty"`
 	Extras       map[string]any `yaml:",inline"`
 
-	// viewerExplicitNull is set to true when YAML contains
-	// `viewer: null` (or `~`, or an empty value) — the opt-out form
-	// per repo-config#req:viewer-null-opts-out. It is NOT serialized;
-	// callers should reconstruct via WithViewerSuppressed when writing.
-	viewerExplicitNull bool
+	// studioExplicitNull is set to true when YAML contains
+	// `studio: null` (or `~`, or an empty value) — the opt-out form
+	// per repo-config#req:studio-null-opts-out. It is NOT serialized;
+	// callers should reconstruct via WithStudioSuppressed when writing.
+	studioExplicitNull bool
 }
 
 // ProjectConfig holds project identity. All fields are optional; when
@@ -122,9 +122,10 @@ func (r *RepositoryConfig) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-// ViewerConfig names the upstream viewer that renders SpecScore
+// StudioConfig names the upstream studio that renders SpecScore
 // artifacts. Both fields are required when the block is present.
-type ViewerConfig struct {
+// Replaces the pre-2026-05-19 `viewer:` block (repo-config#req:studio-explicit-values).
+type StudioConfig struct {
 	Name string `yaml:"name"`
 	URL  string `yaml:"url"`
 }
@@ -156,19 +157,19 @@ func (c SpecConfig) EffectiveDocsDirName() string {
 	return DefaultDocsDirName
 }
 
-// EffectiveViewer reports the viewer to use for artifact links.
-// suppressed is true when `viewer: null` was set explicitly — callers
-// MUST omit any view link in that case (repo-config#req:viewer-null-opts-out).
-// When the block is omitted entirely, name and url default to SpecScore
-// Studio (repo-config#req:viewer-default-when-omitted).
-func (c SpecConfig) EffectiveViewer() (name, url string, suppressed bool) {
-	if c.viewerExplicitNull {
+// EffectiveStudio reports the studio to use for artifact links.
+// suppressed is true when `studio: null` was set explicitly — callers
+// MUST omit any toolbar in that case (repo-config#req:studio-null-opts-out).
+// When the block is omitted entirely, name and url default to SpecScore.Studio
+// (repo-config#req:studio-default-when-omitted).
+func (c SpecConfig) EffectiveStudio() (name, url string, suppressed bool) {
+	if c.studioExplicitNull {
 		return "", "", true
 	}
-	if c.Viewer != nil {
-		return c.Viewer.Name, c.Viewer.URL, false
+	if c.Studio != nil {
+		return c.Studio.Name, c.Studio.URL, false
 	}
-	return DefaultViewerName, DefaultViewerURL, false
+	return DefaultStudioName, DefaultStudioURL, false
 }
 
 // EffectiveName returns the module's effective name per
@@ -202,16 +203,21 @@ func (c SpecConfig) EffectiveModules() []ModuleConfig {
 }
 
 // Validate checks the structural invariants that don't require I/O:
-// viewer mapping completeness, repositories entry shape and role-enum
+// studio mapping completeness, repositories entry shape and role-enum
 // membership, and module path uniqueness/non-nesting. File-system
 // checks (e.g. projects local-path resolution) belong to the linter.
 func (c SpecConfig) Validate() error {
-	if !c.viewerExplicitNull && c.Viewer != nil {
-		if c.Viewer.Name == "" {
-			return errors.New("viewer.name is required when the viewer block is a mapping (repo-config#req:viewer-explicit-values)")
+	if !c.studioExplicitNull && c.Studio != nil {
+		if c.Studio.Name == "" {
+			return errors.New("studio.name is required when the studio block is a mapping (repo-config#req:studio-explicit-values)")
 		}
-		if c.Viewer.URL == "" {
-			return errors.New("viewer.url is required when the viewer block is a mapping (repo-config#req:viewer-explicit-values)")
+		if c.Studio.URL == "" {
+			return errors.New("studio.url is required when the studio block is a mapping (repo-config#req:studio-explicit-values)")
+		}
+		// repo-config#req:studio-url-trailing-slash — URL MUST end with
+		// exactly one `/`. Reject empty trailing slash and double-slash.
+		if !strings.HasSuffix(c.Studio.URL, "/") || strings.HasSuffix(c.Studio.URL, "//") {
+			return errors.New("studio.url must end with exactly one '/' (repo-config#req:studio-url-trailing-slash)")
 		}
 	}
 	if c.Project != nil {
@@ -271,6 +277,10 @@ func ValidateSchemaHeader(data []byte) error {
 // ReadSpecConfig reads dir/specscore.yaml and decodes it. The file must
 // begin with the schema-header comment on line 1; otherwise an error
 // is returned without further parsing.
+//
+// The pre-2026-05-19 `viewer:` block is rejected with a migration error
+// (repo-config#req:viewer-block-rejected). It MUST be hand-renamed to
+// `studio:` — there is no auto-migration in this pre-v1 break.
 func ReadSpecConfig(dir string) (SpecConfig, error) {
 	var cfg SpecConfig
 	path := filepath.Join(dir, SpecConfigFile)
@@ -281,13 +291,16 @@ func ReadSpecConfig(dir string) (SpecConfig, error) {
 	if err := ValidateSchemaHeader(data); err != nil {
 		return cfg, err
 	}
+	if detectViewerKey(data) {
+		return cfg, errors.New("viewer: block is no longer supported. Rename to studio: in specscore.yaml. See https://specscore.md/repo-config-specification.")
+	}
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("parsing spec config: %w", err)
 	}
-	// Detect `viewer: null` vs viewer-omitted. yaml.v3 unmarshals both
-	// to a nil *ViewerConfig, so we re-read at the node level to tell
+	// Detect `studio: null` vs studio-omitted. yaml.v3 unmarshals both
+	// to a nil *StudioConfig, so we re-read at the node level to tell
 	// them apart.
-	cfg.viewerExplicitNull = detectViewerExplicitNull(data)
+	cfg.studioExplicitNull = detectStudioExplicitNull(data)
 	return cfg, nil
 }
 
@@ -305,9 +318,9 @@ func WriteSpecConfig(dir string, cfg SpecConfig) error {
 	return nil
 }
 
-// IsViewerSuppressed reports whether viewer: null was set in the source.
-func (c SpecConfig) IsViewerSuppressed() bool {
-	return c.viewerExplicitNull
+// IsStudioSuppressed reports whether studio: null was set in the source.
+func (c SpecConfig) IsStudioSuppressed() bool {
+	return c.studioExplicitNull
 }
 
 // validateModules enforces module-paths-unique and module-paths-non-nested
@@ -368,11 +381,11 @@ func isAncestorPath(a, b string) bool {
 	return strings.HasPrefix(b, a+"/")
 }
 
-// detectViewerExplicitNull parses the YAML at the node level to detect
-// whether `viewer:` was explicitly null (vs omitted). Returns true only
-// when the mapping has a "viewer" key and its value is a Null node or
+// detectStudioExplicitNull parses the YAML at the node level to detect
+// whether `studio:` was explicitly null (vs omitted). Returns true only
+// when the mapping has a "studio" key and its value is a Null node or
 // an empty alias to Null.
-func detectViewerExplicitNull(data []byte) bool {
+func detectStudioExplicitNull(data []byte) bool {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
@@ -388,7 +401,7 @@ func detectViewerExplicitNull(data []byte) bool {
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		key := root.Content[i]
 		val := root.Content[i+1]
-		if key.Value != "viewer" {
+		if key.Value != "studio" {
 			continue
 		}
 		// Scalar with empty value or YAML null tag = explicit null.
@@ -398,6 +411,30 @@ func detectViewerExplicitNull(data []byte) bool {
 			}
 		}
 		return false
+	}
+	return false
+}
+
+// detectViewerKey returns true if the top-level YAML mapping contains
+// a `viewer` key in any form (mapping, scalar, null, bare). Used by
+// ReadSpecConfig to reject the legacy block per
+// repo-config#req:viewer-block-rejected.
+func detectViewerKey(data []byte) bool {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+		return false
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value == "viewer" {
+			return true
+		}
 	}
 	return false
 }

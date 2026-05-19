@@ -435,20 +435,3 @@ func TestInit_LintCleanInvariants(t *testing.T) {
 	}
 }
 
-// projectIDForView — focused unit coverage for the view-link ID builder.
-func TestProjectIDForView(t *testing.T) {
-	// Empty config: no project block at all → all-unknown.
-	if got := projectIDForView(buildSpecConfig(t.TempDir(), "ignored", "", "", "")); got == "" {
-		t.Errorf("projectIDForView returned empty string")
-	}
-	// All fields set → canonical repo@org@host.
-	full := buildSpecConfig(t.TempDir(), "Acme", "github.com", "acme", "service")
-	if got := projectIDForView(full); got != "service@acme@github.com" {
-		t.Errorf("projectIDForView(full) = %q, want service@acme@github.com", got)
-	}
-	// Only host+org set, repo empty → repo defaults to unknown.
-	partial := buildSpecConfig(t.TempDir(), "Acme", "github.com", "acme", "")
-	if got := projectIDForView(partial); got != "unknown@acme@github.com" {
-		t.Errorf("projectIDForView(partial) = %q, want unknown@acme@github.com", got)
-	}
-}
