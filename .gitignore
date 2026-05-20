@@ -12,3 +12,7 @@ go.work.sum
 
 # OS
 .DS_Store
+
+# Tooling local state
+.claude/
+.synchestra/

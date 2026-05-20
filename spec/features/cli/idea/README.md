@@ -20,6 +20,7 @@ Ideas have a strict required-sections contract defined by the [idea](../../idea/
 |---|---|
 | [change-status/](change-status/README.md) | Transition an Idea's status per the legal-transition matrix; `--to=archived` also relocates the file under `spec/ideas/archived/` |
 | [new/](new/README.md) | Scaffold a new Idea artifact at `spec/ideas/<slug>.md` |
+| [relocate/](relocate/README.md) | Move an Idea or sidekick-seed artifact across SpecScore-managed repos, with cross-repo link cleanup and per-repo auto-commit |
 
 ### change-status
 
@@ -28,6 +29,10 @@ Transitions an Idea per the kind's legal-transition matrix: `Draft → Approved`
 ### new
 
 Creates a lint-clean Idea skeleton with every required section, HTML-comment prompts describing what belongs in each, and either flag-supplied or interactively prompted content for the core fields (title, HMW, owner, not-doing entries).
+
+### relocate
+
+Moves an Idea or sidekick-seed artifact from the current project to a different SpecScore-managed repo. Auto-resolves slug to `spec/ideas/<slug>.md` first, then `spec/ideas/seeds/<slug>.md`. Pre-flight clean-tree check across source, target, and every sibling SpecScore repo whose docs reference the artifact. Copies the file (with `synchestra-io/*` → `specscore/*` and "this repo" rewrites), updates markdown-link references to the new location across all affected repos, auto-commits per repo by default (`--no-commit` flag stages without committing). Stop-on-first-commit-failure semantics; cross-repo rollback is the user's responsibility.
 
 ## Behavior
 
