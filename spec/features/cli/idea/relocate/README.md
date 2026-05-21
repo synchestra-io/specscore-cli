@@ -4,7 +4,7 @@
 >
 > **AI skill:** _planned_ — `specstudio:relocate-idea` (sibling Feature in [`specscore/specstudio-skills`](https://github.com/specscore/specstudio-skills)) will wrap this verb as a thin shell and surface it as `/relocate-idea` for slash-trigger discoverability.
 
-**Status:** Approved
+**Status:** Implementing
 **Source Ideas:** —
 
 <!-- The Source Idea idea-skills-destination-resolution lives in specscore/specstudio-skills, not in this repo.
