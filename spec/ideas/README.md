@@ -7,7 +7,7 @@ Pre-spec one-pagers for the `specscore` CLI. Each Idea refines a vague concept i
 | Idea | Status | Date | Owner | Promotes To |
 |------|--------|------|-------|-------------|
 | [audit-lint-rules-for-parallel-bugs](audit-lint-rules-for-parallel-bugs.md) | Draft | 2026-05-18 | alexander.trakhimenok | — |
-| [cli-error-telemetry](cli-error-telemetry.md) | Approved | 2026-05-21 | alexandertrakhimenok | — |
+| [cli-error-telemetry](cli-error-telemetry.md) | Implementing | 2026-05-21 | alexandertrakhimenok | cli/telemetry/errors-telemetry |
 | [cli-telemetry](cli-telemetry.md) | Implementing | 2026-05-21 | alexandertrakhimenok | cli/telemetry, cli/telemetry/usage-telemetry |
 | [entity-and-property-cli-support](entity-and-property-cli-support.md) | Approved | 2026-05-18 | alexander.trakhimenok | — |
 | [index-entries-autofix](index-entries-autofix.md) | Specified | 2026-05-18 | alexander.trakhimenok | cli/spec/lint |

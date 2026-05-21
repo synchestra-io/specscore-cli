@@ -15,7 +15,8 @@ Shared plumbing for the `specscore` CLI's two telemetry channels — product ana
 
 | Child | Description |
 |---|---|
-| [usage-telemetry](usage-telemetry/README.md) | TODO: Add description. |
+| [usage-telemetry](usage-telemetry/README.md) | The `usage-stats` channel — anonymous product-analytics events to PostHog (EU). Owns PostHog client wiring, event schema, `--caller` flag, and the north-star funnel. |
+| [errors-telemetry](errors-telemetry/README.md) | The `crash-reports` channel — anonymous panic/exit-code-≥10 reports to Sentry (EU). Owns Sentry client wiring, stack-frame scrubber, `SafePanic` allowlist, and `specscore debug error` verification subcommand. |
 
 ## Problem
 
