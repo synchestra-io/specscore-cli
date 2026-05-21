@@ -151,22 +151,43 @@ func init() {
 // inside a 500 ms bounded goroutine with its own deferred recover(), so any
 // panic here is caught silently and the user's command exit code is preserved.
 //
-// Per cli/telemetry/usage-telemetry#req:usage-stats-event-properties this
-// function populates all 10 properties from the Event struct. The caller-enum
-// coercion and the full property population body land in the next task; this
-// stub establishes the dispatch path and the no-op-when-no-key behavior.
+// Populates all 10 properties from the Event struct per
+// cli/telemetry/usage-telemetry#req:usage-stats-event-properties. The PostHog
+// distinct_id is set to Event.InstallID so PostHog groups events per
+// machine, matching the north-star funnel's "group by distinct_id" contract.
+//
+// The caller field is passed through coerceCaller as a defensive measure even
+// though Event.Caller was already coerced upstream by ResolveCaller — the
+// double-check ensures no arbitrary string ever reaches PostHog regardless of
+// how the Event was constructed.
 func transmitUsage(ctx context.Context, event Event) {
 	_ = ctx
 	if usageClient == nil {
 		return
 	}
-	// Full Enqueue with property population lands with the event-emission task.
-	// For now: register the channel, no-op the transmit unless the key is
-	// present. When the key IS present and the client is up, we send a stub
-	// capture so the AC:posthog-client-eu-region test can observe the
-	// outbound HTTPS host. The full property set wires in next.
-	_ = usageClient.Enqueue(posthog.Capture{
+	_ = usageClient.Enqueue(buildPostHogCapture(event))
+}
+
+// buildPostHogCapture is the pure-function builder for the PostHog Capture
+// message, factored out for testability (the transmitUsage send path requires
+// a live client; the builder doesn't). The returned Capture carries the
+// usageStatsEventName, DistinctId = InstallID, and exactly the 10 documented
+// properties per REQ:usage-stats-event-properties — no more, no fewer.
+func buildPostHogCapture(event Event) posthog.Capture {
+	return posthog.Capture{
 		DistinctId: event.InstallID,
 		Event:      usageStatsEventName,
-	})
+		Properties: posthog.Properties{
+			"command":      event.Command,
+			"success":      event.Success,
+			"duration_ms":  event.DurationMs,
+			"exit_code":    event.ExitCode,
+			"cli_version":  event.CLIVersion,
+			"os":           event.OS,
+			"arch":         event.Arch,
+			"caller":       coerceCaller(event.Caller),
+			"install_id":   event.InstallID,
+			"is_first_run": event.IsFirstRun,
+		},
+	}
 }
