@@ -156,6 +156,31 @@ func emitExitCodeEvent(event Event) {
 	})
 }
 
+// DebugCrashReports emits a synthetic crash-reports event for verification
+// purposes (cli/telemetry/errors-telemetry#req:debug-error-subcommand). The
+// text is interpreted as a candidate SafePanic messageID — allowlisted →
+// verbatim, unknown → "unscrubbed panic" with the `message: unscrubbed`
+// tag. Always tagged debug=true so Sentry alert rules can filter these
+// out of operator notifications.
+//
+// No-op when errorsClientInitialized is false (empty DSN). Returns
+// nothing; failures to send are absorbed by the defer recover().
+func DebugCrashReports(text, cliVersion string) {
+	defer func() { _ = recover() }()
+	if !errorsClientInitialized {
+		return
+	}
+	resolved, isUnscrubbed := ScrubMessage(SafePanic(text, nil))
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("release", cliVersion)
+		scope.SetTag("debug", "true")
+		if isUnscrubbed {
+			scope.SetTag("message", "unscrubbed")
+		}
+		sentry.CaptureMessage(resolved)
+	})
+}
+
 // intToString avoids pulling strconv into this file just for one Itoa
 // call. Domain is exit codes (0–255 in POSIX); a tiny implementation is
 // fine.

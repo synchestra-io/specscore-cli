@@ -39,6 +39,7 @@ func Run(args []string) error {
 		ideaCommand(),
 		initCommand(),
 		telemetryCommand(),
+		debugCommand(),
 	)
 
 	// Attach telemetry persistent-flag + PersistentPreRun. Emission happens
