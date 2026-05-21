@@ -113,9 +113,11 @@ func TestIdeaRelocateCLI_ToRepoSlugFormResolvesViaScan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Task 1 scaffold output names both the source path and the resolved target dir.
-	if !strings.Contains(stdout, target) {
-		t.Errorf("stdout should name the target dir %q; got: %s", target, stdout)
+	_ = target
+	// Stdout's per-repo lines use project.repo, not the directory path —
+	// the target appears under its repo slug "specscore".
+	if !strings.Contains(stdout, "specscore: received idea foo") {
+		t.Errorf("stdout should contain target's per-repo line; got: %s", stdout)
 	}
 }
 
@@ -132,11 +134,11 @@ func TestIdeaRelocateCLI_ToRepoPathFormBypassesScan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// macOS /var ↔ /private/var: compare via EvalSymlinks.
-	wantAbs, _ := filepath.EvalSymlinks(target)
-	if !strings.Contains(stdout, wantAbs) && !strings.Contains(stdout, target) {
-		t.Errorf("stdout should name target dir (%s or %s); got: %s",
-			target, wantAbs, stdout)
+	_ = target
+	// Path-form resolution still drives the stdout per-repo line via
+	// the target's project.repo value — not the directory name.
+	if !strings.Contains(stdout, "tgt-name-differs-from-dirname: received idea foo") {
+		t.Errorf("stdout should name target by its project.repo value; got: %s", stdout)
 	}
 }
 
@@ -196,6 +198,10 @@ func initGitRepoForTest(t *testing.T, root string) {
 	run("init", "--initial-branch=main")
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "Test")
+	// Disable signing locally so the verb's own `git commit -m …`
+	// invocations (without --no-gpg-sign) work regardless of the
+	// developer's global gpg config.
+	run("config", "commit.gpgsign", "false")
 	run("add", "-A")
 	run("commit", "--no-gpg-sign", "-m", "initial")
 }
@@ -283,8 +289,17 @@ func TestIdeaRelocateCLI_PreflightCleanAllowsThrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(stdout, "resolved:") {
-		t.Errorf("expected resolution-summary output, got: %s", stdout)
+	// New stdout-format: per-repo lines for source and target plus the
+	// summary line. With git initialized in both, each per-repo line
+	// includes a 7-char SHA bracket.
+	if !strings.Contains(stdout, "src: moved idea foo") {
+		t.Errorf("stdout should contain source per-repo line; got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "tgt: received idea foo") {
+		t.Errorf("stdout should contain target per-repo line; got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "relocate complete: 2 repos affected") {
+		t.Errorf("stdout should contain summary line; got: %s", stdout)
 	}
 }
 
@@ -465,5 +480,217 @@ func TestIdeaRelocateCLI_CrossRepoLinkCleanupPreservesSlugMetadata(t *testing.T)
 	}
 	if string(got) != original {
 		t.Errorf("expected slug-only metadata line preserved;\nwant:\n%s\ngot:\n%s", original, got)
+	}
+}
+
+// gitHEADSubject returns the subject line of HEAD in repoRoot.
+func gitHEADSubject(t *testing.T, repoRoot string) string {
+	t.Helper()
+	cmd := exec.Command("git", "-C", repoRoot, "log", "-1", "--pretty=%s")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git log in %s: %v", repoRoot, err)
+	}
+	return strings.TrimRight(string(out), "\n")
+}
+
+// gitWorkingTreeStatus returns the porcelain output of `git status` in repoRoot.
+func gitWorkingTreeStatus(t *testing.T, repoRoot string) string {
+	t.Helper()
+	cmd := exec.Command("git", "-C", repoRoot, "status", "--porcelain")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git status in %s: %v", repoRoot, err)
+	}
+	return string(out)
+}
+
+// AC: auto-commit-three-repo-flow
+func TestIdeaRelocateCLI_AutoCommitThreeRepoFlow(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	target := stageRelocateRepo(t, parent, "specscore", "specscore")
+	sib := stageRelocateRepo(t, parent, "specscore-cli", "specscore-cli")
+	writeIdeaFile(t, source, "foo")
+
+	// Sibling has a link to the source artifact — so link cleanup will
+	// modify it and it'll be an affected repo.
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	refPath := filepath.Join(sib, "spec", "features", "x", "README.md")
+	if err := os.WriteFile(refPath,
+		[]byte("# Feature: X\n\nSee [the Idea](../../../specstudio-skills/spec/ideas/foo.md).\n"),
+		0o644); err != nil {
+		t.Fatalf("write ref: %v", err)
+	}
+
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+	initGitRepoForTest(t, sib)
+
+	stdout, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if err != nil {
+		t.Fatalf("unexpected error: %v\nstdout:\n%s", err, stdout)
+	}
+
+	// Each repo has a new commit at HEAD with the canonical subject.
+	if got, want := gitHEADSubject(t, source), "chore(relocate): move idea foo to specscore"; got != want {
+		t.Errorf("source HEAD subject: got %q want %q", got, want)
+	}
+	if got, want := gitHEADSubject(t, target), "chore(relocate): receive idea foo from specstudio-skills"; got != want {
+		t.Errorf("target HEAD subject: got %q want %q", got, want)
+	}
+	if got, want := gitHEADSubject(t, sib), "chore(relocate): update links for foo (specstudio-skills → specscore)"; got != want {
+		t.Errorf("sibling HEAD subject: got %q want %q", got, want)
+	}
+
+	// Stdout per-repo lines in commit order (source, target, alphabetical
+	// siblings) — "specscore-cli" sorts after "specscore" alphabetically.
+	wantLines := []string{
+		"specstudio-skills: moved idea foo",
+		"specscore: received idea foo",
+		"specscore-cli: updated-links idea foo",
+		"relocate complete: 3 repos affected",
+	}
+	for _, want := range wantLines {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("stdout should contain %q; got:\n%s", want, stdout)
+		}
+	}
+
+	// Verify the per-repo lines each end with a 7-char SHA in brackets.
+	for _, prefix := range []string{"specstudio-skills:", "specscore:", "specscore-cli:"} {
+		for _, line := range strings.Split(stdout, "\n") {
+			if !strings.HasPrefix(line, prefix) {
+				continue
+			}
+			// Expect "  [<sha7>]" suffix.
+			if !strings.Contains(line, "  [") || !strings.HasSuffix(line, "]") {
+				t.Errorf("expected SHA bracket on per-repo line; got: %q", line)
+			}
+		}
+	}
+}
+
+// AC: no-commit-flag-stages-everywhere
+func TestIdeaRelocateCLI_NoCommitFlagStagesEverywhere(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	target := stageRelocateRepo(t, parent, "specscore", "specscore")
+	sib := stageRelocateRepo(t, parent, "specscore-cli", "specscore-cli")
+	writeIdeaFile(t, source, "foo")
+
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sib, "spec", "features", "x", "README.md"),
+		[]byte("# Feature: X\n\nSee [the Idea](../../../specstudio-skills/spec/ideas/foo.md).\n"),
+		0o644); err != nil {
+		t.Fatalf("write ref: %v", err)
+	}
+
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+	initGitRepoForTest(t, sib)
+
+	// Snapshot HEAD SHAs before relocate to verify no new commits.
+	headBefore := func(repo string) string {
+		out, err := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
+		if err != nil {
+			t.Fatalf("rev-parse HEAD in %s: %v", repo, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	srcHEAD, tgtHEAD, sibHEAD := headBefore(source), headBefore(target), headBefore(sib)
+
+	stdout, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore", "--no-commit")
+	if err != nil {
+		t.Fatalf("unexpected error: %v\nstdout:\n%s", err, stdout)
+	}
+
+	// No new commits.
+	if got := headBefore(source); got != srcHEAD {
+		t.Errorf("source HEAD advanced under --no-commit: %s → %s", srcHEAD, got)
+	}
+	if got := headBefore(target); got != tgtHEAD {
+		t.Errorf("target HEAD advanced under --no-commit: %s → %s", tgtHEAD, got)
+	}
+	if got := headBefore(sib); got != sibHEAD {
+		t.Errorf("sibling HEAD advanced under --no-commit: %s → %s", sibHEAD, got)
+	}
+
+	// Each repo has staged (index-set) changes — porcelain output has
+	// non-space chars in column 1.
+	checkStaged := func(repo, label string) {
+		porcelain := gitWorkingTreeStatus(t, repo)
+		if porcelain == "" {
+			t.Errorf("%s has no working-tree changes; expected staged mutations", label)
+			return
+		}
+		// Every non-empty line should have a non-space char in column 1
+		// (status of the index entry).
+		for _, line := range strings.Split(strings.TrimRight(porcelain, "\n"), "\n") {
+			if len(line) < 2 {
+				continue
+			}
+			if line[0] == ' ' || line[0] == '?' {
+				t.Errorf("%s: expected staged status (col 1 ≠ space/?); got line %q in:\n%s",
+					label, line, porcelain)
+			}
+		}
+	}
+	checkStaged(source, "source")
+	checkStaged(target, "target")
+	checkStaged(sib, "sibling")
+
+	// Stdout has per-repo lines WITHOUT [<sha>] brackets.
+	if !strings.Contains(stdout, "specstudio-skills: moved idea foo") {
+		t.Errorf("stdout missing source line; got:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "  [") {
+		t.Errorf("stdout should NOT contain SHA brackets under --no-commit; got:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "relocate complete: 3 repos affected") {
+		t.Errorf("stdout missing summary; got:\n%s", stdout)
+	}
+}
+
+// AC: commit-failure-mid-flight
+func TestIdeaRelocateCLI_CommitFailureMidFlight(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	target := stageRelocateRepo(t, parent, "specscore", "specscore")
+	writeIdeaFile(t, source, "foo")
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+
+	// Install a failing pre-commit hook in the target repo.
+	hookPath := filepath.Join(target, ".git", "hooks", "pre-commit")
+	if err := os.WriteFile(hookPath, []byte("#!/bin/sh\necho 'reject' 1>&2\nexit 1\n"), 0o755); err != nil {
+		t.Fatalf("write hook: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code: got %d want %d (Unexpected/CommitFailed)", got, exitcode.Unexpected)
+	}
+
+	// Source already committed; target failed; both reflected in stderr msg.
+	msg := err.Error()
+	if !strings.Contains(msg, "specstudio-skills") {
+		t.Errorf("stderr should name committed source repo; got: %s", msg)
+	}
+	if !strings.Contains(msg, "specscore") {
+		t.Errorf("stderr should name failing target repo; got: %s", msg)
+	}
+	if !strings.Contains(msg, "reject") {
+		t.Errorf("stderr should include hook's failure output; got: %s", msg)
+	}
+	if !strings.Contains(msg, "reset HEAD~1 --hard") {
+		t.Errorf("stderr should include rollback command for source; got: %s", msg)
+	}
+	if !strings.Contains(msg, "checkout -- .") {
+		t.Errorf("stderr should include checkout rollback for target; got: %s", msg)
 	}
 }

@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
@@ -76,10 +75,34 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	noCommit, _ := cmd.Flags().GetBool("no-commit")
+
 	// Task 2: pre-flight clean-tree checks. Abort with exit 7 (DirtyTree)
 	// if any path that would be modified has uncommitted changes.
 	if err := runPreflight(specRoot, source, target, slug); err != nil {
 		return err
+	}
+
+	// Source-repo handle, shared by link cleanup and commit phase.
+	sourceCfg, _ := projectdef.ReadSpecConfig(specRoot)
+	sourceRepo := idearelocate.TargetRepo{
+		Path:     specRoot,
+		RepoName: sourceCfg.Project.Repo,
+		Org:      sourceCfg.Project.Org,
+	}
+
+	// Discover other siblings (exclude source + target).
+	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
+	}
+	otherSiblings := excludeRepoPaths(allSiblings, specRoot, target.Path)
+
+	// Source artifact's repo-relative path. ApplyMutation preserves
+	// this as the destination repo-relative path inside target.
+	sourceRel, err := filepath.Rel(specRoot, source.Path)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("computing source repo-relative path: %v", err)
 	}
 
 	// Task 3: destination-collision check + file copy + in-file rewrite
@@ -92,65 +115,49 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Task 4: cross-repo link cleanup. Walk every affected repo
-	// (source + target + siblings) for markdown links pointing at the
-	// relocated artifact and rewrite each target — same-repo links
-	// become relative paths, cross-repo links become full GitHub URLs.
-	// Bold-prefixed metadata lines are preserved (slugs are durable).
-	if err := runCrossRepoLinkCleanup(specRoot, source, target, mutation); err != nil {
-		return err
-	}
-
-	// Task 3+4 scaffold output. Task 5 replaces this with the
-	// per-affected-repo lines + summary line specified by
-	// cli/idea/relocate#req:stdout-format.
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-		"resolved: %s (%s) → %s\nmoved: %s → %s\n",
-		source.Path, source.Kind, target.Path,
-		source.Path, mutation.DestinationPath)
-	return nil
-}
-
-// runCrossRepoLinkCleanup assembles the list of repos to scan
-// (source + target + every other sibling SpecScore-managed repo) and
-// invokes idearelocate.UpdateCrossRepoLinks. The artifact's
-// target-repo-relative path is derived from the absolute destination
-// path produced by ApplyMutation.
-func runCrossRepoLinkCleanup(
-	specRoot string,
-	source idearelocate.SourceArtifact,
-	target idearelocate.TargetRepo,
-	mutation idearelocate.MutationResult,
-) error {
-	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
-	if err != nil {
-		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
-	}
-	others := excludeRepoPaths(allSiblings, specRoot, target.Path)
-
-	sourceCfg, _ := projectdef.ReadSpecConfig(specRoot)
-	sourceRepo := idearelocate.TargetRepo{
-		Path:     specRoot,
-		RepoName: sourceCfg.Project.Repo,
-		Org:      sourceCfg.Project.Org,
-	}
-
-	repos := make([]idearelocate.TargetRepo, 0, 2+len(others))
-	repos = append(repos, sourceRepo, target)
-	repos = append(repos, others...)
-
-	artifactRel, err := filepath.Rel(target.Path, mutation.DestinationPath)
+	targetRel, err := filepath.Rel(target.Path, mutation.DestinationPath)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("computing artifact target-relative path: %v", err)
 	}
 
-	// Discard the kind for now; it's part of the slug-resolution
-	// return but not needed by link cleanup. The slug itself is
-	// recoverable from source.Path's basename.
-	slug := strings.TrimSuffix(filepath.Base(source.Path), ".md")
-	if _, err := idearelocate.UpdateCrossRepoLinks(repos, target, slug, artifactRel); err != nil {
+	// Task 4: cross-repo link cleanup. Same-repo links become relative
+	// paths; cross-repo links become full GitHub URLs. Bold-prefixed
+	// metadata lines are preserved.
+	scanRepos := make([]idearelocate.TargetRepo, 0, 2+len(otherSiblings))
+	scanRepos = append(scanRepos, sourceRepo, target)
+	scanRepos = append(scanRepos, otherSiblings...)
+	linkResults, err := idearelocate.UpdateCrossRepoLinks(scanRepos, target, slug, targetRel)
+	if err != nil {
 		return err
 	}
+	linkUpdates := make(map[string][]string, len(linkResults))
+	for _, r := range linkResults {
+		linkUpdates[r.RepoPath] = r.Updated
+	}
+
+	// Task 5: commit phase. Auto-commit by default; --no-commit stages
+	// without committing. On mid-flight commit failure, exit 10 with a
+	// detailed stderr report + rollback commands.
+	mode := idearelocate.CommitAuto
+	if noCommit {
+		mode = idearelocate.CommitNo
+	}
+	changes := idearelocate.AssembleRepoChanges(
+		sourceRepo, source.Kind, sourceRel,
+		target, targetRel,
+		otherSiblings,
+		linkUpdates,
+		slug,
+	)
+	executed, fail, err := idearelocate.ExecuteCommitPhase(changes, mode)
+	if err != nil {
+		return err
+	}
+	if fail != nil {
+		return fail.AsExitError()
+	}
+
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), idearelocate.FormatStdout(executed, mode))
 	return nil
 }
 
