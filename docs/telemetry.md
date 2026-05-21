@@ -1,5 +1,7 @@
 # SpecScore CLI Telemetry
 
+> Canonical reference: <https://specscore.md/cli/telemetry>
+
 This document describes what the `specscore` CLI sends to external services,
 where it goes, what it does not collect, and how to disable it.
 
@@ -9,18 +11,13 @@ where it goes, what it does not collect, and how to disable it.
 can find bugs and learn what is used:
 
 - **`usage-stats`** — product analytics. One event per CLI invocation
-  describing *what command ran* and *whether it succeeded*. Implemented by
-  the [`cli/telemetry/usage-telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/usage-telemetry/README.md) Feature.
+  describing *what command ran* and *whether it succeeded*.
 - **`crash-reports`** — error reporting. One event when the CLI panics or
   exits with an unexpected error code (≥10), describing *what broke* with a
-  scrubbed stack trace. Implemented by the [`cli/telemetry/errors-telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/errors-telemetry/README.md)
-  Feature.
+  scrubbed stack trace.
 
 Both channels are **opt-out**, **EU-hosted**, and **independent** — you can
 disable one without disabling the other.
-
-The full architectural contract for what this telemetry guarantees lives in
-the [`cli/telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/README.md) parent Feature.
 
 ## Channels
 
@@ -188,7 +185,5 @@ for individual events, 90 days for issues / crash signatures).
 
 ---
 
-For the architectural contract behind these guarantees, see the
-[`cli/telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/README.md) parent Feature and its two child Features
-([`cli/telemetry/usage-telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/usage-telemetry/README.md),
-[`cli/telemetry/errors-telemetry`](https://github.com/synchestra-io/specscore-cli/blob/main/spec/features/cli/telemetry/errors-telemetry/README.md)).
+For the architectural contract behind these guarantees, see
+<https://specscore.md/cli/telemetry>.
