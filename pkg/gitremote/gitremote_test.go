@@ -10,13 +10,13 @@ func TestParse(t *testing.T) {
 		wantRepo  string
 		wantHost  string
 	}{
-		{"https://github.com/synchestra-io/specscore-cli.git", true, "synchestra-io", "specscore-cli", "github.com"},
-		{"https://github.com/synchestra-io/specscore-cli", true, "synchestra-io", "specscore-cli", "github.com"},
+		{"https://github.com/specscore/specscore-cli.git", true, "specscore", "specscore-cli", "github.com"},
+		{"https://github.com/specscore/specscore-cli", true, "specscore", "specscore-cli", "github.com"},
 		{"http://github.com/o/r.git", true, "o", "r", "github.com"},
 		{"https://GITHUB.COM/O/R.git", true, "O", "R", "github.com"},
-		{"git@github.com:synchestra-io/specscore-cli.git", true, "synchestra-io", "specscore-cli", "github.com"},
+		{"git@github.com:specscore/specscore-cli.git", true, "specscore", "specscore-cli", "github.com"},
 		{"git@github.com:o/r", true, "o", "r", "github.com"},
-		{"ssh://git@github.com/synchestra-io/specscore-cli.git", true, "synchestra-io", "specscore-cli", "github.com"},
+		{"ssh://git@github.com/specscore/specscore-cli.git", true, "specscore", "specscore-cli", "github.com"},
 		{"ssh://git@github.com/o/r", true, "o", "r", "github.com"},
 		// Non-GitHub: rejected in MVP.
 		{"https://gitlab.com/o/r.git", false, "", "", ""},

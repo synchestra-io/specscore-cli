@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
+	"github.com/specscore/specscore-cli/pkg/feature"
 )
 
 // indexEntriesChecker verifies that feature README indices match actual child directories.

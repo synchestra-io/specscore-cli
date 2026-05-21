@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/idea"
-	"github.com/synchestra-io/specscore-cli/pkg/idearelocate"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/idea"
+	"github.com/specscore/specscore-cli/pkg/idearelocate"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // ideaRelocateCommand returns the "idea relocate" subcommand.

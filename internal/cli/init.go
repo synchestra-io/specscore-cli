@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/gitremote"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/gitremote"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // isTerminal reports whether r is an interactive terminal. Indirected

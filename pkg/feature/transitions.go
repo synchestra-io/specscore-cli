@@ -25,8 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/lifecycle"
 )
 
 // ChangeStatusResult is the outcome of a successful Status rewrite.

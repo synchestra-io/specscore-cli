@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/lifecycle"
 )
 
 // Each test below maps 1:1 to an AC in

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // stageRelocateRepo creates a SpecScore-managed repo dir at

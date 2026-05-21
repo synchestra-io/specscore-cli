@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/gitremote"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/gitremote"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // studioToolbarChecker implements the studio-toolbar lint rule defined

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // runSpecLint runs `specscore spec lint` against the given working

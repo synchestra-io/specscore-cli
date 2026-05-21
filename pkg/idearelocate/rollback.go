@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // rollback.go implements Task 6 of cli/idea/relocate: pre-commit-phase

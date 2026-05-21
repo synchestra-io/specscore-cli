@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // Default directory layout constants.

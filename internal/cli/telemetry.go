@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/internal/telemetry"
+	"github.com/specscore/specscore-cli/internal/telemetry"
 )
 
 // telemetryCommand returns the `specscore telemetry` cobra group with three

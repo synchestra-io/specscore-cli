@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/idea"
+	"github.com/specscore/specscore-cli/pkg/idea"
 )
 
 // ideaIndexRules enforces:

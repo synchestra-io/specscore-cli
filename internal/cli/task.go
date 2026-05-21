@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
-	"github.com/synchestra-io/specscore-cli/pkg/task"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/feature"
+	"github.com/specscore/specscore-cli/pkg/task"
 	"gopkg.in/yaml.v3"
 )
 

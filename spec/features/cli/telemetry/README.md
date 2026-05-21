@@ -166,12 +166,12 @@ The `What We Don't Collect` section of `docs/telemetry.md` MUST list the invaria
 
 | Unit | Responsibility | Used by | Depends on |
 |---|---|---|---|
-| `internal/telemetry/` (Go package) | The only place external telemetry SDKs are imported. Owns the typed event surface, the install_id helpers, the opt-out evaluator, and the 500ms-timeout wrapper. | `cmd/specscore/root.go` for opt-out evaluation; child-feature files (`usage.go`, `errors.go`) for transmission. | PostHog / Sentry SDKs (used only from `usage.go` / `errors.go` respectively). |
+| `internal/telemetry/` (Go package) | The only place external telemetry SDKs are imported. Owns the typed event surface, the install_id helpers, the opt-out evaluator, and the 500ms-timeout wrapper. | `internal/cli/root.go` for opt-out evaluation; child-feature files (`usage.go`, `errors.go`) for transmission. | PostHog / Sentry SDKs (used only from `usage.go` / `errors.go` respectively). |
 | `internal/telemetry/optout.go` | Implements REQ:opt-out-signal-precedence. Pure function: signals in → channel enabled/disabled state out. | Both channel files; the `specscore telemetry status` command. | OS env, the persistent-state reader. |
 | `internal/telemetry/installid.go` | Manages `~/.specscore/install_id` creation and read. Per-machine, atomic write. | All telemetry calls (to tag events); the first-run-notice trigger. | OS user-config-dir resolver. |
 | `internal/telemetry/state.go` | Reads/writes `~/.specscore/telemetry.yaml`. Validates shape per REQ:persistent-state-file-shape. | The opt-out evaluator; the `specscore telemetry {enable,disable}` subcommands. | YAML library. |
-| `cmd/specscore/telemetry.go` | Owns all `specscore telemetry <verb> [channel]` parsing and dispatch (positional channel arg). Consults the channel registry (REQ:channel-registry) for the known-channel set on every invocation. Children do NOT attach cobra subcommands here — they call `internal/telemetry.RegisterChannel(...)` at package init time. | cobra root. | `internal/telemetry`. |
-| `cmd/specscore/root.go` (modified) | PersistentPreRun: evaluates opt-out, creates install_id on first run, prints first-run notice. PersistentPostRun: emits event via the `usage-stats` channel transmit-fn and flushes (timeout-bounded). | All commands. | `internal/telemetry`. |
+| `internal/cli/telemetry.go` | Owns all `specscore telemetry <verb> [channel]` parsing and dispatch (positional channel arg). Consults the channel registry (REQ:channel-registry) for the known-channel set on every invocation. Children do NOT attach cobra subcommands here — they call `internal/telemetry.RegisterChannel(...)` at package init time. | cobra root. | `internal/telemetry`. |
+| `internal/cli/root.go` (modified) | PersistentPreRun: evaluates opt-out, creates install_id on first run, prints first-run notice. PersistentPostRun: emits event via the `usage-stats` channel transmit-fn and flushes (timeout-bounded). | All commands. | `internal/telemetry`. |
 | `docs/telemetry.md` | Human-readable, single page covering all channels. Stable URL referenced from the first-run notice. | Users; the first-run notice. | This Feature plus the two child Features. |
 | Boundary check | A go-vet-style check OR a test in `internal/telemetry/boundary_test.go` that fails the build when forbidden imports appear outside `internal/telemetry/`. | CI. | None — runs from the repo's existing test pipeline. |
 
@@ -266,15 +266,15 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs (file-presence, exi
 
 **Requirements:** cli/telemetry#req:vendor-sdk-import-confinement
 
-**Given** a candidate change that adds `import "github.com/posthog/posthog-go"` to a file in `cmd/specscore/feature.go`
+**Given** a candidate change that adds `import "github.com/posthog/posthog-go"` to a file in `internal/cli/feature.go`
 **When** the repository's CI pipeline runs (lint + tests + build)
-**Then** the build MUST fail with a clear error naming the offending file, the forbidden import, and the rule that forbids it (e.g. `vendor-sdk-import-confinement: cmd/specscore/feature.go imports github.com/posthog/posthog-go; only files under internal/telemetry/ may import telemetry vendor SDKs`).
+**Then** the build MUST fail with a clear error naming the offending file, the forbidden import, and the rule that forbids it (e.g. `vendor-sdk-import-confinement: internal/cli/feature.go imports github.com/posthog/posthog-go; only files under internal/telemetry/ may import telemetry vendor SDKs`).
 
 ### AC: fixed-event-property-keys-enforced-at-compile-time
 
 **Requirements:** cli/telemetry#req:fixed-event-property-keys
 
-**Given** caller code attempts to invoke `telemetry.Emit(ctx, map[string]any{"arbitrary": "value"})` from `cmd/specscore/`
+**Given** caller code attempts to invoke `telemetry.Emit(ctx, map[string]any{"arbitrary": "value"})` from `internal/cli/`
 **When** `go build` runs
 **Then** the build MUST fail with a type error (the package's public API does not accept a `map[string]any`); the only way to attach properties MUST be via the closed-enum typed wrapper exposed by the package.
 

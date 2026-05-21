@@ -1,4 +1,4 @@
-module github.com/synchestra-io/specscore-cli
+module github.com/specscore/specscore-cli
 
 go 1.26.1
 

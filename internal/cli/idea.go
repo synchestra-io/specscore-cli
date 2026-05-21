@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
-	"github.com/synchestra-io/specscore-cli/pkg/idea"
-	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
-	"github.com/synchestra-io/specscore-cli/pkg/lint"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/feature"
+	"github.com/specscore/specscore-cli/pkg/idea"
+	"github.com/specscore/specscore-cli/pkg/lifecycle"
+	"github.com/specscore/specscore-cli/pkg/lint"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // ideaCommand returns the "idea" command group — query and scaffold Idea artifacts.

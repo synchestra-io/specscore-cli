@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // AC-test helpers — fixtures referenced by TestAC_* tests below

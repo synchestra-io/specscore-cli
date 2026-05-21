@@ -52,13 +52,13 @@ Implement the `RegisterChannel(name, transmit)` API in `internal/telemetry/`. Gu
 
 **Verifies:** cli/telemetry#ac:first-run-notice-shown-once, cli/telemetry#ac:first-run-notice-suppressed-in-ci
 
-Wire `cmd/specscore/root.go`'s PersistentPreRun to: (a) resolve opt-out signals via Task 4, (b) read or create `install_id` via Task 2 — `IsFirstRun()` informs subsequent steps, (c) when `install_id` did not exist AND no CI auto-disable signal is present, print the three-line first-run notice to stderr (line 1 names "SpecScore" + both channels, line 2 links to `docs/telemetry.md`, line 3 names the per-channel disable commands + `SPECSCORE_TELEMETRY=0`). PersistentPostRun iterates the channel registry and invokes each enabled channel's transmit-fn through the Task 5 wrapper. The install_id MUST still be created when in CI even though the notice is suppressed — so a later interactive run on the same machine does not re-trigger the notice.
+Wire `internal/cli/root.go`'s PersistentPreRun to: (a) resolve opt-out signals via Task 4, (b) read or create `install_id` via Task 2 — `IsFirstRun()` informs subsequent steps, (c) when `install_id` did not exist AND no CI auto-disable signal is present, print the first-run notice to stderr per REQ:first-run-notice-content (intro line + 2-item channel bullet list + disable instruction line, mentioning the `[channel-id]` placeholder and the `all` sentinel). PersistentPostRun iterates the channel registry and invokes each enabled channel's transmit-fn through the Task 5 wrapper. The install_id MUST still be created when in CI even though the notice is suppressed — so a later interactive run on the same machine does not re-trigger the notice.
 
 ### Task 7: `specscore telemetry` subcommand surface
 
 **Verifies:** cli/telemetry#ac:telemetry-subcommand-status, cli/telemetry#ac:telemetry-subcommand-enable-disable
 
-Implement `cmd/specscore/telemetry.go` with three verbs each taking an optional positional `[channel]` arg: `status`, `enable`, `disable`. `status` consults the channel registry and per-channel enabled state (via Task 4's evaluator), printing one row per channel with the source of the setting; unknown channel name exits `2` with a stderr message listing the known channels. `enable`/`disable` write to `~/.specscore/telemetry.yaml` via Task 3 — no channel arg writes the global `enabled:` key; with a channel arg writes the per-channel override. Per-channel override beats global at evaluation time.
+Implement `internal/cli/telemetry.go` with three verbs each taking an optional positional `[channel]` arg: `status`, `enable`, `disable`. `status` consults the channel registry and per-channel enabled state (via Task 4's evaluator), printing one row per channel with the source of the setting; unknown channel name exits `2` with a stderr message listing the known channels. `enable`/`disable` write to `~/.specscore/telemetry.yaml` via Task 3 — no channel arg writes the global `enabled:` key; with a channel arg writes the per-channel override. Per-channel override beats global at evaluation time.
 
 ### Task 8: `docs/telemetry.md` skeleton
 

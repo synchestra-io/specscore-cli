@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // commit.go implements Task 5 of cli/idea/relocate: the post-mutation

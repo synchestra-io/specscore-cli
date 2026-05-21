@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // initGitRepo runs git init in root, sets local user.name/email, adds

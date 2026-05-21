@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/internal/telemetry"
+	"github.com/specscore/specscore-cli/internal/telemetry"
 )
 
 // runtimeState carries per-invocation telemetry state from PreRun to the

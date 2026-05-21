@@ -27,8 +27,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/lint"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/lint"
 )
 
 // assertLintClean fails the test if the spec tree under <root>/spec

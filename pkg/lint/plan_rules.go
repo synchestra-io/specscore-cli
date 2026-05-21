@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/plan"
+	"github.com/specscore/specscore-cli/pkg/plan"
 )
 
 // planRulesChecker implements the SpecStudio plan-Feature lint rules P-001

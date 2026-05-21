@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/sourceref"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/sourceref"
 )
 
 // codeCommand returns the "code" command group.

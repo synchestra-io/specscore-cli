@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/idea"
-	"github.com/synchestra-io/specscore-cli/pkg/lint"
-	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
+	"github.com/specscore/specscore-cli/pkg/idea"
+	"github.com/specscore/specscore-cli/pkg/lint"
+	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
 // setupSpecRoot stages a temp spec repo with empty indexes and returns the

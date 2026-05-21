@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
+	"github.com/specscore/specscore-cli/pkg/feature"
 )
 
 // featureIndexChecker dispatches the feature-index-row-sync rule. The

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // setupFeatureSpec stages a lint-clean spec tree at a fresh t.TempDir,
