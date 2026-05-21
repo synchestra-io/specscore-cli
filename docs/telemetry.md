@@ -23,15 +23,27 @@ disable one without disabling the other.
 
 ### usage-stats
 
-<!-- Populated by the cli/telemetry/usage-telemetry child Feature.
-     Per cli/telemetry/usage-telemetry#req:docs-usage-stats-section, this
-     subsection MUST describe the channel, name the PostHog event
-     (cli.command.completed), link to PostHog's privacy page, and call out
-     the EU region (eu.i.posthog.com). To be filled in when the channel
-     ships in v0.2.0. -->
+Anonymous product analytics on every `specscore` CLI invocation. The channel
+sends one PostHog event per command, named **`cli.command.completed`**, to
+the **PostHog EU region** (`eu.i.posthog.com`). The transport is the official
+PostHog Go SDK in batched-async mode, bounded by the parent-Feature's 500 ms
+hard timeout — a slow or unreachable endpoint never blocks your command.
 
-To be populated when the `usage-stats` channel ships (PostHog event
-`cli.command.completed`, EU region `eu.i.posthog.com`).
+Each event carries the closed-enum 10-property payload defined in
+[Event Schema → usage-stats events](#usage-stats-events) below. The PostHog
+`distinct_id` is set to your `install_id`, so PostHog groups events per
+machine. Two machines belonging to the same human appear as two installs;
+that's a deliberate trade — we don't correlate across machines, ever.
+
+What we measure with this channel: how many people install, which commands
+they run, whether commands succeed, how long they take, and which AI agents
+(if any) drive the CLI. We do **not** measure: which files you act on, what
+they contain, who you are, or where you live beyond the country-level
+inference PostHog itself does from your IP for its own infrastructure (we
+do not query that field).
+
+PostHog's data-handling policy:
+<https://posthog.com/privacy>.
 
 ### crash-reports
 
@@ -174,9 +186,19 @@ script setting `SPECSCORE_CALLER` cannot bypass your opt-out.
 
 ### usage-stats
 
-To be populated when the channel ships (PostHog's default retention applies
-— currently 7 years on the free tier; GDPR deletion endpoint will be
-documented here with the `install_id` as the deletion key).
+PostHog's free-tier retention applies: events are retained for **7 years**.
+To request deletion of all events associated with your installation:
+
+1. Find your `install_id` by running `cat ~/.specscore/install_id`.
+2. Submit a deletion request to PostHog via
+   <https://posthog.com/handling-personal-data> referencing that
+   `install_id` as the `distinct_id`. PostHog typically processes deletion
+   within 30 days.
+
+You can also simply delete `~/.specscore/install_id` locally — your next
+`specscore` invocation will generate a fresh ID, and the old install's
+events become orphaned in PostHog (no longer associated with anyone you
+can identify).
 
 ### crash-reports
 
