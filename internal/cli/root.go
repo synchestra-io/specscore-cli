@@ -40,12 +40,19 @@ func Run(args []string) error {
 		taskCommand(),
 		ideaCommand(),
 		initCommand(),
+		telemetryCommand(),
 	)
+
+	// Attach telemetry persistent-flag + PersistentPreRun. Emission happens
+	// after Execute returns so the actual exit code is captured.
+	attachTelemetry(rootCmd)
 
 	if len(args) > 1 {
 		rootCmd.SetArgs(args[1:])
 	}
-	return fang.Execute(context.Background(), rootCmd, fang.WithoutVersion())
+	err := fang.Execute(context.Background(), rootCmd, fang.WithoutVersion())
+	emitInvocationEvent(err)
+	return err
 }
 
 func versionCommand() *cobra.Command {
