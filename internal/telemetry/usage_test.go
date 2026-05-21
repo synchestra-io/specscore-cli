@@ -16,6 +16,34 @@ func TestUsageStatsChannel_Registered(t *testing.T) {
 	}
 }
 
+// TestCrashReportsChannel_Registered verifies the symmetric registration
+// for the errors channel. Implements (part of)
+// cli/telemetry/errors-telemetry#ac:crash-reports-channel-registered.
+func TestCrashReportsChannel_Registered(t *testing.T) {
+	registered := RegisteredChannels()
+	if !slices.Contains(registered, ChannelCrashReports) {
+		t.Errorf("expected %q in RegisteredChannels(), got %v", ChannelCrashReports, registered)
+	}
+}
+
+// TestTransmitErrors_NoDSNIsNoOp covers cli/telemetry/errors-telemetry#ac:
+// sentry-dsn-empty-no-op. With an empty sentryDSN, the Sentry SDK isn't
+// initialized and transmitErrors MUST return without panicking.
+func TestTransmitErrors_NoDSNIsNoOp(t *testing.T) {
+	if sentryDSN != "" {
+		t.Skipf("test is meaningful only when sentryDSN is empty (dev build); got %q", sentryDSN)
+	}
+	if errorsClientInitialized {
+		t.Fatalf("expected errorsClientInitialized=false with empty DSN")
+	}
+	// Should not panic.
+	transmitErrors(context.Background(), Event{
+		Command:    "feature.list",
+		InstallID:  "test-install-id",
+		CLIVersion: "0.0.0-test",
+	})
+}
+
 // TestTransmitUsage_NoKeyIsNoOp covers cli/telemetry/usage-telemetry#ac:
 // posthog-write-key-empty-no-op. With an empty posthogWriteKey, the
 // usageClient is nil and transmitUsage MUST return without panicking and
