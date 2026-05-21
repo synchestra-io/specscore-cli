@@ -656,6 +656,137 @@ func TestIdeaRelocateCLI_NoCommitFlagStagesEverywhere(t *testing.T) {
 	}
 }
 
+// AC: idea-relocate-happy-path + seed-relocate-happy-path
+//
+// End-to-end happy-path test (Task 7). Stages a three-repo workspace
+// mirroring the AC's worked example, then runs two relocates back-to-
+// back (Idea form first, then seed form), asserting exit 0, file
+// movement, canonical commit subjects, and stdout-format compliance
+// for both.
+func TestIdeaRelocateCLI_HappyPathE2E(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	target := stageRelocateRepo(t, parent, "specscore", "specscore")
+	sib := stageRelocateRepo(t, parent, "specscore-cli", "specscore-cli")
+
+	// Source artifacts: an Idea (foo) and a seed (bar), each with
+	// substitution-worthy content so the in-file rewrite is exercised
+	// alongside the cross-repo move.
+	ideaBody := "# Idea: foo\n\nFrom synchestra-io/specscore in this repo.\n"
+	if err := os.WriteFile(filepath.Join(source, "spec", "ideas", "foo.md"), []byte(ideaBody), 0o644); err != nil {
+		t.Fatalf("write idea: %v", err)
+	}
+	seedBody := "# Seed: bar\n\nLegacy ref to synchestra-io/specscore-cli.\n"
+	if err := os.WriteFile(filepath.Join(source, "spec", "ideas", "seeds", "bar.md"), []byte(seedBody), 0o644); err != nil {
+		t.Fatalf("write seed: %v", err)
+	}
+
+	// Sibling has a cross-repo link to foo.md so Task-4 cleanup is
+	// exercised in the Idea flow.
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	sibRef := filepath.Join(sib, "spec", "features", "x", "README.md")
+	if err := os.WriteFile(sibRef,
+		[]byte("# Feature: X\n\nSee [the Idea](../../../specstudio-skills/spec/ideas/foo.md).\n"),
+		0o644); err != nil {
+		t.Fatalf("write sib ref: %v", err)
+	}
+
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+	initGitRepoForTest(t, sib)
+
+	// ----- Flow 1: Idea (foo) -----
+	stdout, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if err != nil {
+		t.Fatalf("idea relocate: unexpected error: %v\nstdout:\n%s", err, stdout)
+	}
+
+	// Source artifact removed.
+	if _, err := os.Stat(filepath.Join(source, "spec", "ideas", "foo.md")); !os.IsNotExist(err) {
+		t.Errorf("source spec/ideas/foo.md should be deleted; stat err: %v", err)
+	}
+	// Target artifact present with org-rename + this-repo rewrites.
+	tgtIdea, err := os.ReadFile(filepath.Join(target, "spec", "ideas", "foo.md"))
+	if err != nil {
+		t.Fatalf("target idea missing: %v", err)
+	}
+	if !strings.Contains(string(tgtIdea), "specscore/specscore") {
+		t.Errorf("idea: expected org-rename applied; got:\n%s", tgtIdea)
+	}
+	if !strings.Contains(string(tgtIdea), "in specscore.") {
+		t.Errorf("idea: expected 'this repo' rewritten to 'specscore'; got:\n%s", tgtIdea)
+	}
+	// Sibling link rewritten to GitHub URL.
+	sibBody, err := os.ReadFile(sibRef)
+	if err != nil {
+		t.Fatalf("read sibling: %v", err)
+	}
+	if !strings.Contains(string(sibBody), "https://github.com/specscore/specscore/blob/main/spec/ideas/foo.md") {
+		t.Errorf("sibling link not rewritten; got:\n%s", sibBody)
+	}
+	// Canonical commit subjects in each affected repo.
+	if got, want := gitHEADSubject(t, source), "chore(relocate): move idea foo to specscore"; got != want {
+		t.Errorf("source HEAD subject: got %q want %q", got, want)
+	}
+	if got, want := gitHEADSubject(t, target), "chore(relocate): receive idea foo from specstudio-skills"; got != want {
+		t.Errorf("target HEAD subject: got %q want %q", got, want)
+	}
+	if got, want := gitHEADSubject(t, sib), "chore(relocate): update links for foo (specstudio-skills → specscore)"; got != want {
+		t.Errorf("sibling HEAD subject: got %q want %q", got, want)
+	}
+	// Stdout format compliance: per-repo lines + summary.
+	for _, want := range []string{
+		"specstudio-skills: moved idea foo",
+		"specscore: received idea foo",
+		"specscore-cli: updated-links idea foo",
+		"relocate complete: 3 repos affected",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("idea stdout missing %q; got:\n%s", want, stdout)
+		}
+	}
+
+	// ----- Flow 2: seed (bar) -----
+	stdout, _, err = runIdeaRelocateCLI(t, source, "bar", "--to-repo=specscore")
+	if err != nil {
+		t.Fatalf("seed relocate: unexpected error: %v\nstdout:\n%s", err, stdout)
+	}
+
+	if _, err := os.Stat(filepath.Join(source, "spec", "ideas", "seeds", "bar.md")); !os.IsNotExist(err) {
+		t.Errorf("source spec/ideas/seeds/bar.md should be deleted; stat err: %v", err)
+	}
+	tgtSeed, err := os.ReadFile(filepath.Join(target, "spec", "ideas", "seeds", "bar.md"))
+	if err != nil {
+		t.Fatalf("target seed missing: %v", err)
+	}
+	if !strings.Contains(string(tgtSeed), "specscore/specscore-cli") {
+		t.Errorf("seed: expected org-rename applied; got:\n%s", tgtSeed)
+	}
+	// Seed has no sibling links → no sibling commit, but source +
+	// target both got the seed-kind subject lines.
+	if got, want := gitHEADSubject(t, source), "chore(relocate): move seed bar to specscore"; got != want {
+		t.Errorf("source HEAD subject (seed): got %q want %q", got, want)
+	}
+	if got, want := gitHEADSubject(t, target), "chore(relocate): receive seed bar from specstudio-skills"; got != want {
+		t.Errorf("target HEAD subject (seed): got %q want %q", got, want)
+	}
+	for _, want := range []string{
+		"specstudio-skills: moved seed bar",
+		"specscore: received seed bar",
+		"relocate complete: 2 repos affected",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("seed stdout missing %q; got:\n%s", want, stdout)
+		}
+	}
+	// No sibling line for seed (no links matched).
+	if strings.Contains(stdout, "specscore-cli: updated-links seed bar") {
+		t.Errorf("seed stdout should NOT include sibling line (no matching links); got:\n%s", stdout)
+	}
+}
+
 // AC: io-failure-rollback-pre-commit
 func TestIdeaRelocateCLI_IOFailureRollbackPreCommit(t *testing.T) {
 	parent := t.TempDir()
