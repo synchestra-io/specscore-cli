@@ -25,9 +25,17 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/synchestra-io/specscore-cli/internal/cli.version={{.Version}}
-      - -X github.com/synchestra-io/specscore-cli/internal/cli.commit={{.Commit}}
-      - -X github.com/synchestra-io/specscore-cli/internal/cli.date={{.Date}}
+      - -X github.com/specscore/specscore-cli/internal/cli.version={{.Version}}
+      - -X github.com/specscore/specscore-cli/internal/cli.commit={{.Commit}}
+      - -X github.com/specscore/specscore-cli/internal/cli.date={{.Date}}
+      # Telemetry — PostHog write key injected from the GitHub Actions secret
+      # POSTHOG_WRITE_KEY at release time per
+      # cli/telemetry/usage-telemetry#req:posthog-write-key-embedded-at-build-time.
+      # Empty value (e.g. local snapshot builds without the secret) keeps the
+      # usage-stats channel registered but the transmit callback no-ops.
+      # `envOrDefault` keeps `goreleaser build --snapshot` working locally
+      # when the secret isn't set.
+      - -X github.com/specscore/specscore-cli/internal/telemetry.posthogWriteKey={{ envOrDefault "POSTHOG_WRITE_KEY" "" }}
 
 archives:
   - id: specscore
