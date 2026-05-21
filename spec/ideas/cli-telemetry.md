@@ -38,7 +38,7 @@ Defaults follow dev-tool CLI norms: opt-out, three-line first-run notice shown *
 
 By **2026-06-08 (end of W1)**: `specscore` v0.2.0 emits the event schema above to PostHog (EU region) on every command, with opt-out via env var and a `specscore telemetry` subcommand. README has a clearly-titled "Telemetry" section linking to `docs/telemetry.md` with the full event schema and opt-out instructions. The PostHog project has one funnel configured: `first_run → first feature.create → second feature.create within 7 days`. That funnel is the north-star dashboard.
 
-Out of scope for MVP: dashboards beyond the one funnel, custom cohort analysis, A/B testing infrastructure, error reporting (Sentry is a separate question), session replay (not applicable to a CLI).
+Out of scope for *this* MVP: dashboards beyond the one funnel, custom cohort analysis, A/B testing infrastructure, session replay (not applicable to a CLI). Error reporting (Sentry) ships concurrently in W1 as a separate Feature per the sibling [`cli-error-telemetry`](cli-error-telemetry.md) Idea — see that Idea for scope and trade rationale.
 
 ## Not Doing (and Why)
 
