@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -174,5 +175,109 @@ func TestIdeaRelocateCLI_MissingToRepoRejected(t *testing.T) {
 	_, _, err := runIdeaRelocateCLI(t, source, "foo")
 	if err == nil {
 		t.Fatal("expected error when --to-repo is missing")
+	}
+}
+
+// initGitRepoForTest runs git init + commit-all in root. After this
+// call the working tree is clean from git's perspective.
+func initGitRepoForTest(t *testing.T, root string) {
+	t.Helper()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s in %s: %v\n%s", strings.Join(args, " "), root, err, out)
+		}
+	}
+	run("init", "--initial-branch=main")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "Test")
+	run("add", "-A")
+	run("commit", "--no-gpg-sign", "-m", "initial")
+}
+
+// AC: preflight-source-dirty
+func TestIdeaRelocateCLI_PreflightSourceDirty(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+
+	// Modify foo.md after the initial commit — unstaged dirty.
+	if err := os.WriteFile(
+		filepath.Join(source, "spec", "ideas", "foo.md"),
+		[]byte("# Idea: foo\n\nedited after commit\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if got := exitCodeFromErr(t, err); got != exitcode.DirtyTree {
+		t.Errorf("exit code: got %d want %d (DirtyTree)", got, exitcode.DirtyTree)
+	}
+	if !strings.Contains(err.Error(), "spec/ideas/foo.md") {
+		t.Errorf("error should name the dirty source path; got: %v", err)
+	}
+}
+
+// AC: preflight-sibling-with-references-dirty
+func TestIdeaRelocateCLI_PreflightSiblingWithReferencesDirty(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	sib := stageRelocateRepo(t, parent, "sib", "sib")
+	writeIdeaFile(t, source, "foo")
+
+	// Sibling has a Feature that references the slug via markdown link.
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	refFile := filepath.Join(sib, "spec", "features", "x", "README.md")
+	if err := os.WriteFile(refFile,
+		[]byte("# Feature: X\n\nSee [the Idea](../../../src/spec/ideas/foo.md).\n"), 0o644); err != nil {
+		t.Fatalf("write ref: %v", err)
+	}
+
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+	initGitRepoForTest(t, sib)
+
+	// Now dirty the sibling reference file.
+	if err := os.WriteFile(refFile,
+		[]byte("# Feature: X\n\nSee [the Idea](../../../src/spec/ideas/foo.md). modified\n"), 0o644); err != nil {
+		t.Fatalf("modify ref: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if got := exitCodeFromErr(t, err); got != exitcode.DirtyTree {
+		t.Errorf("exit code: got %d want %d (DirtyTree)", got, exitcode.DirtyTree)
+	}
+	// Error message should name the sibling repo path AND the affected file.
+	msg := err.Error()
+	if !strings.Contains(msg, sib) {
+		t.Errorf("error should name sibling repo %q; got: %s", sib, msg)
+	}
+	if !strings.Contains(msg, filepath.Join("spec", "features", "x", "README.md")) {
+		t.Errorf("error should name sibling ref path; got: %s", msg)
+	}
+}
+
+// Sanity: when everything is git-clean, preflight passes and the verb
+// reaches Task 1's resolution-summary output.
+func TestIdeaRelocateCLI_PreflightCleanAllowsThrough(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+	initGitRepoForTest(t, source)
+	initGitRepoForTest(t, target)
+
+	stdout, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(stdout, "resolved:") {
+		t.Errorf("expected resolution-summary output, got: %s", stdout)
 	}
 }

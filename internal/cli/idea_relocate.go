@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
@@ -73,6 +74,12 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Task 2: pre-flight clean-tree checks. Abort with exit 7 (DirtyTree)
+	// if any path that would be modified has uncommitted changes.
+	if err := runPreflight(specRoot, source, target, slug); err != nil {
+		return err
+	}
+
 	// Task 1 scaffold output. Later tasks replace this with the
 	// per-affected-repo lines + summary line specified by
 	// cli/idea/relocate#req:stdout-format.
@@ -80,4 +87,73 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		"resolved: %s (%s) → %s\n",
 		source.Path, source.Kind, target.Path)
 	return nil
+}
+
+// runPreflight assembles the full preflight subject list (source
+// artifact, source index, target destination, target index, and every
+// referencing file in every sibling repo) and returns a DirtyTreeError
+// when any subject has uncommitted changes. Source and target are
+// excluded from the sibling scan to avoid double-checking.
+func runPreflight(
+	specRoot string,
+	source idearelocate.SourceArtifact,
+	target idearelocate.TargetRepo,
+	slug string,
+) error {
+	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
+	}
+	siblings := excludeRepoPaths(allSiblings, specRoot, target.Path)
+
+	sourceRel, err := filepath.Rel(specRoot, source.Path)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("computing source relative path: %v", err)
+	}
+	// Destination preserves the source's relative path within the new
+	// repo, so target's preflight path equals the source's relative path.
+	targetRel := sourceRel
+
+	subjects, err := idearelocate.PreflightSubjectsForRelocate(
+		specRoot, sourceRel,
+		target.Path, targetRel,
+		siblings, slug,
+	)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("collecting preflight subjects: %v", err)
+	}
+
+	dirty, err := idearelocate.CheckPreflight(subjects)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("preflight check: %v", err)
+	}
+	return idearelocate.DirtyTreeError(dirty)
+}
+
+// excludeRepoPaths returns the subset of siblings whose Path is not
+// path-equivalent (after EvalSymlinks) to any of the supplied
+// excludePaths. Used to drop the source and target repos from the
+// sibling list before scanning for cross-repo references.
+func excludeRepoPaths(siblings []idearelocate.TargetRepo, excludePaths ...string) []idearelocate.TargetRepo {
+	canon := func(p string) string {
+		if abs, err := filepath.Abs(p); err == nil {
+			if r, err := filepath.EvalSymlinks(abs); err == nil {
+				return filepath.Clean(r)
+			}
+			return filepath.Clean(abs)
+		}
+		return filepath.Clean(p)
+	}
+	excl := make(map[string]struct{}, len(excludePaths))
+	for _, p := range excludePaths {
+		excl[canon(p)] = struct{}{}
+	}
+	out := make([]idearelocate.TargetRepo, 0, len(siblings))
+	for _, s := range siblings {
+		if _, skip := excl[canon(s.Path)]; skip {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
