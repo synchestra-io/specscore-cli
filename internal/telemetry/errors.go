@@ -29,6 +29,15 @@ var sentryDSN = ""
 // error keeps this false; transmitErrors checks this before sending.
 var errorsClientInitialized bool
 
+// transmitErrorsTestPanic is a test-only injection point for verifying the
+// defensive recover() in transmitErrors. Production code leaves this nil;
+// tests in errors_test.go set it to a panicking function to confirm
+// REQ:transmit-callback-must-not-mask-exit-code's invariant. Exposed at
+// package level (rather than a build-tag-gated file) so it stays trivially
+// observable — production callers never invoke it because transmitErrors
+// only calls it under the test hook.
+var transmitErrorsTestPanic func()
+
 func init() {
 	RegisterChannel(ChannelCrashReports, transmitErrors)
 	if sentryDSN == "" {
@@ -62,18 +71,38 @@ func init() {
 // the no-op contract when sentryDSN was not injected at build time.
 //
 // Per the registry contract (callBounded in registry.go), this function
-// runs inside a 500 ms bounded goroutine with its own deferred recover(),
-// so any panic here is caught silently and the user's command exit code is
-// preserved. Task 3 elaborates the conditional emit + safety properties.
-// This stub establishes the dispatch path and the no-op-when-no-DSN
-// behavior; Task 3 + Task 4 fill in the trigger conditions and full event
-// shape.
+// already runs inside a 500 ms bounded goroutine with an outer deferred
+// recover() at the registry layer. The INNER defer recover() installed
+// here is a defense-in-depth measure per
+// cli/telemetry/errors-telemetry#req:transmit-callback-must-not-mask-exit-
+// code: a scrubber bug, SDK panic, or malformed payload caught here is
+// dropped silently, the in-goroutine error is suppressed, and the user's
+// original exit code stays intact.
+//
+// The conditional emit logic (panic-recovered OR exit ≥10 only; panic
+// priority; single event per invocation) lands in Task 4. This commit
+// adds:
+//   - the defensive recover (REQ:transmit-callback-must-not-mask-exit-code)
+//   - the release-tag application from Event.CLIVersion
+//     (REQ:sentry-release-tag)
 func transmitErrors(ctx context.Context, event Event) {
-	_ = ctx
-	_ = event
+	defer func() { _ = recover() }()
 	if !errorsClientInitialized {
 		return
 	}
-	// Full conditional-emit + Sentry CaptureEvent logic lands in Task 3
-	// and Task 4. This commit only wires the package + registration.
+	_ = ctx
+	// Test injection point — production callers leave this nil. If set,
+	// the panic exercises the defer recover() above.
+	if transmitErrorsTestPanic != nil {
+		transmitErrorsTestPanic()
+	}
+	// Apply the release tag derived from Event.CLIVersion. Per
+	// REQ:sentry-release-tag every event MUST carry release=cli_version
+	// so Sentry correlates signatures to releases.
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("release", event.CLIVersion)
+		// Conditional emit + ScrubFrame + ScrubMessage wiring lands in
+		// Task 4. This commit only proves the release-tag application
+		// path runs cleanly with the defensive recover in place.
+	})
 }
