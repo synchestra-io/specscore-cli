@@ -37,6 +37,13 @@ var invocation runtimeState
 // root command. cobra populates it before PersistentPreRun fires.
 var noTelemetryFlag bool
 
+// callerFlag is the persistent --caller string flag bound at the root
+// command, per cli/telemetry/usage-telemetry#req:caller-flag. cobra
+// populates it before PersistentPreRun fires. Empty means "flag not
+// supplied"; precedence falls through to SPECSCORE_CALLER then to the
+// default "cli" via telemetry.ResolveCaller.
+var callerFlag string
+
 // firstRunNoticeWriter is the destination for the first-run notice. Defaults
 // to os.Stderr; tests can substitute.
 var firstRunNoticeWriter io.Writer = os.Stderr
@@ -56,13 +63,16 @@ func defaultFirstRunNotice() string {
 		"(omit channel or use `all` to disable all telemetry)\n"
 }
 
-// attachTelemetry installs the persistent --no-telemetry flag and the
-// PersistentPreRun hook on the root cobra command. The post-Execute
+// attachTelemetry installs the persistent --no-telemetry + --caller flags
+// and the PersistentPreRun hook on the root cobra command. The post-Execute
 // emission step is wired in Run() after fang.Execute returns, so the
 // actual exit code is known.
 func attachTelemetry(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().BoolVar(&noTelemetryFlag, "no-telemetry", false,
 		"Disable telemetry for this invocation. See docs/telemetry.md.")
+	rootCmd.PersistentFlags().StringVar(&callerFlag, "caller", "",
+		"AI coding agent driving the CLI (e.g. claude, codex, aider). "+
+			"See docs/telemetry.md for the full list. Default: cli (human at terminal).")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, _ []string) {
 		preRun(cmd)
@@ -164,6 +174,7 @@ func emitInvocationEvent(runErr error) {
 		CLIVersion: version,
 		OS:         runtime.GOOS,
 		Arch:       runtime.GOARCH,
+		Caller:     telemetry.ResolveCaller(callerFlag, os.Getenv("SPECSCORE_CALLER")),
 		InstallID:  invocation.InstallID,
 		IsFirstRun: invocation.IsFirstRun,
 	}

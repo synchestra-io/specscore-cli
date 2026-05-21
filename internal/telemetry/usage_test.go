@@ -40,3 +40,45 @@ func TestTransmitUsage_NoKeyIsNoOp(t *testing.T) {
 		CLIVersion: "0.0.0-test",
 	})
 }
+
+// TestResolveCaller covers cli/telemetry/usage-telemetry#ac:
+// caller-resolution-precedence + caller-enum-coercion.
+func TestResolveCaller(t *testing.T) {
+	cases := []struct {
+		name string
+		flag string
+		env  string
+		want string
+	}{
+		{"default-when-neither-set", "", "", CallerCLI},
+		{"flag-only", "claude", "", "claude"},
+		{"env-only", "", "codex", "codex"},
+		{"flag-beats-env", "claude", "codex", "claude"},
+		{"empty-flag-falls-through-to-env", "", "aider", "aider"},
+		{"unknown-coerces-to-other-via-flag", "my-custom-tag", "", CallerOther},
+		{"unknown-coerces-to-other-via-env", "", "rando-agent", CallerOther},
+		{"pi-dev-recognized", "pi.dev", "", "pi.dev"},
+		{"antigravity-google-recognized", "antigravity.google", "", "antigravity.google"},
+		{"amazon-q-recognized", "amazon-q", "", "amazon-q"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ResolveCaller(tc.flag, tc.env)
+			if got != tc.want {
+				t.Errorf("ResolveCaller(%q, %q) = %q, want %q", tc.flag, tc.env, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestCallerEnumKnown_HasExpectedSize is a regression guard: the closed enum
+// is documented in docs/telemetry.md as 20 values. If someone adds or removes
+// a value without updating the doc table, this test fires.
+func TestCallerEnumKnown_HasExpectedSize(t *testing.T) {
+	const want = 20
+	if got := len(CallerEnumKnown); got != want {
+		t.Errorf("CallerEnumKnown has %d entries, expected %d; "+
+			"if the change is intentional, update docs/telemetry.md table AND this test",
+			got, want)
+	}
+}
