@@ -105,12 +105,19 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return exitcode.UnexpectedErrorf("computing source repo-relative path: %v", err)
 	}
 
-	// Task 3: destination-collision check + file copy + in-file rewrite
-	// + source delete. ApplyMutation guarantees no mutations on
-	// collision (exit 1); on mid-sequence I/O failure it returns
-	// without rollback — Task 6 will wrap it with the pre-commit
-	// rollback logic.
-	mutation, err := idearelocate.ApplyMutation(specRoot, source, target)
+	// Task 3 + Task 4 + Task 6: mutate + link cleanup with pre-commit
+	// rollback. ExecutePreCommitPhase wraps ApplyMutation (file copy +
+	// rewrite + source delete) and UpdateCrossRepoLinks (cross-repo
+	// link rewriting). On any I/O failure during these phases (not the
+	// destination-collision case, which guarantees zero mutations), it
+	// restores on-disk state to its pre-invocation form and returns
+	// an exit-10 error naming the failed step and the rollback actions.
+	scanRepos := make([]idearelocate.TargetRepo, 0, 2+len(otherSiblings))
+	scanRepos = append(scanRepos, sourceRepo, target)
+	scanRepos = append(scanRepos, otherSiblings...)
+	mutation, linkResults, err := idearelocate.ExecutePreCommitPhase(
+		specRoot, source, target, scanRepos, slug,
+	)
 	if err != nil {
 		return err
 	}
@@ -120,16 +127,6 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return exitcode.UnexpectedErrorf("computing artifact target-relative path: %v", err)
 	}
 
-	// Task 4: cross-repo link cleanup. Same-repo links become relative
-	// paths; cross-repo links become full GitHub URLs. Bold-prefixed
-	// metadata lines are preserved.
-	scanRepos := make([]idearelocate.TargetRepo, 0, 2+len(otherSiblings))
-	scanRepos = append(scanRepos, sourceRepo, target)
-	scanRepos = append(scanRepos, otherSiblings...)
-	linkResults, err := idearelocate.UpdateCrossRepoLinks(scanRepos, target, slug, targetRel)
-	if err != nil {
-		return err
-	}
 	linkUpdates := make(map[string][]string, len(linkResults))
 	for _, r := range linkResults {
 		linkUpdates[r.RepoPath] = r.Updated

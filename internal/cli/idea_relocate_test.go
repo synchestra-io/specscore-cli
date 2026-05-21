@@ -656,6 +656,55 @@ func TestIdeaRelocateCLI_NoCommitFlagStagesEverywhere(t *testing.T) {
 	}
 }
 
+// AC: io-failure-rollback-pre-commit
+func TestIdeaRelocateCLI_IOFailureRollbackPreCommit(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	target := stageRelocateRepo(t, parent, "specscore", "specscore")
+	writeIdeaFile(t, source, "foo")
+
+	srcArtifact := filepath.Join(source, "spec", "ideas", "foo.md")
+	srcBefore, err := os.ReadFile(srcArtifact)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+
+	// Make target's spec/ideas/ writable-by-nobody so WriteFile in
+	// ApplyMutation fails. t.Cleanup restores perms so t.TempDir can
+	// remove the tree.
+	targetIdeas := filepath.Join(target, "spec", "ideas")
+	if err := os.Chmod(targetIdeas, 0o555); err != nil {
+		t.Fatalf("chmod 555: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(targetIdeas, 0o755) })
+
+	_, _, relocateErr := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if got := exitCodeFromErr(t, relocateErr); got != exitcode.Unexpected {
+		t.Errorf("exit code: got %d want %d (IOFailure)", got, exitcode.Unexpected)
+	}
+
+	// Source artifact remains at original path with unchanged content.
+	srcAfter, err := os.ReadFile(srcArtifact)
+	if err != nil {
+		t.Fatalf("source artifact missing after rollback: %v", err)
+	}
+	if string(srcAfter) != string(srcBefore) {
+		t.Errorf("source artifact content changed by failed relocate; before=%q after=%q", srcBefore, srcAfter)
+	}
+
+	// No partial copy at target.
+	tgtArtifact := filepath.Join(target, "spec", "ideas", "foo.md")
+	if _, err := os.Stat(tgtArtifact); err == nil {
+		t.Errorf("target should have no partial copy at %s", tgtArtifact)
+	}
+
+	// Stderr names the failed step.
+	msg := relocateErr.Error()
+	if !strings.Contains(msg, "pre-commit-phase I/O failure") {
+		t.Errorf("stderr should name the failed step; got: %s", msg)
+	}
+}
+
 // AC: commit-failure-mid-flight
 func TestIdeaRelocateCLI_CommitFailureMidFlight(t *testing.T) {
 	parent := t.TempDir()
