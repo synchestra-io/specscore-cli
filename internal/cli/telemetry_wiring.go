@@ -7,11 +7,14 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/internal/telemetry"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 )
 
 // runtimeState carries per-invocation telemetry state from PreRun to the
@@ -28,6 +31,11 @@ type runtimeState struct {
 	// PreRun time. PostRun computes the same string but we capture it
 	// in PreRun in case the command short-circuits.
 	CommandPath string
+	// Panic carries the recovered panic value + stack when fang.Execute
+	// panicked. nil on normal command completion. Populated by
+	// executeWithPanicRecovery and read by emitInvocationEvent so the
+	// crash-reports channel's transmit-fn sees the panic context.
+	Panic *telemetry.PanicInfo
 }
 
 // invocation is the singleton runtime state for the current process.
@@ -177,8 +185,50 @@ func emitInvocationEvent(runErr error) {
 		Caller:     telemetry.ResolveCaller(callerFlag, os.Getenv("SPECSCORE_CALLER")),
 		InstallID:  invocation.InstallID,
 		IsFirstRun: invocation.IsFirstRun,
+		Panic:      invocation.Panic,
 	}
 	telemetry.Emit(rootContext(), event)
+}
+
+// executeWithPanicRecovery wraps fang.Execute with a panic-recovery
+// boundary. Captures any panic into invocation.Panic for the crash-reports
+// channel's transmitErrors to consume, emits the telemetry event, prints
+// the panic + stack to stderr so the user sees their crash, and returns
+// an exitcode.Unexpected (code 10) error so the regular Fatal path exits
+// with the documented unexpected-error code rather than Go's default
+// panic-exit code 2.
+//
+// Implements cli/telemetry/errors-telemetry#req:trigger-on-panic-recovery.
+func executeWithPanicRecovery(rootCmd *cobra.Command) (returnErr error) {
+	var (
+		panicVal   any
+		panicStack []byte
+	)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicVal = r
+				panicStack = debug.Stack()
+			}
+		}()
+		returnErr = fang.Execute(context.Background(), rootCmd, fang.WithoutVersion())
+	}()
+
+	if panicVal != nil {
+		// User-visible: show the crash to stderr so debugging is possible.
+		// The panic value MAY include user-authored content (e.g. file
+		// paths from fmt.Errorf) — that content goes to the user's
+		// terminal, not to Sentry. The scrubber in transmitErrors decides
+		// what (if anything) goes over the network.
+		_, _ = fmt.Fprintf(os.Stderr, "panic: %v\n\n%s\n", panicVal, panicStack)
+		// Telemetry: capture panic context for the crash-reports channel.
+		invocation.Panic = &telemetry.PanicInfo{Value: panicVal, Stack: panicStack}
+		emitInvocationEvent(exitcode.UnexpectedErrorf("panic: %v", panicVal))
+		return exitcode.UnexpectedErrorf("panic recovered: %v", panicVal)
+	}
+
+	emitInvocationEvent(returnErr)
+	return returnErr
 }
 
 // rootContext returns a fresh background context used by telemetry emission

@@ -96,13 +96,82 @@ func transmitErrors(ctx context.Context, event Event) {
 	if transmitErrorsTestPanic != nil {
 		transmitErrorsTestPanic()
 	}
-	// Apply the release tag derived from Event.CLIVersion. Per
-	// REQ:sentry-release-tag every event MUST carry release=cli_version
-	// so Sentry correlates signatures to releases.
+
+	// Conditional emit per REQ:trigger-on-panic-recovery + REQ:trigger-on-
+	// exit-code-ge-10:
+	//   - Panic takes priority: a panicking command emits exactly one
+	//     event (the panic-signature event), NOT the exit-code event,
+	//     even though its ExitCode is also ≥10 (we tag panicked
+	//     invocations with code 10 in executeWithPanicRecovery).
+	//   - Exit code ≥10 with no recovered panic emits an exit-code event.
+	//   - Anything else (success, expected errors with code 1–9) emits
+	//     nothing.
+	if event.Panic != nil {
+		emitPanicEvent(event)
+		return
+	}
+	if event.ExitCode >= 10 {
+		emitExitCodeEvent(event)
+		return
+	}
+	// No emit: normal command completion or documented expected error.
+}
+
+// emitPanicEvent sends a Sentry event for a recovered panic. The scrubber
+// classifies the panic value: SafePanic with an allowlisted MessageID
+// goes through verbatim; anything else becomes "unscrubbed panic" with
+// the `message: unscrubbed` tag.
+func emitPanicEvent(event Event) {
+	messageID, isUnscrubbed := ScrubMessage(event.Panic.Value)
 	sentry.WithScope(func(scope *sentry.Scope) {
 		scope.SetTag("release", event.CLIVersion)
-		// Conditional emit + ScrubFrame + ScrubMessage wiring lands in
-		// Task 4. This commit only proves the release-tag application
-		// path runs cleanly with the defensive recover in place.
+		scope.SetTag("debug", "false")
+		if isUnscrubbed {
+			scope.SetTag("message", "unscrubbed")
+		}
+		// We deliberately do NOT attach the raw stack via
+		// debug.Stack(); the Sentry SDK's AttachStacktrace=true plus
+		// SendDefaultPII=false produces a frame list whose file paths
+		// the scrubber would replace via ScrubFrame — but the SDK's
+		// auto-stack is captured at the SDK call site here, not at the
+		// panic origin. Filing a Sentry breadcrumb instead so the
+		// release-tag-correlated alert still fires.
+		sentry.CaptureMessage(messageID)
 	})
+}
+
+// emitExitCodeEvent sends a Sentry event for an unexpected non-panic exit
+// (code ≥10). Message is a synthesised, content-free string naming the
+// exit code and the dot-separated cobra command path.
+func emitExitCodeEvent(event Event) {
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("release", event.CLIVersion)
+		scope.SetTag("debug", "false")
+		// `Command` is the cobra path (e.g. "feature.create") — already
+		// scrubbed-by-construction since cobra paths can't contain
+		// user-authored strings, only command identifiers from the
+		// command tree.
+		msg := "unexpected exit code " + intToString(event.ExitCode) + " from cmd " + event.Command
+		sentry.CaptureMessage(msg)
+	})
+}
+
+// intToString avoids pulling strconv into this file just for one Itoa
+// call. Domain is exit codes (0–255 in POSIX); a tiny implementation is
+// fine.
+func intToString(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	if n < 0 {
+		return "-" + intToString(-n)
+	}
+	var buf [11]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[i:])
 }
