@@ -49,12 +49,11 @@ var firstRunNoticeWriter io.Writer = os.Stderr
 var firstRunNoticeFunc = defaultFirstRunNotice
 
 func defaultFirstRunNotice() string {
-	return "SpecScore collects anonymous usage and crash telemetry to find bugs and improve the CLI. " +
-		"Channels (both EU-hosted): usage-stats (PostHog), crash-reports (Sentry).\n" +
-		"What we do and don't collect: docs/telemetry.md\n" +
-		"Disable anytime: `specscore telemetry disable usage-stats` or " +
-		"`specscore telemetry disable crash-reports` (or `SPECSCORE_TELEMETRY=0`). " +
-		"CI is auto-disabled.\n"
+	return "SpecScore collects 2 anonymous telemetry streams (EU-hosted):\n" +
+		"  - usage-stats (PostHog product analytics)\n" +
+		"  - crash-reports (Sentry)\n" +
+		"Disable anytime: `specscore telemetry disable [channel-id]` " +
+		"(omit channel or '*' to disable all telemetry)\n"
 }
 
 // attachTelemetry installs the persistent --no-telemetry flag and the

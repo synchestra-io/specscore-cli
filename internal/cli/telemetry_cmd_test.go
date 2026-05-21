@@ -61,6 +61,42 @@ func TestTelemetryStatus_SingleChannel(t *testing.T) {
 	}
 }
 
+func TestValidateChannelArg_StarSentinelMeansAllChannels(t *testing.T) {
+	ch, hasArg, err := validateChannelArg([]string{"*"})
+	if err != nil {
+		t.Fatalf("validateChannelArg(*): unexpected error %v", err)
+	}
+	if hasArg {
+		t.Errorf("`*` should be treated as no-arg (hasArg=false), got hasArg=true with channel=%q", ch)
+	}
+	if ch != "" {
+		t.Errorf("`*` should not yield a real channel name, got %q", ch)
+	}
+}
+
+func TestTelemetryDisable_StarSentinel_EquivalentToNoArg(t *testing.T) {
+	withTempHomeForCLI(t)
+	var buf bytes.Buffer
+	// First, disable with no-arg.
+	if err := mutateState(&buf, "", false, false); err != nil {
+		t.Fatalf("disable no-arg: %v", err)
+	}
+	want := buf.String()
+	buf.Reset()
+	// Reset state and disable with `*`.
+	withTempHomeForCLI(t)
+	single, hasArg, err := validateChannelArg([]string{"*"})
+	if err != nil {
+		t.Fatalf("validate *: %v", err)
+	}
+	if err := mutateState(&buf, single, hasArg, false); err != nil {
+		t.Fatalf("disable *: %v", err)
+	}
+	if buf.String() != want {
+		t.Errorf("disable * confirmation should match no-arg: got %q want %q", buf.String(), want)
+	}
+}
+
 func TestValidateChannelArg_UnknownExits2(t *testing.T) {
 	_, _, err := validateChannelArg([]string{"unknown-typo"})
 	if err == nil {
@@ -144,20 +180,17 @@ func TestPreRun_FirstRunNoticeShownOnce(t *testing.T) {
 	cmd := newRootCommandForTest()
 	preRun(cmd)
 	first := notice.String()
-	if !strings.Contains(first, "SpecScore") {
-		t.Errorf("first-run notice should mention SpecScore, got %q", first)
-	}
-	if !strings.Contains(first, "usage-stats") {
-		t.Errorf("first-run notice should name usage-stats, got %q", first)
-	}
-	if !strings.Contains(first, "crash-reports") {
-		t.Errorf("first-run notice should name crash-reports, got %q", first)
-	}
-	if !strings.Contains(first, "docs/telemetry.md") {
-		t.Errorf("first-run notice should link to docs/telemetry.md, got %q", first)
-	}
-	if !strings.Contains(first, "SPECSCORE_TELEMETRY=0") {
-		t.Errorf("first-run notice should mention SPECSCORE_TELEMETRY=0, got %q", first)
+	// Required literal strings per REQ:first-run-notice-content.
+	for _, want := range []string{
+		"SpecScore",
+		"usage-stats",
+		"crash-reports",
+		"specscore telemetry disable [channel-id]",
+		"*",
+	} {
+		if !strings.Contains(first, want) {
+			t.Errorf("first-run notice missing required literal %q; got:\n%s", want, first)
+		}
 	}
 
 	// Verify install_id was created.
