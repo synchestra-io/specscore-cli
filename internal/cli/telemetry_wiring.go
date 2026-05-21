@@ -53,7 +53,7 @@ func defaultFirstRunNotice() string {
 		"  - usage-stats (PostHog product analytics)\n" +
 		"  - crash-reports (Sentry)\n" +
 		"Disable anytime: `specscore telemetry disable [channel-id]` " +
-		"(omit channel or '*' to disable all telemetry)\n"
+		"(omit channel or use `all` to disable all telemetry)\n"
 }
 
 // attachTelemetry installs the persistent --no-telemetry flag and the

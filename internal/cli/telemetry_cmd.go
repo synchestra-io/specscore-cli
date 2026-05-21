@@ -43,13 +43,13 @@ func knownChannelArgs() []string {
 // allChannelsSentinel is the explicit "all channels" form accepted by
 // `specscore telemetry {status,enable,disable}` per
 // cli/telemetry#req:telemetry-subcommand-surface. Equivalent to passing no
-// channel argument. Users in interactive shells MUST quote it (`'*'` or
-// `"*"`) to prevent shell glob expansion.
-const allChannelsSentinel = "*"
+// channel argument. Chosen over `*` because `*` is shell-glob-expanded in
+// interactive use; `all` is shell-neutral and conventional.
+const allChannelsSentinel = "all"
 
 // validateChannelArg parses the optional positional channel argument.
 // Returns (channelName, true, nil) for a real channel name.
-// Returns ("", false, nil) for no-arg OR the `*` sentinel — both mean
+// Returns ("", false, nil) for no-arg OR the `all` sentinel — both mean
 // "operate on all channels."
 // Returns ("", false, exitErr{code:2}) for any unrecognized value.
 func validateChannelArg(args []string) (telemetry.ChannelName, bool, error) {
@@ -64,7 +64,7 @@ func validateChannelArg(args []string) (telemetry.ChannelName, bool, error) {
 	if !slices.Contains(known, want) {
 		return "", false, exitErr{
 			code: 2,
-			msg: fmt.Sprintf("unknown channel %q; known channels: %s (use '*' or omit for all)",
+			msg: fmt.Sprintf("unknown channel %q; known channels: %s (use `all` or omit for all)",
 				want, strings.Join(known, ", ")),
 		}
 	}
@@ -87,14 +87,12 @@ func telemetryStatusCommand() *cobra.Command {
 }
 
 // channelArgHelp is the shared --help long description for the [channel]
-// positional on status/enable/disable subcommands. Calls out the `*` sentinel
-// AND the shell-quoting requirement per
-// cli/telemetry#req:telemetry-subcommand-surface.
+// positional on status/enable/disable subcommands. Names the `all` sentinel
+// per cli/telemetry#req:telemetry-subcommand-surface.
 const channelArgHelp = "" +
-	"With no [channel] argument or with the explicit sentinel '*' (quoted in " +
-	"interactive shells to prevent glob expansion), operates on ALL registered " +
-	"channels. With a channel name (e.g. usage-stats, crash-reports), operates " +
-	"only on that channel."
+	"With no [channel] argument or with the explicit sentinel `all`, operates " +
+	"on ALL registered channels. With a channel name (e.g. usage-stats, " +
+	"crash-reports), operates only on that channel."
 
 func telemetryEnableCommand() *cobra.Command {
 	return &cobra.Command{

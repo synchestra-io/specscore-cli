@@ -93,10 +93,10 @@ The CLI MUST provide a `specscore telemetry` root subcommand with three verbs, e
 |---|---|
 | `specscore telemetry status` | Print, to stdout, the current opt-in/out state for every registered channel and the source of each setting (flag / env var / CI / persistent state / default). Exit `0`. |
 | `specscore telemetry status <channel>` | Print state for the named channel only. Unknown channel name exits `2` with a message listing the known channels. |
-| `specscore telemetry enable [channel]` | With no channel OR with the literal `*` channel argument: write `enabled: true` to `~/.specscore/telemetry.yaml` (applies to all channels). With a real channel name: write the per-channel `<channel>: true` override. Print confirmation. Exit `0`. |
-| `specscore telemetry disable [channel]` | Symmetric to `enable`. With no channel OR `*`: global `enabled: false`. With a real channel name: per-channel `<channel>: false`. |
+| `specscore telemetry enable [channel]` | With no channel OR with the literal `all` channel argument: write `enabled: true` to `~/.specscore/telemetry.yaml` (applies to all channels). With a real channel name: write the per-channel `<channel>: true` override. Print confirmation. Exit `0`. |
+| `specscore telemetry disable [channel]` | Symmetric to `enable`. With no channel OR `all`: global `enabled: false`. With a real channel name: per-channel `<channel>: false`. |
 
-Known channel names are owned by the channel registry — see REQ:channel-registry. The MVP registry contains exactly two: `usage-stats` and `crash-reports`. The literal string `*` is reserved as the explicit "all channels" sentinel and MUST NOT be a registered channel name. Users in interactive shells MUST quote `*` (`'*'` or `"*"`) to prevent shell glob expansion against the current working directory; this MUST be called out in `--help` for the `enable`/`disable` subcommands. The parent Feature owns all subcommand parsing, dispatch, and persistent-state writes; child Features do NOT add their own cobra subcommands — they register a channel name and a transmission callback with the parent.
+Known channel names are owned by the channel registry — see REQ:channel-registry. The MVP registry contains exactly two: `usage-stats` and `crash-reports`. The literal string `all` is reserved as the explicit "all channels" sentinel and MUST NOT be a registered channel name (chosen over `*` because `*` is shell-glob-expanded in interactive use and would require users to quote it, an avoidable fragility). The parent Feature owns all subcommand parsing, dispatch, and persistent-state writes; child Features do NOT add their own cobra subcommands — they register a channel name and a transmission callback with the parent.
 
 #### REQ: channel-registry
 
@@ -133,14 +133,14 @@ The notice MUST contain these three blocks, in this order:
 2. **Channel list:** a bullet list with exactly two items, in this order:
    - the `usage-stats` channel with a brief parenthetical naming the vendor/role (e.g. "PostHog product analytics")
    - the `crash-reports` channel with a brief parenthetical naming the vendor (e.g. "Sentry")
-3. **Disable instruction:** a single line naming the literal command form `specscore telemetry disable [channel-id]` and explaining that omitting the channel argument OR passing `*` (which MUST be shell-quoted) disables all telemetry. The notice MUST surface the channel-id placeholder; it MUST NOT enumerate the per-channel disable commands inline (the placeholder form is the canonical surface that scales as new channels are added).
+3. **Disable instruction:** a single line naming the literal command form `specscore telemetry disable [channel-id]` and explaining that omitting the channel argument OR passing the literal `all` disables all telemetry. The notice MUST surface the channel-id placeholder; it MUST NOT enumerate the per-channel disable commands inline (the placeholder form is the canonical surface that scales as new channels are added).
 
 The exact wording MAY be tuned at implementation time, but the following are normative:
 - The intro line, the channel list, and the disable line in that order.
 - The proper-noun "SpecScore" capitalization.
 - The two channel names `usage-stats` and `crash-reports` appear by their exact identifiers.
 - The literal string `specscore telemetry disable [channel-id]` appears.
-- The literal string `*` appears as the explicit "all channels" sentinel.
+- The literal string `all` appears as the explicit "all channels" sentinel.
 
 Deliberately NOT in the notice (still findable via `--help`, README, and `docs/telemetry.md`):
 - A link to `docs/telemetry.md` (REQ:docs-telemetry-md-skeleton still requires the doc to exist; users reach it from elsewhere).
@@ -322,8 +322,8 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs (file-presence, exi
 **Requirements:** cli/telemetry#req:telemetry-subcommand-surface, cli/telemetry#req:persistent-state-file-shape
 
 **Given** a system with no `~/.specscore/telemetry.yaml`
-**When** `specscore telemetry disable` runs (no channel arg), then `specscore telemetry status` runs, then `specscore telemetry enable crash-reports` runs (channel positional), then `specscore telemetry status` runs again, then `specscore telemetry disable '*'` runs (the all-channels sentinel, shell-quoted)
-**Then** after the no-arg disable: `~/.specscore/telemetry.yaml` exists, contains the canonical schema-pointer comment on line 1, and `enabled: false`; the subsequent `status` reports both channels disabled with source `persistent state`. After the per-channel enable: the file now contains `enabled: false` AND `crash-reports: true`; the subsequent `status` reports `usage-stats: disabled` and `crash-reports: enabled` (per-channel override beats global). After `disable '*'`: the effect MUST be identical to a no-arg disable — `enabled: false` written, any prior per-channel `crash-reports` override preserved or cleared per the parent's write contract (implementation MAY clear per-channel overrides on a `*` operation; current behavior is to leave them). The file MUST contain no keys other than those documented in REQ:persistent-state-file-shape.
+**When** `specscore telemetry disable` runs (no channel arg), then `specscore telemetry status` runs, then `specscore telemetry enable crash-reports` runs (channel positional), then `specscore telemetry status` runs again, then `specscore telemetry disable all` runs (the all-channels sentinel)
+**Then** after the no-arg disable: `~/.specscore/telemetry.yaml` exists, contains the canonical schema-pointer comment on line 1, and `enabled: false`; the subsequent `status` reports both channels disabled with source `persistent state`. After the per-channel enable: the file now contains `enabled: false` AND `crash-reports: true`; the subsequent `status` reports `usage-stats: disabled` and `crash-reports: enabled` (per-channel override beats global). After `disable all`: the effect MUST be identical to a no-arg disable — `enabled: false` written, any prior per-channel `crash-reports` override preserved or cleared per the parent's write contract (implementation MAY clear per-channel overrides on an `all` operation; current behavior is to leave them). The file MUST contain no keys other than those documented in REQ:persistent-state-file-shape.
 
 ### AC: first-run-notice-shown-once
 
@@ -331,7 +331,7 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs (file-presence, exi
 
 **Given** a clean home directory with no `~/.specscore/install_id`, no auto-disable env vars, and stderr captured
 **When** `specscore --version` runs once, then runs a second time
-**Then** the first invocation's stderr MUST contain the first-run notice per REQ:first-run-notice-content, specifically: the literal proper noun `SpecScore` appears; the literal channel identifiers `usage-stats` and `crash-reports` both appear; the literal string `specscore telemetry disable [channel-id]` appears; the literal `*` appears as the all-channels sentinel. The second invocation's stderr MUST NOT contain any of those literal strings (the install_id now exists; notice is suppressed).
+**Then** the first invocation's stderr MUST contain the first-run notice per REQ:first-run-notice-content, specifically: the literal proper noun `SpecScore` appears; the literal channel identifiers `usage-stats` and `crash-reports` both appear; the literal string `specscore telemetry disable [channel-id]` appears; the literal `all` appears as the all-channels sentinel. The second invocation's stderr MUST NOT contain any of those literal strings (the install_id now exists; notice is suppressed).
 
 ### AC: first-run-notice-suppressed-in-ci
 

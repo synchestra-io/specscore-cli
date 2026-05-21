@@ -61,20 +61,30 @@ func TestTelemetryStatus_SingleChannel(t *testing.T) {
 	}
 }
 
-func TestValidateChannelArg_StarSentinelMeansAllChannels(t *testing.T) {
-	ch, hasArg, err := validateChannelArg([]string{"*"})
+func TestValidateChannelArg_AllSentinelMeansAllChannels(t *testing.T) {
+	ch, hasArg, err := validateChannelArg([]string{"all"})
 	if err != nil {
-		t.Fatalf("validateChannelArg(*): unexpected error %v", err)
+		t.Fatalf("validateChannelArg(all): unexpected error %v", err)
 	}
 	if hasArg {
-		t.Errorf("`*` should be treated as no-arg (hasArg=false), got hasArg=true with channel=%q", ch)
+		t.Errorf("`all` should be treated as no-arg (hasArg=false), got hasArg=true with channel=%q", ch)
 	}
 	if ch != "" {
-		t.Errorf("`*` should not yield a real channel name, got %q", ch)
+		t.Errorf("`all` should not yield a real channel name, got %q", ch)
 	}
 }
 
-func TestTelemetryDisable_StarSentinel_EquivalentToNoArg(t *testing.T) {
+func TestValidateChannelArg_StarIsRejected(t *testing.T) {
+	// `*` is no longer the sentinel; it should fall through to the
+	// unknown-channel error path (exit 2). This guards against
+	// inadvertent re-introduction of `*`.
+	_, _, err := validateChannelArg([]string{"*"})
+	if err == nil {
+		t.Fatalf("expected `*` to be rejected as unknown channel")
+	}
+}
+
+func TestTelemetryDisable_AllSentinel_EquivalentToNoArg(t *testing.T) {
 	withTempHomeForCLI(t)
 	var buf bytes.Buffer
 	// First, disable with no-arg.
@@ -83,17 +93,17 @@ func TestTelemetryDisable_StarSentinel_EquivalentToNoArg(t *testing.T) {
 	}
 	want := buf.String()
 	buf.Reset()
-	// Reset state and disable with `*`.
+	// Reset state and disable with `all`.
 	withTempHomeForCLI(t)
-	single, hasArg, err := validateChannelArg([]string{"*"})
+	single, hasArg, err := validateChannelArg([]string{"all"})
 	if err != nil {
-		t.Fatalf("validate *: %v", err)
+		t.Fatalf("validate all: %v", err)
 	}
 	if err := mutateState(&buf, single, hasArg, false); err != nil {
-		t.Fatalf("disable *: %v", err)
+		t.Fatalf("disable all: %v", err)
 	}
 	if buf.String() != want {
-		t.Errorf("disable * confirmation should match no-arg: got %q want %q", buf.String(), want)
+		t.Errorf("disable all confirmation should match no-arg: got %q want %q", buf.String(), want)
 	}
 }
 
@@ -186,7 +196,7 @@ func TestPreRun_FirstRunNoticeShownOnce(t *testing.T) {
 		"usage-stats",
 		"crash-reports",
 		"specscore telemetry disable [channel-id]",
-		"*",
+		"all",
 	} {
 		if !strings.Contains(first, want) {
 			t.Errorf("first-run notice missing required literal %q; got:\n%s", want, first)
