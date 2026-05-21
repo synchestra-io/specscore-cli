@@ -36,6 +36,12 @@ builds:
       # `envOrDefault` keeps `goreleaser build --snapshot` working locally
       # when the secret isn't set.
       - -X github.com/specscore/specscore-cli/internal/telemetry.posthogWriteKey={{ envOrDefault "POSTHOG_WRITE_KEY" "" }}
+      # Sentry DSN — same pattern, injected from GitHub Actions secret
+      # SENTRY_DSN per cli/telemetry/errors-telemetry#req:sentry-dsn-
+      # embedded-at-build-time. The DSN encodes the EU region by virtue of
+      # its host (*.ingest.de.sentry.io). Empty value keeps the crash-
+      # reports channel registered but transmit no-ops.
+      - -X github.com/specscore/specscore-cli/internal/telemetry.sentryDSN={{ envOrDefault "SENTRY_DSN" "" }}
 
 archives:
   - id: specscore

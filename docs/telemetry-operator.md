@@ -54,18 +54,67 @@ steps require human action in the PostHog UI and GitHub repo settings.
 
 ---
 
+## 1b. Sentry project provisioning
+
+**One-time setup** (per
+`cli/telemetry/errors-telemetry#ac:sentry-alert-on-new-signature`).
+
+1. **Create the Sentry project**
+   - Region: **EU** (https://sentry.io/welcome/eu/).
+   - Name: **`specscore-cli`**.
+   - Platform: **Go**.
+
+2. **Capture the project DSN**
+   - Sentry → Project settings → Client Keys (DSN). Copy the DSN.
+   - It MUST be an EU DSN — the host should look like
+     `<key>@<org>.ingest.de.sentry.io`. The code does not validate this
+     at runtime; an inadvertent US DSN would route crash reports through
+     US infrastructure.
+
+3. **Store as a GitHub Actions secret**
+   - Repo settings → Secrets and variables → Actions → New repository
+     secret.
+   - Name: **`SENTRY_DSN`**.
+   - Value: the DSN from step 2.
+
+4. **Configure the new-signature alert rule**
+   - Sentry → Alerts → Create alert rule.
+   - Trigger: "a new issue is created" (Sentry's term for a new crash
+     signature).
+   - Filter: `release equals {latest_release}` AND `debug NOT equal "true"`
+     (the latter excludes `specscore debug error` invocations from
+     paging the founder).
+   - Action: send email to the maintainer's address. Slack DM or
+     webhook MAY be substituted later.
+   - Save the alert-rule permalink (Sentry exposes one per rule).
+
+5. **Record in the release notes**
+   - The v0.2.0 release notes MUST include the alert-rule permalink
+     AND quote the filter expression including the `debug != "true"`
+     exclusion clause, per the Plan's audit-trail requirement.
+   - Suggested form: "Sentry alert configured: <permalink> with filter
+     `release equals {latest_release} and debug not equal 'true'`."
+
+---
+
 ## 2. Verification after each release
 
 After a release ships:
 
-1. **Confirm events are arriving**: PostHog → Activity → Live events. Run
-   `specscore --version` locally with a release binary; an event should
-   appear within ~30 seconds.
+1. **Confirm events are arriving (usage-stats)**: PostHog → Activity → Live
+   events. Run `specscore --version` locally with a release binary; an event
+   should appear within ~30 seconds.
 2. **Confirm the funnel is collecting**: PostHog → the named funnel.
    First-run events should accumulate as users install.
-3. **Confirm dev builds DO NOT transmit**: build with `goreleaser build
-   --snapshot` (no secret in env), run `specscore --version`, verify no
-   event arrives in PostHog (the write-key-empty no-op path).
+3. **Confirm error pipeline (crash-reports)**: run
+   `specscore debug error --text "release-verification" --force` on a
+   release binary; a Sentry event tagged `debug=true` should appear in the
+   Sentry UI's Issues list within ~30 seconds. The configured alert rule
+   should NOT fire (filter excludes `debug=true`).
+4. **Confirm dev builds DO NOT transmit**: build with `goreleaser build
+   --snapshot` (no secrets in env), run `specscore --version` and
+   `specscore debug error --text foo --force`, verify no events arrive in
+   either PostHog or Sentry (the empty-key/DSN no-op paths).
 
 ---
 
