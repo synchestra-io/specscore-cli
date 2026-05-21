@@ -264,7 +264,9 @@ func TestIdeaRelocateCLI_PreflightSiblingWithReferencesDirty(t *testing.T) {
 }
 
 // Sanity: when everything is git-clean, preflight passes and the verb
-// reaches Task 1's resolution-summary output.
+// reaches Task 1's resolution-summary output. After Task 3 the verb
+// also performs the file mutation, so the source artifact is gone
+// after this call.
 func TestIdeaRelocateCLI_PreflightCleanAllowsThrough(t *testing.T) {
 	parent := t.TempDir()
 	source := stageRelocateRepo(t, parent, "src", "src")
@@ -279,5 +281,112 @@ func TestIdeaRelocateCLI_PreflightCleanAllowsThrough(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "resolved:") {
 		t.Errorf("expected resolution-summary output, got: %s", stdout)
+	}
+}
+
+// AC: destination-collision
+func TestIdeaRelocateCLI_DestinationCollision(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+	// Pre-existing file at the destination → collision.
+	writeIdeaFile(t, target, "foo")
+
+	srcPath := filepath.Join(source, "spec", "ideas", "foo.md")
+	tgtPath := filepath.Join(target, "spec", "ideas", "foo.md")
+	srcBefore, err := os.ReadFile(srcPath)
+	if err != nil {
+		t.Fatalf("read src: %v", err)
+	}
+	tgtBefore, err := os.ReadFile(tgtPath)
+	if err != nil {
+		t.Fatalf("read tgt: %v", err)
+	}
+
+	_, _, err = runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if got := exitCodeFromErr(t, err); got != exitcode.Conflict {
+		t.Errorf("exit code: got %d want %d (Conflict)", got, exitcode.Conflict)
+	}
+	srcAfter, _ := os.ReadFile(srcPath)
+	tgtAfter, _ := os.ReadFile(tgtPath)
+	if string(srcBefore) != string(srcAfter) {
+		t.Errorf("source artifact must be unchanged on collision; before=%q after=%q", srcBefore, srcAfter)
+	}
+	if string(tgtBefore) != string(tgtAfter) {
+		t.Errorf("target artifact must be unchanged on collision; before=%q after=%q", tgtBefore, tgtAfter)
+	}
+}
+
+// AC: in-file-rewrite-org-rename
+func TestIdeaRelocateCLI_InFileRewriteOrgRename(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	body := "# Idea: foo\n\nSee synchestra-io/specscore for the worked example, and synchestra-io/specscore-cli for the verb.\n"
+	srcPath := filepath.Join(source, "spec", "ideas", "foo.md")
+	if err := os.WriteFile(srcPath, []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tgtPath := filepath.Join(target, "spec", "ideas", "foo.md")
+	got, err := os.ReadFile(tgtPath)
+	if err != nil {
+		t.Fatalf("read tgt: %v", err)
+	}
+	if !strings.Contains(string(got), "specscore/specscore") {
+		t.Errorf("expected synchestra-io/specscore → specscore/specscore; got:\n%s", got)
+	}
+	if !strings.Contains(string(got), "specscore/specscore-cli") {
+		t.Errorf("expected synchestra-io/specscore-cli → specscore/specscore-cli; got:\n%s", got)
+	}
+	if strings.Contains(string(got), "synchestra-io/") {
+		t.Errorf("expected all synchestra-io/ replaced; got:\n%s", got)
+	}
+	// Source artifact deleted post-copy.
+	if _, err := os.Stat(srcPath); !os.IsNotExist(err) {
+		t.Errorf("source artifact must be removed after successful relocate; stat err: %v", err)
+	}
+}
+
+// AC: in-file-rewrite-this-repo
+func TestIdeaRelocateCLI_InFileRewriteThisRepo(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	target := stageRelocateRepo(t, parent, "tgt", "tgt")
+	body := "# Idea: foo\n\n" +
+		"Existing artifacts in this repo are migrated by a one-shot script.\n\n" +
+		"```\n" +
+		"git -C this-repo log\n" +
+		"this repo intact inside fence\n" +
+		"```\n"
+	srcPath := filepath.Join(source, "spec", "ideas", "foo.md")
+	if err := os.WriteFile(srcPath, []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tgtPath := filepath.Join(target, "spec", "ideas", "foo.md")
+	got, err := os.ReadFile(tgtPath)
+	if err != nil {
+		t.Fatalf("read tgt: %v", err)
+	}
+	if !strings.Contains(string(got), "Existing artifacts in tgt are migrated") {
+		t.Errorf("expected 'this repo' rewritten to 'tgt' in body prose; got:\n%s", got)
+	}
+	if !strings.Contains(string(got), "git -C this-repo log") {
+		t.Errorf("expected fenced 'this-repo' content preserved; got:\n%s", got)
+	}
+	if !strings.Contains(string(got), "this repo intact inside fence") {
+		t.Errorf("expected fenced 'this repo' phrase preserved; got:\n%s", got)
 	}
 }

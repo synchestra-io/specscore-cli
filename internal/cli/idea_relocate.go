@@ -80,12 +80,24 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Task 1 scaffold output. Later tasks replace this with the
-	// per-affected-repo lines + summary line specified by
+	// Task 3: destination-collision check + file copy + in-file rewrite
+	// + source delete. ApplyMutation guarantees no mutations on
+	// collision (exit 1); on mid-sequence I/O failure it returns
+	// without rollback — Task 6 will wrap it with the pre-commit
+	// rollback logic.
+	mutation, err := idearelocate.ApplyMutation(specRoot, source, target)
+	if err != nil {
+		return err
+	}
+
+	// Task 3 scaffold output. Later tasks (4 cross-repo link cleanup,
+	// 5 commit semantics) replace this with the per-affected-repo
+	// lines + summary line specified by
 	// cli/idea/relocate#req:stdout-format.
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-		"resolved: %s (%s) → %s\n",
-		source.Path, source.Kind, target.Path)
+		"resolved: %s (%s) → %s\nmoved: %s → %s\n",
+		source.Path, source.Kind, target.Path,
+		source.Path, mutation.DestinationPath)
 	return nil
 }
 
