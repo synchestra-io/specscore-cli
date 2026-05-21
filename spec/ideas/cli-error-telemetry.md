@@ -60,9 +60,19 @@ Out of scope: source-map / symbolication infrastructure beyond what Sentry's Go 
 
 ## SpecScore Integration
 
-- **New Features this would create:** likely `cli/telemetry/error` (the Sentry wiring, scrubber, opt-out surface). Final decomposition at `/specify` time.
-- **Existing Features affected:** `cli` root command (panic recovery), `cli/telemetry` (shared opt-out plumbing and first-run notice), `cli` shared exit-code contract (audit of which codes mean "unexpected").
-- **Dependencies:** Sentry Go SDK; a Sentry project provisioned (EU region for symmetry with `cli-telemetry` PostHog choice); release-tagging wired into goreleaser so Sentry can correlate crashes to versions.
+This Idea promotes into a single child Feature under the shared `cli/telemetry` parent established by the sibling [`cli-telemetry`](cli-telemetry.md) Idea. See that Idea's *SpecScore Integration* section for the full hierarchy and naming convention.
+
+**Feature path to scaffold:**
+
+| Path | Holds |
+|---|---|
+| `spec/features/cli/telemetry/errors-telemetry/` | Sentry client wiring, scrubber-consumer code, `telemetry.SafePanic` allowlist wrapper, panic-site audit & retrofit, exit-code-≥10 hook into the recovery path, release tagging via goreleaser, `specscore telemetry errors {enable\|disable\|status}` subcommand, `specscore debug error --text "<msg>" [--force]` verification subcommand |
+
+`/specstudio:specify cli-error-telemetry` should be run **after** `/specstudio:specify cli-telemetry` has scaffolded the parent `cli/telemetry` Feature (which owns the shared scrubber, opt-out plumbing, and first-run notice). This Idea does not scaffold the parent.
+
+**Existing Features affected:** `cli` root command (panic recovery wiring); `cli/telemetry` (shared opt-out plumbing and first-run notice — adds the errors-channel section); the shared exit-code contract (audit any existing call site returning ≥10 for an *expected* condition and renumber it into 1–9 before launch).
+
+**Dependencies:** Sentry Go SDK; a Sentry project provisioned in EU region (for symmetry with the PostHog choice in `cli-telemetry`); release-tagging wired into goreleaser so Sentry can correlate crashes to CLI versions.
 
 ## Outstanding Questions
 

@@ -61,9 +61,21 @@ Out of scope for *this* MVP: dashboards beyond the one funnel, custom cohort ana
 
 ## SpecScore Integration
 
-- **New Features this would create:** likely `cli/telemetry` (the `specscore telemetry` subcommand surface) and `cli/internal/telemetry` (the event-emission package). Final feature decomposition during `/specify`.
-- **Existing Features affected:** the root `cli` command surface (PersistentPreRun/PostRun wiring); `cli/init` (writes the first-run notice).
-- **Dependencies:** PostHog Go SDK (vendor); a PostHog project provisioned in EU region; one funnel configured.
+This Idea promotes into a **two-feature structure** under a shared parent. The hierarchy is fixed by this Idea (and its sibling [`cli-error-telemetry`](cli-error-telemetry.md)) so `/specstudio:specify` lands the Features in the right place without re-litigating layout at design time.
+
+**Feature paths to scaffold:**
+
+| Path | Source | Holds |
+|---|---|---|
+| `spec/features/cli/telemetry/` | this Idea (parent of the two channels) | Shared scrubber package (`internal/telemetry`), shared opt-out plumbing, `specscore telemetry` root subcommand surface, single first-run notice covering both channels, `docs/telemetry.md` skeleton, the hard invariant "no user-authored text leaves this binary" |
+| `spec/features/cli/telemetry/usage-telemetry/` | this Idea (product-analytics channel) | PostHog client wiring, event schema, `--caller` flag, `SPECSCORE_CALLER` env var, `install_id` lifecycle, the north-star funnel, `specscore telemetry usage {enable\|disable\|status}` subcommand |
+| `spec/features/cli/telemetry/errors-telemetry/` | sibling Idea [`cli-error-telemetry`](cli-error-telemetry.md) | Sentry client wiring, `telemetry.SafePanic` allowlist, panic-site retrofit, release tagging, `specscore telemetry errors {enable\|disable\|status}` subcommand, `specscore debug error` verification subcommand |
+
+`/specstudio:specify cli-telemetry` should scaffold the parent `cli/telemetry` Feature **and** the `cli/telemetry/usage-telemetry` child Feature in one pass (since both come from this Idea). `/specstudio:specify cli-error-telemetry` (run separately) scaffolds only `cli/telemetry/errors-telemetry`; the parent already exists.
+
+**Existing Features affected:** the root `cli` command surface (PersistentPreRun/PostRun wiring); `cli/init` (writes the first-run notice on first invocation when `install_id` doesn't exist).
+
+**Dependencies:** PostHog Go SDK (vendor); a PostHog project provisioned in EU region; one funnel configured (`first_run → first feature.create → second feature.create within 7 days`).
 
 ## Outstanding Questions
 
