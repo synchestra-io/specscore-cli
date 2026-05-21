@@ -3,11 +3,13 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
 	"github.com/synchestra-io/specscore-cli/pkg/idea"
 	"github.com/synchestra-io/specscore-cli/pkg/idearelocate"
+	"github.com/synchestra-io/specscore-cli/pkg/projectdef"
 )
 
 // ideaRelocateCommand returns the "idea relocate" subcommand.
@@ -90,14 +92,65 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Task 3 scaffold output. Later tasks (4 cross-repo link cleanup,
-	// 5 commit semantics) replace this with the per-affected-repo
-	// lines + summary line specified by
+	// Task 4: cross-repo link cleanup. Walk every affected repo
+	// (source + target + siblings) for markdown links pointing at the
+	// relocated artifact and rewrite each target — same-repo links
+	// become relative paths, cross-repo links become full GitHub URLs.
+	// Bold-prefixed metadata lines are preserved (slugs are durable).
+	if err := runCrossRepoLinkCleanup(specRoot, source, target, mutation); err != nil {
+		return err
+	}
+
+	// Task 3+4 scaffold output. Task 5 replaces this with the
+	// per-affected-repo lines + summary line specified by
 	// cli/idea/relocate#req:stdout-format.
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 		"resolved: %s (%s) → %s\nmoved: %s → %s\n",
 		source.Path, source.Kind, target.Path,
 		source.Path, mutation.DestinationPath)
+	return nil
+}
+
+// runCrossRepoLinkCleanup assembles the list of repos to scan
+// (source + target + every other sibling SpecScore-managed repo) and
+// invokes idearelocate.UpdateCrossRepoLinks. The artifact's
+// target-repo-relative path is derived from the absolute destination
+// path produced by ApplyMutation.
+func runCrossRepoLinkCleanup(
+	specRoot string,
+	source idearelocate.SourceArtifact,
+	target idearelocate.TargetRepo,
+	mutation idearelocate.MutationResult,
+) error {
+	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
+	}
+	others := excludeRepoPaths(allSiblings, specRoot, target.Path)
+
+	sourceCfg, _ := projectdef.ReadSpecConfig(specRoot)
+	sourceRepo := idearelocate.TargetRepo{
+		Path:     specRoot,
+		RepoName: sourceCfg.Project.Repo,
+		Org:      sourceCfg.Project.Org,
+	}
+
+	repos := make([]idearelocate.TargetRepo, 0, 2+len(others))
+	repos = append(repos, sourceRepo, target)
+	repos = append(repos, others...)
+
+	artifactRel, err := filepath.Rel(target.Path, mutation.DestinationPath)
+	if err != nil {
+		return exitcode.UnexpectedErrorf("computing artifact target-relative path: %v", err)
+	}
+
+	// Discard the kind for now; it's part of the slug-resolution
+	// return but not needed by link cleanup. The slug itself is
+	// recoverable from source.Path's basename.
+	slug := strings.TrimSuffix(filepath.Base(source.Path), ".md")
+	if _, err := idearelocate.UpdateCrossRepoLinks(repos, target, slug, artifactRel); err != nil {
+		return err
+	}
 	return nil
 }
 

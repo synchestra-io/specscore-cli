@@ -11,8 +11,10 @@ import (
 )
 
 // stageRepo creates a repo dir at <parent>/<name> with the minimum
-// SpecScore structure: a specscore.yaml with the project.repo set,
-// and an empty spec/ tree. Returns the repo's absolute path.
+// SpecScore structure: a specscore.yaml with project.org=project.repo=
+// <repoSlug>, and an empty spec/ tree. Returns the repo's absolute
+// path. Setting org by default lets Task-4 link-cleanup tests share
+// the helper.
 func stageRepo(t *testing.T, parent, name, repoSlug string) string {
 	t.Helper()
 	root := filepath.Join(parent, name)
@@ -22,6 +24,7 @@ func stageRepo(t *testing.T, parent, name, repoSlug string) string {
 	yaml := "# SpecScore Repo Config Schema: https://specscore.md/repo-config\n" +
 		"project:\n" +
 		"  title: " + name + "\n" +
+		"  org: " + repoSlug + "\n" +
 		"  repo: " + repoSlug + "\n"
 	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte(yaml), 0o644); err != nil {
 		t.Fatalf("write specscore.yaml: %v", err)

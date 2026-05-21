@@ -65,6 +65,7 @@ func ResolveSourceArtifact(specRoot, slug string) (SourceArtifact, error) {
 type TargetRepo struct {
 	Path     string // absolute path to the repo root (the dir containing specscore.yaml)
 	RepoName string // value of project.repo from the target's specscore.yaml (may be empty)
+	Org      string // value of project.org from the target's specscore.yaml (may be empty)
 }
 
 // ResolveTargetRepo resolves the --to-repo flag value per
@@ -122,7 +123,7 @@ func resolveTargetByPath(specRoot, toRepo string) (TargetRepo, error) {
 		return TargetRepo{}, exitcode.UnexpectedErrorf(
 			"reading %s: %v", yamlPath, err)
 	}
-	return TargetRepo{Path: abs, RepoName: cfg.Project.Repo}, nil
+	return TargetRepo{Path: abs, RepoName: cfg.Project.Repo, Org: cfg.Project.Org}, nil
 }
 
 // resolveTargetBySlug resolves --to-repo when the value contains no "/".
@@ -217,7 +218,7 @@ func discoverSiblings(specRoot string) ([]TargetRepo, error) {
 		if err != nil {
 			continue // malformed siblings are ignored; lint surfaces them elsewhere
 		}
-		out = append(out, TargetRepo{Path: fullPath, RepoName: cfg.Project.Repo})
+		out = append(out, TargetRepo{Path: fullPath, RepoName: cfg.Project.Repo, Org: cfg.Project.Org})
 	}
 	return out, nil
 }
@@ -233,7 +234,7 @@ func readSelfAsSibling(specRoot string) ([]TargetRepo, error) {
 	if err != nil {
 		return nil, nil
 	}
-	return []TargetRepo{{Path: specRoot, RepoName: cfg.Project.Repo}}, nil
+	return []TargetRepo{{Path: specRoot, RepoName: cfg.Project.Repo, Org: cfg.Project.Org}}, nil
 }
 
 // fileExists reports whether the named file exists and is a regular

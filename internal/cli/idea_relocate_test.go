@@ -12,9 +12,12 @@ import (
 )
 
 // stageRelocateRepo creates a SpecScore-managed repo dir at
-// <parent>/<name> with project.repo=<repoSlug>. Returns the repo's
-// absolute path. The spec tree includes spec/ideas/, spec/ideas/seeds/,
-// and lint-friendly index READMEs.
+// <parent>/<name> with project.org=project.repo=<repoSlug>. Returns
+// the repo's absolute path. The shared org=repo convention matches the
+// single-org SpecScore workspaces these tests model; Task 4's cross-
+// repo link rewrite reads project.org from the target repo, so setting
+// it here lets every test fixture build well-formed GitHub URLs without
+// per-test boilerplate.
 func stageRelocateRepo(t *testing.T, parent, name, repoSlug string) string {
 	t.Helper()
 	root := filepath.Join(parent, name)
@@ -24,6 +27,7 @@ func stageRelocateRepo(t *testing.T, parent, name, repoSlug string) string {
 	yaml := "# SpecScore Repo Config Schema: https://specscore.md/repo-config\n" +
 		"project:\n" +
 		"  title: " + name + "\n" +
+		"  org: " + repoSlug + "\n" +
 		"  repo: " + repoSlug + "\n"
 	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte(yaml), 0o644); err != nil {
 		t.Fatalf("write specscore.yaml: %v", err)
@@ -388,5 +392,78 @@ func TestIdeaRelocateCLI_InFileRewriteThisRepo(t *testing.T) {
 	}
 	if !strings.Contains(string(got), "this repo intact inside fence") {
 		t.Errorf("expected fenced 'this repo' phrase preserved; got:\n%s", got)
+	}
+}
+
+// AC: cross-repo-link-cleanup-markdown-link
+func TestIdeaRelocateCLI_CrossRepoLinkCleanupMarkdownLink(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	stageRelocateRepo(t, parent, "specscore", "specscore")
+	sib := stageRelocateRepo(t, parent, "specscore-cli", "specscore-cli")
+	writeIdeaFile(t, source, "foo")
+
+	// Sibling repo has a Feature linking to the source artifact.
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	refPath := filepath.Join(sib, "spec", "features", "x", "README.md")
+	if err := os.WriteFile(refPath,
+		[]byte("# Feature: X\n\nSee [the Idea](../../../specstudio-skills/spec/ideas/foo.md) for context.\n"),
+		0o644); err != nil {
+		t.Fatalf("write ref: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := os.ReadFile(refPath)
+	if err != nil {
+		t.Fatalf("read ref after: %v", err)
+	}
+	wantURL := "https://github.com/specscore/specscore/blob/main/spec/ideas/foo.md"
+	if !strings.Contains(string(got), wantURL) {
+		t.Errorf("expected sibling link rewritten to %q; got:\n%s", wantURL, got)
+	}
+	if !strings.Contains(string(got), "[the Idea]") {
+		t.Errorf("expected display text 'the Idea' preserved; got:\n%s", got)
+	}
+	if strings.Contains(string(got), "../../../specstudio-skills/spec/ideas/foo.md") {
+		t.Errorf("expected old relative link replaced; got:\n%s", got)
+	}
+}
+
+// AC: cross-repo-link-cleanup-preserves-slug-metadata
+func TestIdeaRelocateCLI_CrossRepoLinkCleanupPreservesSlugMetadata(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
+	stageRelocateRepo(t, parent, "specscore", "specscore")
+	sib := stageRelocateRepo(t, parent, "specscore-cli", "specscore-cli")
+	writeIdeaFile(t, source, "foo")
+
+	// Sibling Feature has a slug-only metadata reference. After
+	// relocate, that line must be byte-for-byte unchanged.
+	if err := os.MkdirAll(filepath.Join(sib, "spec", "features", "y"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	refPath := filepath.Join(sib, "spec", "features", "y", "README.md")
+	original := "# Feature: Y\n\n**Source Ideas:** foo\n\nBody text.\n"
+	if err := os.WriteFile(refPath, []byte(original), 0o644); err != nil {
+		t.Fatalf("write ref: %v", err)
+	}
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=specscore")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := os.ReadFile(refPath)
+	if err != nil {
+		t.Fatalf("read ref after: %v", err)
+	}
+	if string(got) != original {
+		t.Errorf("expected slug-only metadata line preserved;\nwant:\n%s\ngot:\n%s", original, got)
 	}
 }
