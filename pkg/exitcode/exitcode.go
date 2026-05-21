@@ -6,12 +6,15 @@ import "fmt"
 
 // Standard exit codes shared by every CLI command.
 const (
-	Success      = 0  // Operation completed successfully.
-	Conflict     = 1  // Concurrent-modification conflict.
-	InvalidArgs  = 2  // Missing or invalid command arguments/flags.
-	NotFound     = 3  // Requested resource does not exist.
-	InvalidState = 4  // State transition is not allowed.
-	Unexpected   = 10 // Catch-all for unexpected runtime errors.
+	Success            = 0  // Operation completed successfully.
+	Conflict           = 1  // Concurrent-modification conflict.
+	InvalidArgs        = 2  // Missing or invalid command arguments/flags.
+	NotFound           = 3  // Requested resource does not exist.
+	InvalidState       = 4  // State transition is not allowed.
+	AmbiguousSlug      = 5  // Slug auto-resolution found multiple candidates.
+	TargetNotSpecScore = 6  // Target directory is not a SpecScore-managed repo.
+	DirtyTree          = 7  // Working tree has uncommitted changes in paths to be modified.
+	Unexpected         = 10 // Catch-all for unexpected runtime errors.
 )
 
 // Error carries a machine-readable exit code alongside a human-readable

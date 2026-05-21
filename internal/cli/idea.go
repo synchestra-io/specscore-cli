@@ -23,7 +23,7 @@ func ideaCommand() *cobra.Command {
 		Use:   "idea",
 		Short: "Idea management — scaffold new Idea artifacts",
 	}
-	cmd.AddCommand(ideaChangeStatusCommand(), ideaNewCommand())
+	cmd.AddCommand(ideaChangeStatusCommand(), ideaNewCommand(), ideaRelocateCommand())
 	return cmd
 }
 
