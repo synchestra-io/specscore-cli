@@ -3,7 +3,7 @@
 **Status:** Implementing
 **Date:** 2026-05-21
 **Owner:** alexandertrakhimenok
-**Promotes To:** cli/telemetry
+**Promotes To:** cli/telemetry, cli/telemetry/usage-telemetry
 **Supersedes:** —
 **Related Ideas:** —
 

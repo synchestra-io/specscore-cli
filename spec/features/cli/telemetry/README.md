@@ -11,6 +11,12 @@
 
 Shared plumbing for the `specscore` CLI's two telemetry channels — product analytics (usage) and crash reporting (errors). This Feature owns the parts that are identical across channels: the `internal/telemetry` package boundary, the privacy invariant ("no user-authored text leaves this binary"), the per-machine `install_id` lifecycle, the global opt-out subcommand surface, the first-run notice, and the `docs/telemetry.md` skeleton. Channel-specific wiring (PostHog event emission, Sentry crash transmission) is owned by child Features `cli/telemetry/usage-telemetry` and `cli/telemetry/errors-telemetry`, which are spec'd separately and depend on this parent existing.
 
+## Contents
+
+| Child | Description |
+|---|---|
+| [usage-telemetry](usage-telemetry/README.md) | TODO: Add description. |
+
 ## Problem
 
 The 2026-Q2 GTM plan's north-star metric is unverifiable without our own instrumentation — Claude Code does not expose plugin install or invocation metrics to authors. Crash reporting from the first soft-post cohort is the highest-leverage debugging input of Q2. Both channels exist and ship in W1, but they share enough plumbing — scrubber, opt-out mechanics, first-run disclosure, `install_id`, the `specscore telemetry` command surface — that owning the shared pieces in a parent Feature is the only way to keep the children focused on their channel-specific deltas.
@@ -280,14 +286,14 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs (file-presence, exi
 
 **Requirements:** cli/telemetry#req:opt-out-signal-precedence, cli/telemetry#req:opt-out-always-wins
 
-**Given** a system where `~/.specscore/telemetry.yaml` contains `enabled: true` and `SPECSCORE_CALLER=specstudio-skills`
+**Given** a system where `~/.specscore/telemetry.yaml` contains `enabled: true` and `SPECSCORE_CALLER=claude`
 **When** the following invocations run:
 - `SPECSCORE_TELEMETRY=0 specscore --version` (env-var opt-out)
 - `specscore --no-telemetry --version` (flag opt-out)
 - `CI=true specscore --version` (CI auto-disable)
 - `DO_NOT_TRACK=1 specscore --version`
 - `specscore --version` (no opt-out signals; persistent `enabled: true`)
-- `SPECSCORE_TELEMETRY=0 SPECSCORE_CALLER=specstudio-skills specscore --version` (plugin caller attempting to override opt-out)
+- `SPECSCORE_TELEMETRY=0 SPECSCORE_CALLER=claude specscore --version` (agent caller attempting to override opt-out)
 
 **Then** for invocations 1–4 and 6: no telemetry transmission occurs (verifiable via a blackhole endpoint + transmission counter); the `--caller` value MUST NOT re-enable transmission in invocation 6. For invocation 5: transmission is attempted (subject to the 500 ms timeout).
 
