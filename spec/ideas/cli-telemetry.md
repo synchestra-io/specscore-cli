@@ -1,9 +1,9 @@
 # Idea: CLI Telemetry
 
-**Status:** Approved
+**Status:** Implementing
 **Date:** 2026-05-21
 **Owner:** alexandertrakhimenok
-**Promotes To:** —
+**Promotes To:** cli/telemetry
 **Supersedes:** —
 **Related Ideas:** —
 
