@@ -128,7 +128,9 @@ func telemetryDisableCommand() *cobra.Command {
 
 // writeStatus prints the channel table to stdout. One channel per line, the
 // channel name as the first column, stable enough for grep-based scripting
-// (cli/telemetry#ac:telemetry-subcommand-status).
+// (cli/telemetry#ac:telemetry-subcommand-status). Consults the live channel
+// registry per cli/telemetry#req:channel-registry — channels appear here
+// only after their package's init() has run RegisterChannel.
 func writeStatus(w io.Writer, single telemetry.ChannelName, hasArg bool) error {
 	specZero, doNotTrack, ciDetected := telemetry.CollectOSEnvSignals(nil)
 	stateResult, _ := telemetry.ReadState()
@@ -140,7 +142,7 @@ func writeStatus(w io.Writer, single telemetry.ChannelName, hasArg bool) error {
 		PersistentState:        stateResult.State,
 		PersistentStateInvalid: stateResult.InvalidReason != "",
 	}
-	known := []telemetry.ChannelName{telemetry.ChannelUsageStats, telemetry.ChannelCrashReports}
+	known := telemetry.RegisteredChannels()
 	decisions := telemetry.ResolveOptOut(sigs, known)
 
 	channels := known

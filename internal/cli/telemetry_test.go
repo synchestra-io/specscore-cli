@@ -35,15 +35,17 @@ func TestTelemetryStatus_DefaultsReportEnabled(t *testing.T) {
 		t.Fatalf("writeStatus: %v", err)
 	}
 	out := buf.String()
+	// usage-stats has its init() in this binary (registered by
+	// internal/telemetry/usage.go).
 	if !strings.Contains(out, "usage-stats: enabled") {
 		t.Errorf("expected usage-stats: enabled line, got %q", out)
-	}
-	if !strings.Contains(out, "crash-reports: enabled") {
-		t.Errorf("expected crash-reports: enabled line, got %q", out)
 	}
 	if !strings.Contains(out, "(source: default)") {
 		t.Errorf("expected source: default, got %q", out)
 	}
+	// crash-reports is in the closed enum but its init() hasn't been built
+	// yet — writeStatus consults the live registry, so it appears only after
+	// the errors-telemetry Plan's Task 2 lands. Do NOT assert its presence.
 }
 
 func TestTelemetryStatus_SingleChannel(t *testing.T) {
@@ -155,7 +157,7 @@ func TestTelemetryEnableDisable_RoundTrip(t *testing.T) {
 		t.Errorf("status should report usage-stats disabled, got %q", buf.String())
 	}
 
-	// Re-enable just crash-reports.
+	// Re-enable just crash-reports (per-channel override).
 	buf.Reset()
 	if err := mutateState(&buf, "crash-reports", true, true); err != nil {
 		t.Fatalf("enable crash-reports: %v", err)
@@ -163,17 +165,26 @@ func TestTelemetryEnableDisable_RoundTrip(t *testing.T) {
 	if !strings.Contains(buf.String(), "crash-reports enabled") {
 		t.Errorf("enable crash-reports confirmation: got %q", buf.String())
 	}
-	// Status reflects per-channel override beating global.
+	// File reflects per-channel override beating global. (Status output only
+	// lists REGISTERED channels — crash-reports's init() hasn't been built
+	// yet, so it won't appear in writeStatus until the errors-telemetry
+	// child Plan lands. The file content is the canonical assertion here.)
+	raw, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("re-read telemetry.yaml: %v", err)
+	}
+	if !strings.Contains(string(raw), "enabled: false") {
+		t.Errorf("file should still contain enabled: false: %q", string(raw))
+	}
+	if !strings.Contains(string(raw), "crash-reports: true") {
+		t.Errorf("file should contain crash-reports: true override: %q", string(raw))
+	}
 	buf.Reset()
 	if err := writeStatus(&buf, "", false); err != nil {
 		t.Fatalf("status: %v", err)
 	}
-	out := buf.String()
-	if !strings.Contains(out, "usage-stats: disabled") {
-		t.Errorf("usage-stats should still be disabled: %q", out)
-	}
-	if !strings.Contains(out, "crash-reports: enabled") {
-		t.Errorf("crash-reports should be enabled (per-channel override): %q", out)
+	if !strings.Contains(buf.String(), "usage-stats: disabled") {
+		t.Errorf("usage-stats should still be disabled: %q", buf.String())
 	}
 }
 
