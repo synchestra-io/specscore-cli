@@ -47,14 +47,34 @@ PostHog's data-handling policy:
 
 ### crash-reports
 
-<!-- Populated by the cli/telemetry/errors-telemetry child Feature.
-     Per cli/telemetry/errors-telemetry#req:docs-crash-reports-section,
-     this subsection MUST describe the channel, explicitly state that
-     only panics and exit codes ≥10 trigger transmission, link to
-     Sentry's privacy page, and call out the EU region (de.sentry.io). -->
+Anonymous error reporting for crashes and unexpected error paths. The channel
+sends a Sentry event **only when**:
 
-To be populated when the `crash-reports` channel ships (Sentry, EU region
-`*.ingest.de.sentry.io`, triggered by panic or exit code ≥10).
+- The CLI panics (any `panic()`, including nil-dereferences and other
+  runtime panics), OR
+- A command exits with code **≥10** (the documented "unexpected" code
+  per `pkg/exitcode`; documented expected errors with codes 1–9 are
+  never reported).
+
+Transmission goes to the **Sentry EU region** (`*.ingest.de.sentry.io`).
+The transport is the official Sentry Go SDK, configured with
+`AttachStacktrace=true` and **`SendDefaultPII=false`** so the SDK never
+auto-collects OS user, hostname, or local-variable values from your
+environment. Every event is bounded by the parent-Feature's 500 ms hard
+timeout — a slow or unreachable endpoint never blocks your command.
+
+A defensive `defer recover()` inside the transmit callback guarantees
+that a bug in the crash-reporting code itself (scrubber bug, SDK panic,
+malformed payload) cannot mask your command's exit code. If telemetry
+fails, your invocation still exits with whatever code your command
+intended.
+
+Events carry the `release` tag (= your `cli_version`) so Sentry alerts
+can filter by release. They also carry `debug=true` when emitted via
+`specscore debug error` — operators filter these out of paging alerts.
+
+Sentry's data-handling policy:
+<https://sentry.io/security/>.
 
 ## Event Schema
 
@@ -114,11 +134,50 @@ the env var. Unrecognized values are coerced to `other` before transmission
 
 ### crash-reports events
 
-To be populated when the `crash-reports` channel ships. Will document:
-- The Sentry event shape (`message` field, scrubbed stack frames, `release`
-  and `debug` tags).
-- The `SafePanic` allowlist mechanism and the `unscrubbed panic` coercion.
-- The `--text` interpretation contract of `specscore debug error`.
+Each Sentry event carries:
+
+- **`message` field** — one of:
+  - A literal `messageID` string from the SafePanic closed-enum allowlist
+    (when the panic was wrapped via `telemetry.SafePanic("known-id", err)`
+    AND `known-id` is in the production allowlist).
+  - The literal string **`unscrubbed panic`** otherwise (plain string
+    panics, unwrapped errors, runtime panics, unknown messageIDs). When
+    this case applies, the event ALSO carries the tag
+    **`message: unscrubbed`** so operators can grep for these and decide
+    which sites to retrofit with `SafePanic`.
+  - For exit-code-≥10 events: the synthesized string
+    `unexpected exit code <N> from cmd <dot.path>` where `<N>` is the
+    integer exit code and `<dot.path>` is the cobra command path. Both
+    are by construction free of user-authored content.
+
+- **Stack frames** (when `AttachStacktrace=true` produced any). Each
+  frame's file path is replaced with its basename only (`feature.go`,
+  not `/Users/alice/.../feature.go`). Function name and line number are
+  preserved verbatim. Local-variable values are NEVER attached.
+
+- **Tags**:
+  - `release` — your `cli_version`.
+  - `debug` — `"false"` for real crashes; `"true"` for `specscore debug
+    error` invocations.
+  - `message` — `"unscrubbed"` only when the panic value wasn't an
+    allowlisted SafePanic.
+
+### `specscore debug error` interpretation contract
+
+`specscore debug error --text "<msg>" [--force]` synthesizes one
+crash-reports event for pipeline verification. The `--text` value is
+treated as a **candidate SafePanic messageID** — not as free-form
+prose. The scrubber decides:
+
+- If `<msg>` is in the SafePanic allowlist, it ships verbatim as the
+  Sentry event's `message`.
+- Otherwise it coerces to `unscrubbed panic` with the
+  `message: unscrubbed` tag.
+
+Without `--force`, the command honors the crash-reports opt-out (no
+event sent, no-op message to stdout). With `--force`, opt-out is
+bypassed for a single invocation; the persistent
+`~/.specscore/telemetry.yaml` is byte-identical before and after.
 
 ## What We Don't Collect
 
@@ -202,8 +261,19 @@ can identify).
 
 ### crash-reports
 
-To be populated when the channel ships (Sentry free-tier retention: 30 days
-for individual events, 90 days for issues / crash signatures).
+Sentry's free-tier retention applies:
+
+- **Individual events**: 30 days.
+- **Issues / crash signatures**: 90 days.
+
+To request deletion of events associated with your machine, find your
+`install_id` (`cat ~/.specscore/install_id`) and submit a deletion request
+via <https://sentry.io/legal/dpa/>. Sentry typically processes requests
+within 30 days.
+
+You can also delete `~/.specscore/install_id` locally — your next
+`specscore` invocation will generate a fresh ID; any future crash events
+ship under the new ID, and the old install's events become orphaned.
 
 ---
 
