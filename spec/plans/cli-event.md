@@ -1,6 +1,6 @@
 # Plan: Events (CLI) — pkg/event Library + Dispatcher
 
-**Status:** Implementing
+**Status:** Completed
 **Mode:** full
 **Source Feature:** cli/event
 **Date:** 2026-05-22
@@ -79,7 +79,7 @@ Add `pkg/event/dispatcher.go` exposing `Dispatch(ctx, Event, []Subscriber) Dispa
 
 ### Task 8: Author `docs/events.md` skeleton
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 7
 **Verifies:** cli/event#ac:docs-events-md-skeleton-present
 
