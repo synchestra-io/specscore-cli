@@ -316,6 +316,175 @@ func TestResolvePayload_FileRelativeToProjectRoot(t *testing.T) {
 	}
 }
 
+// TestArbitratePayloadMode_BothFlags covers AC: payload-mode-conflict-fails-2.
+// When both --payload-json and --payload-file are set, the arbitration
+// MUST fail with an error that names both flags AND enumerates the three
+// accepted input modes.
+func TestArbitratePayloadMode_BothFlags(t *testing.T) {
+	err := arbitratePayloadMode(`{}`, "/tmp/p.json", false, false)
+	if err == nil {
+		t.Fatal("expected error when both --payload-json and --payload-file set; got nil")
+	}
+
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 2 {
+		t.Errorf("exit code = %d; want 2", got)
+	}
+
+	msg := err.Error()
+	for _, want := range []string{
+		"--payload-json",
+		"--payload-file",
+		"stdin",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("expected error to contain %q; got: %s", want, msg)
+		}
+	}
+}
+
+// TestArbitratePayloadMode_TtyStdinNoFlag covers AC: payload-tty-stdin-fails-2.
+// When neither flag is set AND stdin is a TTY, arbitration MUST fail with
+// an error naming the three accepted modes.
+func TestArbitratePayloadMode_TtyStdinNoFlag(t *testing.T) {
+	err := arbitratePayloadMode("", "", true, false)
+	if err == nil {
+		t.Fatal("expected error when no payload flag set and stdin is TTY; got nil")
+	}
+
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 2 {
+		t.Errorf("exit code = %d; want 2", got)
+	}
+
+	msg := err.Error()
+	for _, want := range []string{
+		"--payload-json",
+		"--payload-file",
+		"stdin",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("expected error to contain %q; got: %s", want, msg)
+		}
+	}
+}
+
+// TestArbitratePayloadMode_PipedStdinNoFlag — happy path: no flag set, stdin
+// is piped (non-TTY); arbitration MUST succeed.
+func TestArbitratePayloadMode_PipedStdinNoFlag(t *testing.T) {
+	if err := arbitratePayloadMode("", "", false, true); err != nil {
+		t.Errorf("expected nil error for piped stdin with no flag; got: %v", err)
+	}
+}
+
+// TestArbitratePayloadMode_OneFlag — happy path: exactly one flag set;
+// arbitration MUST succeed regardless of stdin state.
+func TestArbitratePayloadMode_OneFlag(t *testing.T) {
+	if err := arbitratePayloadMode(`{}`, "", false, false); err != nil {
+		t.Errorf("expected nil error for --payload-json only; got: %v", err)
+	}
+	if err := arbitratePayloadMode(`{}`, "", true, false); err != nil {
+		t.Errorf("expected nil error for --payload-json only with TTY stdin; got: %v", err)
+	}
+	if err := arbitratePayloadMode("", "/tmp/p.json", false, false); err != nil {
+		t.Errorf("expected nil error for --payload-file only; got: %v", err)
+	}
+	if err := arbitratePayloadMode("", "/tmp/p.json", true, false); err != nil {
+		t.Errorf("expected nil error for --payload-file only with TTY stdin; got: %v", err)
+	}
+}
+
+// TestValidatePayloadJSON_Valid — well-formed JSON object passes.
+func TestValidatePayloadJSON_Valid(t *testing.T) {
+	if err := validatePayloadJSON([]byte(`{"slug":"x"}`), "--payload-json"); err != nil {
+		t.Errorf("expected nil error for valid JSON object; got: %v", err)
+	}
+}
+
+// TestValidatePayloadJSON_BadSyntax covers AC: payload-bad-json-fails-2.
+// Bytes that fail to parse MUST produce an exit-2 error naming the input
+// mode AND a JSON parse error description.
+func TestValidatePayloadJSON_BadSyntax(t *testing.T) {
+	err := validatePayloadJSON([]byte(`not json`), "--payload-json")
+	if err == nil {
+		t.Fatal("expected error for non-JSON bytes; got nil")
+	}
+
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 2 {
+		t.Errorf("exit code = %d; want 2", got)
+	}
+
+	msg := err.Error()
+	if !strings.Contains(msg, "--payload-json") {
+		t.Errorf("expected error to name --payload-json; got: %s", msg)
+	}
+	// The error MUST describe the parse failure. Go's json package errors
+	// contain words like "invalid character" / "unexpected" / "json".
+	lower := strings.ToLower(msg)
+	if !strings.Contains(lower, "json") && !strings.Contains(lower, "parse") &&
+		!strings.Contains(lower, "invalid character") && !strings.Contains(lower, "unexpected") {
+		t.Errorf("expected error to describe a JSON parse failure; got: %s", msg)
+	}
+}
+
+// TestValidatePayloadJSON_NotAnObject — scalars / arrays / null are not
+// valid envelope payloads; arbitration MUST reject them.
+func TestValidatePayloadJSON_NotAnObject(t *testing.T) {
+	for _, bytes := range []string{`42`, `"string"`, `null`, `true`, `[1,2,3]`} {
+		err := validatePayloadJSON([]byte(bytes), "stdin")
+		if err == nil {
+			t.Errorf("expected error for non-object JSON %q; got nil", bytes)
+			continue
+		}
+		type exitCoder interface{ ExitCode() int }
+		var ec exitCoder
+		if !errors.As(err, &ec) {
+			t.Errorf("error for %q does not carry ExitCode: %v", bytes, err)
+			continue
+		}
+		if got := ec.ExitCode(); got != 2 {
+			t.Errorf("exit code for %q = %d; want 2", bytes, got)
+		}
+		if !strings.Contains(err.Error(), "stdin") {
+			t.Errorf("expected error for %q to name input mode `stdin`; got: %s", bytes, err.Error())
+		}
+	}
+}
+
+// TestStdinIsTTY — when os.Stdin is redirected to /dev/null (a character
+// device on macOS but NOT the controlling TTY), the result depends on the
+// platform. The reliable check: replace os.Stdin with a *pipe* (definitely
+// not a TTY) and assert false.
+func TestStdinIsTTY(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	defer r.Close()
+	defer w.Close()
+
+	orig := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = orig }()
+
+	if stdinIsTTY() {
+		t.Error("stdinIsTTY() with pipe stdin = true; want false")
+	}
+}
+
 // TestAutofillEnvelope_RevisionOverride (covers AC:
 // envelope-artifact-revision-override). When the override is non-empty
 // it MUST be used verbatim — the git path MUST NOT be invoked and MUST

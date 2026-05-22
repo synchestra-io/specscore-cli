@@ -114,6 +114,72 @@ func resolvePayload(payloadJSON, payloadFile string, stdin io.Reader, projectRoo
 	return json.RawMessage(b), nil
 }
 
+// payloadModesHint is the canonical human-readable enumeration of the
+// three accepted payload input modes; every exit-2 error in the payload
+// arbitration path references it so callers see a consistent menu.
+const payloadModesHint = "accepted payload input modes: --payload-json <bytes>, --payload-file <path>, or piped stdin"
+
+// arbitratePayloadMode rejects ambiguous or unsupplied payload sources
+// per cli/event/emit#ac:payload-mode-conflict-fails-2 and #ac:payload-
+// tty-stdin-fails-2. Caller passes the two flag values plus two stdin
+// state bits (TTY? has-data?) probed BEFORE any stdin read so that the
+// verb never blocks on an unintended keyboard read.
+//
+// Returns nil when exactly one of {--payload-json, --payload-file, piped
+// stdin} is the intended source.
+func arbitratePayloadMode(payloadJSON, payloadFile string, stdinIsTTY bool, stdinHasData bool) error {
+	_ = stdinHasData // reserved for future "flag-set-and-stdin-also-piped" rejection
+	if payloadJSON != "" && payloadFile != "" {
+		return exitcode.InvalidArgsErrorf(
+			"cannot use --payload-json and --payload-file together; %s",
+			payloadModesHint)
+	}
+	if payloadJSON == "" && payloadFile == "" && stdinIsTTY {
+		return exitcode.InvalidArgsErrorf(
+			"no payload supplied and stdin is a TTY (refusing to block on keyboard input); %s",
+			payloadModesHint)
+	}
+	return nil
+}
+
+// validatePayloadJSON parses the resolved payload bytes and returns an
+// exit-2 error when the bytes are not a JSON object (per the parent
+// Feature's REQ:envelope-validation). The inputMode string (e.g.
+// `--payload-json`, `--payload-file /tmp/p.json`, or `stdin`) is woven
+// into the error so the user knows which source produced the bad bytes.
+// Covers cli/event/emit#ac:payload-bad-json-fails-2.
+func validatePayloadJSON(payload json.RawMessage, inputMode string) error {
+	// Decode as the most permissive type (interface{}) first so the error
+	// message carries Go's standard json parse description; then assert
+	// the top-level value is a JSON object (map).
+	var v any
+	if err := json.Unmarshal(payload, &v); err != nil {
+		return exitcode.InvalidArgsErrorf(
+			"payload from %s is not valid JSON: %v",
+			inputMode, err)
+	}
+	if _, ok := v.(map[string]any); !ok {
+		return exitcode.InvalidArgsErrorf(
+			"payload from %s is not a JSON object (got %T)",
+			inputMode, v)
+	}
+	return nil
+}
+
+// stdinIsTTY reports whether os.Stdin is connected to a terminal (i.e.
+// a character device). The check uses os.Stat rather than peeking bytes
+// because a peek would consume input destined for the stdin reader path.
+//
+// Per the os package docs: a TTY has ModeCharDevice set; a pipe has
+// ModeNamedPipe set (or neither flag, but never ModeCharDevice).
+func stdinIsTTY() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
 // envelopeRequiredFlag pairs a CLI flag with the envelope field it supplies,
 // so the missing-required error message names both per REQ:envelope-flags.
 type envelopeRequiredFlag struct {
