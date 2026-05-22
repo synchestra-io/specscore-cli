@@ -71,6 +71,14 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = pc
 	}
 
+	// Register issue-rules checker under all 15 rule IDs (I-001..I-015).
+	// Same pattern as plan-rules: one checker, many rule IDs; per-rule
+	// filtering happens via the Violation.Rule field in lint().
+	ic2 := newIssueRulesChecker()
+	for _, n := range issueRuleIDs {
+		l.ruleSet[n] = ic2
+	}
+
 	// Register custom checkers
 	for _, c := range customCheckers {
 		l.ruleSet[c.Name()] = &customCheckerAdapter{c}

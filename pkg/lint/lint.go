@@ -152,6 +152,26 @@ var allRuleNames = map[string]bool{
 	"P-002": true,
 	"P-003": true,
 	"P-004": true,
+	// Issue lint rules (cli/spec/lint/issue-rules Feature). All 15 IDs are
+	// registered up-front so `--rules I-NNN` and the default suite both
+	// resolve every ID even while individual rule bodies land
+	// incrementally per the implementation Plan. Implemented by
+	// issueRulesChecker; only I-009 has logic in this initial scaffold.
+	"I-001": true,
+	"I-002": true,
+	"I-003": true,
+	"I-004": true,
+	"I-005": true,
+	"I-006": true,
+	"I-007": true,
+	"I-008": true,
+	"I-009": true,
+	"I-010": true,
+	"I-011": true,
+	"I-012": true,
+	"I-013": true,
+	"I-014": true,
+	"I-015": true,
 }
 
 // AllRuleNames returns the canonical set of known rule names.

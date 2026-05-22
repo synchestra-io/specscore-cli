@@ -18,7 +18,7 @@ Task order mirrors the upstream contract Plan's discovery-first sequencing: Task
 
 ### Task 1: Scaffold `pkg/issue/` parser, path patterns, registry registration, and rule `I-009`
 
-**Status:** in-progress
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:type-registered, cli/spec/lint/issue-rules#ac:default-suite-includes-i-rules, cli/spec/lint/issue-rules#ac:rules-filter-by-id, cli/spec/lint/issue-rules#ac:dual-location-violation
 
 Create `pkg/issue/parser.go` and `pkg/issue/types.go` mirroring `pkg/idea/` and `pkg/feature/`. Implement YAML frontmatter parsing for `type: issue` artifacts. Register the `issue` artifact type in the CLI's artifact-type registry alongside `idea`, `feature`, `plan`, `sidekick-seed`, `index` — the entry binds the type to the two path patterns (`spec/issues/*.md`, `spec/features/*/issues/*.md`) and the `I-` rule family. Register all 15 `I-` rule IDs as stubs (each returning no violations) so the default-suite and filter-by-id ACs pass before any rule logic is implemented. Implement rule `I-009` (dual-location) in this task because path-pattern enforcement is inherent to artifact discovery: any file declaring `type: issue` outside the two patterns emits a violation. Feature-scoped issues additionally require the parent Feature directory to exist (checked at path-match time via the existing Feature-directory listing helper). Add fixture tests under `pkg/lint/rules/issue/testdata/` for the four ACs.
