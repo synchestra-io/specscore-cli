@@ -249,6 +249,73 @@ func TestAutofillEnvelope_NoGitRepo(t *testing.T) {
 	}
 }
 
+// TestResolvePayload_JsonFlag covers AC: payload-json-flag-shape (happy path).
+// When --payload-json is set, its bytes ARE the payload.
+func TestResolvePayload_JsonFlag(t *testing.T) {
+	want := `{"slug":"x","approved":false}`
+	got, err := resolvePayload(want, "", strings.NewReader("ignored stdin"), t.TempDir())
+	if err != nil {
+		t.Fatalf("resolvePayload: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("payload = %q; want %q", string(got), want)
+	}
+}
+
+// TestResolvePayload_FileFlag covers AC: payload-file-flag-shape (happy path).
+// When --payload-file is set (and --payload-json is empty), read the file's bytes.
+func TestResolvePayload_FileFlag(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.json")
+	want := `{"slug":"x","approved":false}`
+	if err := os.WriteFile(path, []byte(want), 0o644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	got, err := resolvePayload("", path, strings.NewReader("ignored stdin"), dir)
+	if err != nil {
+		t.Fatalf("resolvePayload: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("payload = %q; want %q", string(got), want)
+	}
+}
+
+// TestResolvePayload_Stdin covers AC: payload-stdin-shape (happy path).
+// When neither flag is set, read stdin to EOF.
+func TestResolvePayload_Stdin(t *testing.T) {
+	want := `{"slug":"x","approved":false}`
+	got, err := resolvePayload("", "", strings.NewReader(want), t.TempDir())
+	if err != nil {
+		t.Fatalf("resolvePayload: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("payload = %q; want %q", string(got), want)
+	}
+}
+
+// TestResolvePayload_FileRelativeToProjectRoot: relative --payload-file
+// resolves against the project root.
+func TestResolvePayload_FileRelativeToProjectRoot(t *testing.T) {
+	root := t.TempDir()
+	sub := filepath.Join(root, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	want := `{"slug":"x","approved":false}`
+	if err := os.WriteFile(filepath.Join(sub, "p.json"), []byte(want), 0o644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	got, err := resolvePayload("", "sub/p.json", strings.NewReader("ignored stdin"), root)
+	if err != nil {
+		t.Fatalf("resolvePayload: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("payload = %q; want %q", string(got), want)
+	}
+}
+
 // TestAutofillEnvelope_RevisionOverride (covers AC:
 // envelope-artifact-revision-override). When the override is non-empty
 // it MUST be used verbatim — the git path MUST NOT be invoked and MUST

@@ -1,6 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,7 +72,46 @@ Docs: https://specscore.md/event-emit
 	cmd.Flags().String("artifact-path", "", "repo-relative path to the artifact; supplies envelope field `artifact.path` (required)")
 	cmd.Flags().String("artifact-revision", "", "git SHA or the literal `uncommitted`; supplies envelope field `artifact.revision` (optional; overrides auto-fill)")
 
+	// REQ:payload-input-modes — the two payload-source flags. Both are
+	// optional in the cobra wiring; mode arbitration (at most one of the
+	// two; stdin only when neither is set) lands in Task 5.
+	cmd.Flags().String("payload-json", "", "inline JSON payload; the flag value IS the envelope `payload` bytes")
+	cmd.Flags().String("payload-file", "", "path to a file containing the JSON payload (relative paths resolve against the project root)")
+
 	return cmd
+}
+
+// resolvePayload returns the payload bytes for the envelope, using the
+// first non-empty source in priority order: --payload-json flag value,
+// --payload-file contents, then stdin to EOF.
+//
+// This task (4) covers the three happy-path ACs only. Mode conflicts
+// (--payload-json AND --payload-file both set), TTY-stdin rejection,
+// and JSON-parse validation land in Task 5 — so this function does
+// NOT inspect the bytes nor detect mutually-exclusive flag usage.
+//
+// File-path resolution: relative --payload-file paths join against
+// projectRoot; absolute paths are used verbatim.
+func resolvePayload(payloadJSON, payloadFile string, stdin io.Reader, projectRoot string) (json.RawMessage, error) {
+	if payloadJSON != "" {
+		return json.RawMessage(payloadJSON), nil
+	}
+	if payloadFile != "" {
+		path := payloadFile
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(projectRoot, path)
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		return json.RawMessage(b), nil
+	}
+	b, err := io.ReadAll(stdin)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(b), nil
 }
 
 // envelopeRequiredFlag pairs a CLI flag with the envelope field it supplies,
