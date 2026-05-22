@@ -523,6 +523,163 @@ func TestIssueRules_I012_AffectedComponentRefResolves(t *testing.T) {
 	}
 }
 
+// AC: root-index-required-violation. A fixture with an issue under
+// `spec/issues/foo.md` but no `spec/issues/README.md` trips I-013 with
+// a message naming the missing index path.
+func TestIssueRules_I013_RootIndexRequiredViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/root-index-required/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i013 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-013" {
+			i013 = &vs[i]
+			break
+		}
+	}
+	if i013 == nil {
+		t.Fatalf("expected an I-013 violation; got %+v", vs)
+	}
+	if !strings.Contains(i013.Message, "issues/README.md") {
+		t.Errorf("I-013 message %q does not name the missing index path", i013.Message)
+	}
+	if i013.Severity != "error" {
+		t.Errorf("severity = %q; want error", i013.Severity)
+	}
+	if i013.File != "issues/README.md" {
+		t.Errorf("violation file = %q; want %q", i013.File, "issues/README.md")
+	}
+}
+
+// AC: root-index-fix-scaffolds-readme. Running --fix against the same
+// fixture creates `spec/issues/README.md` with the canonical minimal
+// index template and a follow-up lint pass reports zero I-013
+// violations. The scaffold is also idempotent — running --fix twice
+// produces no diff on the second run.
+func TestIssueRules_I013_FixScaffoldsReadme(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/root-index-required/spec")
+	indexPath := filepath.Join(specRoot, "issues", "README.md")
+
+	// Sanity precondition: the README must be absent before --fix.
+	if _, err := os.Stat(indexPath); err == nil {
+		t.Fatalf("precondition: %s already exists", indexPath)
+	}
+
+	// First pass with --fix.
+	if _, err := Lint(Options{SpecRoot: specRoot, Fix: true}); err != nil {
+		t.Fatalf("Lint --fix: %v", err)
+	}
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("expected %s to exist after --fix: %v", indexPath, err)
+	}
+	got := string(data)
+	for _, want := range []string{
+		"type: index",
+		"**Status:** Stable",
+		"## Contents",
+		"| Slug | Title | Status | Severity | Captured |",
+		"## Open Questions",
+		"None at this time.",
+		"specscore.md/",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("scaffolded README missing %q\n---\n%s", want, got)
+		}
+	}
+
+	// Follow-up lint pass without --fix: I-013 must no longer fire on
+	// this fixture.
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint (post-fix): %v", err)
+	}
+	for _, v := range vs {
+		if v.Rule == "I-013" {
+			t.Errorf("unexpected I-013 violation after --fix: %+v", v)
+		}
+	}
+
+	// Idempotency: running --fix again must not change the file.
+	before, _ := os.ReadFile(indexPath)
+	if _, err := Lint(Options{SpecRoot: specRoot, Fix: true}); err != nil {
+		t.Fatalf("Lint --fix (second pass): %v", err)
+	}
+	after, _ := os.ReadFile(indexPath)
+	if string(before) != string(after) {
+		t.Errorf("--fix is not idempotent: file changed on second pass\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// AC: feature-scoped-index-required-violation. A fixture with an issue
+// under `spec/features/example/issues/foo.md` but no neighbouring
+// README.md trips I-014 with a message naming the missing index path.
+func TestIssueRules_I014_FeatureScopedIndexRequiredViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/feature-index-required/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i014 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-014" {
+			i014 = &vs[i]
+			break
+		}
+	}
+	if i014 == nil {
+		t.Fatalf("expected an I-014 violation; got %+v", vs)
+	}
+	if !strings.Contains(i014.Message, "features/example/issues/README.md") {
+		t.Errorf("I-014 message %q does not name the missing index path", i014.Message)
+	}
+	if i014.Severity != "error" {
+		t.Errorf("severity = %q; want error", i014.Severity)
+	}
+	if i014.File != "features/example/issues/README.md" {
+		t.Errorf("violation file = %q; want %q", i014.File, "features/example/issues/README.md")
+	}
+}
+
+// AC: index-columns-violation. A fixture issues-index README whose
+// Contents table is missing the `Severity` column trips I-015 with a
+// message listing the five required columns in canonical order.
+func TestIssueRules_I015_IndexColumnsViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/index-columns/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i015 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-015" {
+			i015 = &vs[i]
+			break
+		}
+	}
+	if i015 == nil {
+		t.Fatalf("expected an I-015 violation; got %+v", vs)
+	}
+	for _, want := range []string{"Slug", "Title", "Status", "Severity", "Captured"} {
+		if !strings.Contains(i015.Message, want) {
+			t.Errorf("I-015 message %q does not name canonical column %q", i015.Message, want)
+		}
+	}
+	// Order check: the message must list the columns in canonical order.
+	canonical := "Slug, Title, Status, Severity, Captured"
+	if !strings.Contains(i015.Message, canonical) {
+		t.Errorf("I-015 message %q does not list columns in canonical order %q", i015.Message, canonical)
+	}
+	if i015.Severity != "error" {
+		t.Errorf("severity = %q; want error", i015.Severity)
+	}
+	if i015.File != "issues/README.md" {
+		t.Errorf("violation file = %q; want %q", i015.File, "issues/README.md")
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

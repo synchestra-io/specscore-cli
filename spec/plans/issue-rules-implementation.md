@@ -1,6 +1,6 @@
 # Plan: Issue Rules Implementation
 
-**Status:** Implementing
+**Status:** Completed
 **Source Feature:** cli/spec/lint/issue-rules
 **Date:** 2026-05-22
 **Owner:** alexandertrakhimenok
@@ -67,12 +67,12 @@ Create `pkg/lint/rules/issue/affected_component.go`. When `affected_component` i
 
 ### Task 8: Rules `I-013`/`I-014` (index required) and `I-015` (index columns) + `--fix` scaffolder
 
-**Status:** in-progress
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:root-index-required-violation, cli/spec/lint/issue-rules#ac:root-index-fix-scaffolds-readme, cli/spec/lint/issue-rules#ac:feature-scoped-index-required-violation, cli/spec/lint/issue-rules#ac:index-columns-violation
 
 Create `pkg/lint/rules/issue/index.go` and `pkg/lint/rules/issue/index_fix.go`. Implement rule `I-013` requiring `spec/issues/README.md` when `spec/issues/` contains ≥ 1 `issue` artifact; the README MUST conform to the SpecScore Index Artifact schema (existing validator). Implement rule `I-014` requiring `spec/features/<feature-slug>/issues/README.md` under the same conformance contract. Implement rule `I-015` validating the Contents table columns in canonical order: `Slug`, `Title`, `Status`, `Severity`, `Captured`. Implement the `--fix` autofix for `I-013` and `I-014`: scaffold a minimal lint-clean README (`type: index`, `**Status:** Stable`, empty `## Contents` table with the canonical column headers, `## Open Questions: None at this time.`, adherence footer). Do NOT autofix `I-015` — column-shape errors usually mean the author chose a different schema; autofix would silently destroy intent. Extend fixture tests.
 
-## Outstanding Questions
+## Open Questions
 
 - Whether to ship the `IssueSlug` helper as a public package method (allowing external SpecScore tooling — including `specstudio:sidekick` — to compute canonical slugs without re-implementing the algorithm) or keep it internal to the lint engine. Lean: public, mirroring the existing `pkg/slug` API.
 - Whether `--fix` for `I-013`/`I-014` should additionally populate the Contents table with rows for any pre-existing issue artifacts in the directory, or scaffold only an empty table. Lean: empty table — matches the existing index-autofix behavior elsewhere and avoids partial-update risk.

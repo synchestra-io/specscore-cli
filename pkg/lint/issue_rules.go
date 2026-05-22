@@ -142,6 +142,8 @@ func (c *issueRulesChecker) check(specRoot string) ([]Violation, error) {
 	violations = append(violations, lintI009(specRoot, discovered)...)
 	violations = append(violations, lintI001AndI002(specRoot, discovered)...)
 	violations = append(violations, lintI011(discovered)...)
+	violations = append(violations, lintI013AndI014(specRoot, discovered)...)
+	violations = append(violations, lintI015(specRoot, discovered)...)
 
 	// Stable order: by file, then rule.
 	sort.SliceStable(violations, func(i, j int) bool {
@@ -151,6 +153,297 @@ func (c *issueRulesChecker) check(specRoot string) ([]Violation, error) {
 		return violations[i].Rule < violations[j].Rule
 	})
 	return violations, nil
+}
+
+// fix implements the fixer interface for the issue rules checker. It
+// scaffolds any missing root or Feature-scoped `issues/README.md` index
+// that I-013/I-014 would otherwise flag. The fix is idempotent — files
+// that already exist are left untouched. Only I-013 and I-014 are
+// auto-fixed; I-015 (column-shape) is intentionally not auto-fixed
+// because column drift usually signals a different schema choice and
+// silently rewriting it would destroy authorial intent.
+func (c *issueRulesChecker) fix(specRoot string) error {
+	discovered, err := issue.DiscoverAll(specRoot)
+	if err != nil {
+		return fmt.Errorf("discovering issue artifacts: %w", err)
+	}
+	missing := missingIndexPaths(specRoot, discovered)
+	for _, m := range missing {
+		if err := os.MkdirAll(filepath.Dir(m.absPath), 0o755); err != nil {
+			return fmt.Errorf("creating directory for %s: %w", m.relPath, err)
+		}
+		content := issueIndexTemplate(m.h1)
+		if err := os.WriteFile(m.absPath, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", m.relPath, err)
+		}
+	}
+	return nil
+}
+
+// missingIndex is the (rule, absPath, relPath, h1) tuple shared between
+// lint I-013/I-014 detection and the --fix scaffolder.
+type missingIndex struct {
+	rule    string
+	absPath string
+	relPath string
+	h1      string
+}
+
+// missingIndexPaths returns every root or Feature-scoped issues
+// directory that contains ≥1 on-pattern issue artifact but has no
+// README.md. Off-pattern (I-009) files are not considered — those have
+// no canonical home directory.
+//
+// Output is sorted by relPath for deterministic ordering.
+func missingIndexPaths(specRoot string, discovered []issue.Discovered) []missingIndex {
+	hasRoot := false
+	featureSlugs := make(map[string]bool)
+	for _, d := range discovered {
+		if !d.MatchesPattern {
+			continue
+		}
+		if d.FeatureSlug == "" {
+			hasRoot = true
+		} else {
+			featureSlugs[d.FeatureSlug] = true
+		}
+	}
+
+	var out []missingIndex
+	if hasRoot {
+		abs := filepath.Join(specRoot, "issues", "README.md")
+		if _, err := os.Stat(abs); err != nil {
+			out = append(out, missingIndex{
+				rule:    "I-013",
+				absPath: abs,
+				relPath: "issues/README.md",
+				h1:      "Issues",
+			})
+		}
+	}
+	var slugs []string
+	for s := range featureSlugs {
+		slugs = append(slugs, s)
+	}
+	sort.Strings(slugs)
+	for _, s := range slugs {
+		abs := filepath.Join(specRoot, "features", s, "issues", "README.md")
+		if _, err := os.Stat(abs); err != nil {
+			out = append(out, missingIndex{
+				rule:    "I-014",
+				absPath: abs,
+				relPath: "features/" + s + "/issues/README.md",
+				h1:      "Issues",
+			})
+		}
+	}
+	return out
+}
+
+// issueIndexColumns names the five required Contents-table column
+// headers in canonical order per rule I-015.
+var issueIndexColumns = []string{"Slug", "Title", "Status", "Severity", "Captured"}
+
+// issueIndexTemplate returns the canonical lint-clean issues-index
+// README body used by --fix to scaffold a missing I-013/I-014 README.
+// The result is intentionally minimal: type: index frontmatter,
+// `**Status:** Stable`, a single empty Contents table with the five
+// canonical column headers, an empty Open Questions section, and the
+// SpecScore adherence footer.
+func issueIndexTemplate(h1 string) string {
+	var b strings.Builder
+	b.WriteString("---\n")
+	b.WriteString("type: index\n")
+	b.WriteString("---\n")
+	b.WriteString("\n")
+	b.WriteString("**Status:** Stable\n")
+	b.WriteString("\n")
+	b.WriteString("# ")
+	b.WriteString(h1)
+	b.WriteString("\n")
+	b.WriteString("\n")
+	b.WriteString("## Contents\n")
+	b.WriteString("\n")
+	b.WriteString("| ")
+	b.WriteString(strings.Join(issueIndexColumns, " | "))
+	b.WriteString(" |\n")
+	b.WriteString("| --- | --- | --- | --- | --- |\n")
+	b.WriteString("\n")
+	b.WriteString("## Open Questions\n")
+	b.WriteString("\n")
+	b.WriteString("None at this time.\n")
+	b.WriteString("\n")
+	b.WriteString("---\n")
+	b.WriteString("*This document follows the https://specscore.md/issues-index-specification*\n")
+	return b.String()
+}
+
+// lintI013AndI014 emits one violation per missing index README. I-013
+// covers the root `spec/issues/README.md`; I-014 covers each missing
+// `spec/features/<feature-slug>/issues/README.md`.
+func lintI013AndI014(specRoot string, discovered []issue.Discovered) []Violation {
+	missing := missingIndexPaths(specRoot, discovered)
+	if len(missing) == 0 {
+		return nil
+	}
+	out := make([]Violation, 0, len(missing))
+	for _, m := range missing {
+		var msg string
+		switch m.rule {
+		case "I-013":
+			msg = fmt.Sprintf("missing root issues index README: %s (run `specscore spec lint --fix` to scaffold)", m.relPath)
+		case "I-014":
+			msg = fmt.Sprintf("missing Feature-scoped issues index README: %s (run `specscore spec lint --fix` to scaffold)", m.relPath)
+		}
+		out = append(out, Violation{
+			File:     m.relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     m.rule,
+			Message:  msg,
+		})
+	}
+	return out
+}
+
+// lintI015 validates the Contents-table column headers of every existing
+// issues-index README (root and per-Feature) against the five canonical
+// columns in canonical order. The rule stays silent when the README is
+// absent (that case is I-013/I-014's concern), when the README has no
+// `## Contents` section, or when the Contents section has no table at
+// all — those failure modes are not the column-shape concern.
+func lintI015(specRoot string, discovered []issue.Discovered) []Violation {
+	// Build the set of index README paths to inspect: every directory
+	// that contains ≥1 on-pattern issue AND has a README.md present.
+	hasRoot := false
+	featureSlugs := make(map[string]bool)
+	for _, d := range discovered {
+		if !d.MatchesPattern {
+			continue
+		}
+		if d.FeatureSlug == "" {
+			hasRoot = true
+		} else {
+			featureSlugs[d.FeatureSlug] = true
+		}
+	}
+
+	type target struct {
+		abs string
+		rel string
+	}
+	var targets []target
+	if hasRoot {
+		abs := filepath.Join(specRoot, "issues", "README.md")
+		if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+			targets = append(targets, target{abs: abs, rel: "issues/README.md"})
+		}
+	}
+	var slugs []string
+	for s := range featureSlugs {
+		slugs = append(slugs, s)
+	}
+	sort.Strings(slugs)
+	for _, s := range slugs {
+		abs := filepath.Join(specRoot, "features", s, "issues", "README.md")
+		if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+			targets = append(targets, target{abs: abs, rel: "features/" + s + "/issues/README.md"})
+		}
+	}
+
+	var out []Violation
+	for _, t := range targets {
+		data, err := os.ReadFile(t.abs)
+		if err != nil {
+			continue
+		}
+		headers, found := parseContentsTableHeaders(string(data))
+		if !found {
+			// No Contents section or no table — out of I-015's scope.
+			continue
+		}
+		if columnsMatch(headers, issueIndexColumns) {
+			continue
+		}
+		out = append(out, Violation{
+			File:     t.rel,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-015",
+			Message: fmt.Sprintf(
+				"issues-index Contents table columns must be %s in that order (got %s)",
+				strings.Join(issueIndexColumns, ", "),
+				strings.Join(headers, ", "),
+			),
+		})
+	}
+	return out
+}
+
+// parseContentsTableHeaders finds the first markdown pipe-table that
+// follows a `## Contents` heading in body and returns its header cell
+// values. It returns (nil, false) when no Contents section exists or
+// when that section contains no pipe-table. The check is intentionally
+// permissive about separator-row dash count.
+func parseContentsTableHeaders(body string) ([]string, bool) {
+	lines := strings.Split(body, "\n")
+	inContents := false
+	for i, ln := range lines {
+		t := strings.TrimSpace(ln)
+		if strings.HasPrefix(t, "## Contents") {
+			inContents = true
+			continue
+		}
+		if inContents && strings.HasPrefix(t, "## ") {
+			// Left the Contents section without finding a table.
+			return nil, false
+		}
+		if !inContents {
+			continue
+		}
+		if !strings.HasPrefix(t, "|") {
+			continue
+		}
+		// Found candidate header row. Next non-blank line should be a
+		// `|---|---|...` separator. We accept any line starting with
+		// `|` that contains at least one `-`.
+		if i+1 >= len(lines) {
+			return nil, false
+		}
+		sep := strings.TrimSpace(lines[i+1])
+		if !strings.HasPrefix(sep, "|") || !strings.Contains(sep, "-") {
+			return nil, false
+		}
+		return splitPipeRow(t), true
+	}
+	return nil, false
+}
+
+// splitPipeRow splits a markdown pipe-table row into its trimmed cell
+// values, discarding the leading and trailing pipe.
+func splitPipeRow(row string) []string {
+	row = strings.TrimSpace(row)
+	row = strings.TrimPrefix(row, "|")
+	row = strings.TrimSuffix(row, "|")
+	parts := strings.Split(row, "|")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, strings.TrimSpace(p))
+	}
+	return out
+}
+
+// columnsMatch reports whether got equals want element-wise.
+func columnsMatch(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // lintI009 enforces dual-location placement per upstream REQ
