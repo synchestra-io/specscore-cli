@@ -71,7 +71,7 @@ Add `pkg/event/config.go` parsing the `events:` block from `specscore.yaml`. Ext
 
 ### Task 7: Implement fan-out dispatcher with stderr failure log + exit-code mapping
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 5, 6
 **Verifies:** cli/event#ac:fan-out-continues-after-failure, cli/event#ac:per-subscriber-failure-stderr-format, cli/event#ac:dispatch-exit-code-when-all-fail
 
