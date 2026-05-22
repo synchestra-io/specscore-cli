@@ -88,6 +88,34 @@ var issueNonEmptyStringOptionals = []string{
 	"rejection_notes",
 }
 
+// issueTransitionStatuses names the three `status` values that trigger
+// I-005's severity-required-on-transition check. Once an issue moves out
+// of `open`, severity must be set to a concrete level.
+var issueTransitionStatuses = map[string]bool{
+	"investigating": true,
+	"resolved":      true,
+	"rejected":      true,
+}
+
+// issueRejectionReasonValues enumerates the six valid `rejection_reason`
+// enum values per rule I-006.
+var issueRejectionReasonValues = []string{
+	"not-a-defect",
+	"wont-fix",
+	"duplicate",
+	"not-reproducible",
+	"by-design",
+	"deferred",
+}
+
+var issueRejectionReasonValueSet = func() map[string]bool {
+	m := make(map[string]bool, len(issueRejectionReasonValues))
+	for _, v := range issueRejectionReasonValues {
+		m[v] = true
+	}
+	return m
+}()
+
 // issueRuleIDs enumerates the 15 canonical rule IDs in order.
 var issueRuleIDs = []string{
 	"I-001", "I-002", "I-003", "I-004", "I-005",
@@ -179,6 +207,8 @@ func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation
 		out = append(out, checkIssueI002(d.RelPath, iss)...)
 		out = append(out, checkIssueI003(d.RelPath, iss)...)
 		out = append(out, checkIssueI004(d.RelPath, iss)...)
+		out = append(out, checkIssueI005(d.RelPath, iss)...)
+		out = append(out, checkIssueI006(d.RelPath, iss)...)
 	}
 	return out
 }
@@ -292,6 +322,104 @@ func checkIssueI003(relPath string, iss *issue.Issue) []Violation {
 				Message:  fmt.Sprintf("optional field %q must be a non-empty string when present", k),
 			})
 		}
+	}
+
+	return vs
+}
+
+// checkIssueI005 enforces severity-required-on-transition. Once `status`
+// leaves `open` (i.e. is one of investigating/resolved/rejected),
+// `severity` MUST be set to a concrete level — `low`, `medium`, `high`,
+// or `critical`. Absent severity or `severity: unset` both violate.
+//
+// I-005 says nothing when `status` is `open`, missing, or an invalid
+// enum value (I-001/I-002 cover those). I-005 also says nothing when
+// `severity` is set to any non-`unset` string — even one that is not in
+// the I-003 enum — because I-003 already handles enum-shape and the
+// concern of I-005 is solely "did the author make a transition-time
+// commitment".
+func checkIssueI005(relPath string, iss *issue.Issue) []Violation {
+	status, present := iss.Frontmatter["status"]
+	if !present {
+		return nil
+	}
+	if !issueTransitionStatuses[status] {
+		return nil
+	}
+	sev, sevPresent := iss.Frontmatter["severity"]
+	if !sevPresent || strings.TrimSpace(sev) == "" || sev == "unset" {
+		return []Violation{{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-005",
+			Message:  fmt.Sprintf("severity-required-on-transition: status %q requires severity to be one of {low, medium, high, critical} (not absent, not unset)", status),
+		}}
+	}
+	return nil
+}
+
+// checkIssueI006 enforces the rejection_reason / rejection_notes
+// contract:
+//
+//   - status=rejected requires rejection_reason present and non-empty.
+//   - status!=rejected requires rejection_reason to be absent.
+//   - rejection_reason, when present, must be one of the six enum values.
+//   - rejection_notes must be absent when rejection_reason is absent
+//     (orphan-notes check).
+//
+// Each sub-check emits its own violation so taxonomy stays unambiguous.
+func checkIssueI006(relPath string, iss *issue.Issue) []Violation {
+	var vs []Violation
+	status := iss.Frontmatter["status"]
+	reason, reasonPresent := iss.Frontmatter["rejection_reason"]
+	_, notesPresent := iss.Frontmatter["rejection_notes"]
+	reasonNonEmpty := reasonPresent && strings.TrimSpace(reason) != ""
+
+	// (a) status: rejected requires rejection_reason.
+	if status == "rejected" && !reasonNonEmpty {
+		vs = append(vs, Violation{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-006",
+			Message:  "status \"rejected\" requires rejection_reason to be set",
+		})
+	}
+
+	// (b) status != rejected forbids rejection_reason.
+	if status != "rejected" && reasonPresent {
+		vs = append(vs, Violation{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-006",
+			Message:  fmt.Sprintf("rejection_reason must be absent when status is not \"rejected\" (got status %q)", status),
+		})
+	}
+
+	// (c) rejection_reason value enum check. Only run when present and
+	// non-empty — I-003 covers the present-but-empty case under its
+	// non-empty-string rule.
+	if reasonNonEmpty && !issueRejectionReasonValueSet[reason] {
+		vs = append(vs, Violation{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-006",
+			Message:  fmt.Sprintf("rejection_reason %q is not one of {%s}", reason, strings.Join(issueRejectionReasonValues, ", ")),
+		})
+	}
+
+	// Orphan rejection_notes: notes present but reason absent.
+	if notesPresent && !reasonPresent {
+		vs = append(vs, Violation{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-006",
+			Message:  "rejection_notes must be absent when rejection_reason is absent",
+		})
 	}
 
 	return vs

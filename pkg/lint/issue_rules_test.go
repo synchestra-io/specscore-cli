@@ -257,6 +257,82 @@ func TestIssueRules_I004_BugsNonStringElement(t *testing.T) {
 	}
 }
 
+// AC: severity-required-on-transition-violation. A fixture issue with
+// `status: investigating` and no `severity` field trips I-005 with a
+// message naming severity-required-on-transition.
+func TestIssueRules_I005_SeverityRequiredOnTransition(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/severity-required-transition/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i005 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-005" {
+			i005 = &vs[i]
+			break
+		}
+	}
+	if i005 == nil {
+		t.Fatalf("expected an I-005 violation; got %+v", vs)
+	}
+	if !strings.Contains(i005.Message, "severity-required-on-transition") {
+		t.Errorf("I-005 message %q does not name severity-required-on-transition", i005.Message)
+	}
+	if i005.Severity != "error" {
+		t.Errorf("severity = %q; want error", i005.Severity)
+	}
+	// I-006 must NOT fire here: status != rejected and rejection_reason absent.
+	for _, v := range vs {
+		if v.Rule == "I-006" {
+			t.Errorf("unexpected I-006 violation on severity-required-transition fixture: %+v", v)
+		}
+	}
+}
+
+// AC: rejection-reason-enum-violation. A fixture issue with
+// `status: rejected`, valid `severity: low`, and
+// `rejection_reason: not-real-enough` trips I-006 listing the six valid
+// values. I-005 must stay silent (severity is set to a valid non-unset
+// value).
+func TestIssueRules_I006_RejectionReasonEnum(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/rejection-reason-enum/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i006 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-006" {
+			i006 = &vs[i]
+			break
+		}
+	}
+	if i006 == nil {
+		t.Fatalf("expected an I-006 violation; got %+v", vs)
+	}
+	for _, want := range []string{
+		"not-a-defect", "wont-fix", "duplicate",
+		"not-reproducible", "by-design", "deferred",
+	} {
+		if !strings.Contains(i006.Message, want) {
+			t.Errorf("I-006 message %q does not list valid value %q", i006.Message, want)
+		}
+	}
+	if !strings.Contains(i006.Message, "not-real-enough") {
+		t.Errorf("I-006 message %q does not name the invalid value 'not-real-enough'", i006.Message)
+	}
+	if i006.Severity != "error" {
+		t.Errorf("severity = %q; want error", i006.Severity)
+	}
+	// Disambiguation: I-005 must NOT fire — severity is `low` (valid, non-unset).
+	for _, v := range vs {
+		if v.Rule == "I-005" {
+			t.Errorf("unexpected I-005 violation on rejection-reason-enum fixture (severity is `low`): %+v", v)
+		}
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

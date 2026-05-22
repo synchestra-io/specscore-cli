@@ -39,7 +39,7 @@ Create `pkg/lint/rules/issue/optional.go` and `pkg/lint/rules/issue/bugs.go`. Im
 
 ### Task 4: Rules `I-005` (severity-on-transition) and `I-006` (rejection reason)
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:severity-required-on-transition-violation, cli/spec/lint/issue-rules#ac:rejection-reason-enum-violation
 
 Create `pkg/lint/rules/issue/lifecycle.go` — these two rules share state-conditional logic and naturally co-locate. Implement rule `I-005`: when `status ∈ {investigating, resolved, rejected}`, `severity` MUST be set to a value in `{low, medium, high, critical}` (not absent, not `unset`); violation when missing or `unset`. Implement rule `I-006` as a three-part check: (a) `status: rejected` requires `rejection_reason`; (b) `rejection_reason` MUST be absent when `status` is not `rejected`; (c) `rejection_reason` value MUST be one of the six valid enum values. `rejection_notes` MUST be absent when `rejection_reason` is absent (orphan-notes check). Extend fixture tests to exercise both rules including the disambiguation case where `status: rejected` with valid `rejection_reason` but missing `severity` triggers only `I-005` (not `I-006`).
