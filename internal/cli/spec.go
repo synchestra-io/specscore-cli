@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/lint"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/internal/telemetry"
+	"github.com/spf13/cobra"
 )
 
 // debugCommand returns the `specscore debug` command group. Currently houses

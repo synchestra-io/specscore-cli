@@ -5,9 +5,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/sourceref"
+	"github.com/spf13/cobra"
 )
 
 // codeCommand returns the "code" command group.

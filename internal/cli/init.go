@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/gitremote"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
+	"github.com/spf13/cobra"
 )
 
 // isTerminal reports whether r is an interactive terminal. Indirected

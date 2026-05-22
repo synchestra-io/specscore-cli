@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/internal/telemetry"
+	"github.com/spf13/cobra"
 )
 
 // telemetryCommand returns the `specscore telemetry` cobra group with three

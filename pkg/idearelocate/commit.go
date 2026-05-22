@@ -152,10 +152,10 @@ func ExecuteCommitPhase(changes []RepoChange, mode CommitMode) ([]RepoChange, *C
 		sha, stderr, err := commitRepo(ch.Repo.Path, ch.Subject)
 		if err != nil {
 			fail := &CommitFailure{
-				Failed:      ch,
+				Failed:       ch,
 				FailedStderr: stderr,
-				Committed:   executed,
-				Unprocessed: append([]RepoChange(nil), changes[i+1:]...),
+				Committed:    executed,
+				Unprocessed:  append([]RepoChange(nil), changes[i+1:]...),
 			}
 			return executed, fail, nil
 		}

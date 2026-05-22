@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/feature"
 	"github.com/specscore/specscore-cli/pkg/task"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 

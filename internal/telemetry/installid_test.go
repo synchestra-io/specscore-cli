@@ -128,12 +128,12 @@ func TestIsUUIDv4_Rejects(t *testing.T) {
 	cases := []string{
 		"",
 		"not-a-uuid",
-		"F47AC10B-58CC-4372-A567-0E02B2C3D479",                 // uppercase
-		"f47ac10b58cc4372a5670e02b2c3d479",                     // no hyphens
-		"f47ac10b-58cc-5372-a567-0e02b2c3d479",                 // version 5 not 4
-		"f47ac10b-58cc-4372-c567-0e02b2c3d479",                 // wrong variant
-		"f47ac10b-58cc-4372-a567-0e02b2c3d479-extra",           // too long
-		strings.Repeat("a", 36),                                // right length, all 'a', no hyphens
+		"F47AC10B-58CC-4372-A567-0E02B2C3D479",       // uppercase
+		"f47ac10b58cc4372a5670e02b2c3d479",           // no hyphens
+		"f47ac10b-58cc-5372-a567-0e02b2c3d479",       // version 5 not 4
+		"f47ac10b-58cc-4372-c567-0e02b2c3d479",       // wrong variant
+		"f47ac10b-58cc-4372-a567-0e02b2c3d479-extra", // too long
+		strings.Repeat("a", 36),                      // right length, all 'a', no hyphens
 	}
 	for _, c := range cases {
 		if isUUIDv4(c) {

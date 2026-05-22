@@ -266,9 +266,9 @@ func findCycle(tasks []plan.Task) []int {
 	parent := make(map[int]int, len(tasks))
 
 	var (
-		cycle    []int
-		dfs      func(n int) bool
-		ordered  []int
+		cycle   []int
+		dfs     func(n int) bool
+		ordered []int
 	)
 	for n := range nums {
 		ordered = append(ordered, n)

@@ -49,13 +49,13 @@ type Plan struct {
 	TitleLine    int    // 1-based line number of the title (0 when absent)
 	Title        string // the `<title>` portion after `# Plan: `
 
-	SourceFeature        string // value of `**Source Feature:**` (empty when missing)
-	SourceFeatureLine    int    // 1-based line of the field; 0 when absent
-	Mode                 Mode   // `full` (default) or `stub`
-	ModeLine             int    // 1-based line of `**Mode:**`; 0 when absent
-	ModeRaw              string // raw value as written (used by P-004 to report invalid tokens)
-	ModeRawPresent       bool   // true when the field was present at all
-	ModeValueValid       bool   // true when ModeRaw parsed cleanly into Mode
+	SourceFeature     string // value of `**Source Feature:**` (empty when missing)
+	SourceFeatureLine int    // 1-based line of the field; 0 when absent
+	Mode              Mode   // `full` (default) or `stub`
+	ModeLine          int    // 1-based line of `**Mode:**`; 0 when absent
+	ModeRaw           string // raw value as written (used by P-004 to report invalid tokens)
+	ModeRawPresent    bool   // true when the field was present at all
+	ModeValueValid    bool   // true when ModeRaw parsed cleanly into Mode
 
 	Tasks []Task // task blocks in source order
 
@@ -71,21 +71,21 @@ type Task struct {
 	BodyLines   []string // lines after the heading, up to the next task / H2 / EOF (verbatim)
 	BodyStart   int      // 1-based line where the body begins (one past the heading)
 
-	Verifies          []string // AC IDs from `**Verifies:**`, in source order
-	VerifiesLine      int      // 1-based line of `**Verifies:**`; 0 when absent
-	VerifiesPresent   bool     // true when the field was present
-	Status            TaskStatus
-	StatusLine        int    // 1-based line of `**Status:**`; 0 when absent
-	StatusRaw         string // raw value as written
-	StatusPresent     bool   // true when the field was present
-	StatusValueValid  bool   // true when StatusRaw parsed cleanly into TaskStatus
-	DependsOn         []int  // predecessor task numbers, empty when none
-	DependsOnLine     int    // 1-based line of `**Depends-On:**`; 0 when absent
-	DependsOnRaw      string // raw value as written
-	DependsOnPresent  bool
-	DependsOnValid    bool // true when raw value parsed cleanly (em-dash or list of ints)
-	HasPlaceholder    bool // true when the body contains the placeholder token on its own line
-	PlaceholderLine   int  // 1-based line of the placeholder; 0 when absent
+	Verifies         []string // AC IDs from `**Verifies:**`, in source order
+	VerifiesLine     int      // 1-based line of `**Verifies:**`; 0 when absent
+	VerifiesPresent  bool     // true when the field was present
+	Status           TaskStatus
+	StatusLine       int    // 1-based line of `**Status:**`; 0 when absent
+	StatusRaw        string // raw value as written
+	StatusPresent    bool   // true when the field was present
+	StatusValueValid bool   // true when StatusRaw parsed cleanly into TaskStatus
+	DependsOn        []int  // predecessor task numbers, empty when none
+	DependsOnLine    int    // 1-based line of `**Depends-On:**`; 0 when absent
+	DependsOnRaw     string // raw value as written
+	DependsOnPresent bool
+	DependsOnValid   bool // true when raw value parsed cleanly (em-dash or list of ints)
+	HasPlaceholder   bool // true when the body contains the placeholder token on its own line
+	PlaceholderLine  int  // 1-based line of the placeholder; 0 when absent
 }
 
 // DeferredAC is a single `- <feature-slug>#ac:<ac-slug> — <reason>` line.

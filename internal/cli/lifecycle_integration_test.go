@@ -26,9 +26,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/lint"
+	"github.com/spf13/cobra"
 )
 
 // assertLintClean fails the test if the spec tree under <root>/spec

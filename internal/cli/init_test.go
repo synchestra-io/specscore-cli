@@ -434,4 +434,3 @@ func TestInit_LintCleanInvariants(t *testing.T) {
 		t.Errorf("features index missing canonical column header:\n%s", feats)
 	}
 }
-

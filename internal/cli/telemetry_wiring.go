@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"charm.land/fang/v2"
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/internal/telemetry"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/spf13/cobra"
 )
 
 // runtimeState carries per-invocation telemetry state from PreRun to the

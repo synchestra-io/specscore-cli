@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/feature"
 	"github.com/specscore/specscore-cli/pkg/idea"
 	"github.com/specscore/specscore-cli/pkg/lifecycle"
 	"github.com/specscore/specscore-cli/pkg/lint"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
+	"github.com/spf13/cobra"
 )
 
 // ideaCommand returns the "idea" command group — query and scaffold Idea artifacts.

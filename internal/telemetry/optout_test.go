@@ -134,8 +134,8 @@ func TestCollectOSEnvSignals_RecognisedMarkers(t *testing.T) {
 		wantCI   bool
 	}{
 		{
-			name:    "empty",
-			env:     map[string]string{},
+			name:     "empty",
+			env:      map[string]string{},
 			wantZero: false, wantDNT: false, wantCI: false,
 		},
 		{

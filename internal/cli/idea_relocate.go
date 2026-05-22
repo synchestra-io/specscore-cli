@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/idea"
 	"github.com/specscore/specscore-cli/pkg/idearelocate"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
+	"github.com/spf13/cobra"
 )
 
 // ideaRelocateCommand returns the "idea relocate" subcommand.

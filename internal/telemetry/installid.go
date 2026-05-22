@@ -93,9 +93,10 @@ func InstallIDPath() (string, error) {
 //
 // On Unix: $HOME/.specscore
 // On Windows: %LOCALAPPDATA%\specscore (via os.UserConfigDir, which on
-//   Windows returns %APPDATA%; we route Windows through os.UserConfigDir
-//   for safety and use a subdir "specscore" — matching the Feature's
-//   "%LOCALAPPDATA%\specscore\install_id" example in spirit).
+//
+//	Windows returns %APPDATA%; we route Windows through os.UserConfigDir
+//	for safety and use a subdir "specscore" — matching the Feature's
+//	"%LOCALAPPDATA%\specscore\install_id" example in spirit).
 func userStateDir() (string, error) {
 	if runtime.GOOS == "windows" {
 		base, err := os.UserConfigDir()
