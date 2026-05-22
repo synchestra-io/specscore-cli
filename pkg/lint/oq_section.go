@@ -30,70 +30,64 @@ const (
 func (c *oqSectionChecker) check(specRoot string) ([]Violation, error) {
 	var violations []Violation
 
-	specSubDirs := []string{
-		filepath.Join(specRoot, "features"),
-		filepath.Join(specRoot, "plans"),
+	info, err := os.Stat(specRoot)
+	if err != nil || !info.IsDir() {
+		return violations, nil
 	}
 
-	for _, dir := range specSubDirs {
-		info, err := os.Stat(dir)
-		if err != nil || !info.IsDir() {
-			continue
-		}
-
-		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() {
-				return nil
-			}
-
-			readmePath := filepath.Join(path, "README.md")
-			if _, statErr := os.Stat(readmePath); statErr != nil {
-				return nil
-			}
-
-			result, parseErr := parseOQSection(readmePath)
-			if parseErr != nil {
-				return nil
-			}
-
-			relPath, _ := filepath.Rel(specRoot, readmePath)
-
-			switch {
-			case result.legacy:
-				violations = append(violations, Violation{
-					File:     relPath,
-					Line:     result.line,
-					Severity: "error",
-					Rule:     "oq-section",
-					Message:  `Legacy heading "## Outstanding Questions" found; rename to "## Open Questions" (run with --fix to migrate)`,
-				})
-			case !result.found:
-				violations = append(violations, Violation{
-					File:     relPath,
-					Line:     0,
-					Severity: "error",
-					Rule:     "oq-section",
-					Message:  "Open Questions section not found",
-				})
-			case result.empty:
-				violations = append(violations, Violation{
-					File:     relPath,
-					Line:     result.line,
-					Severity: "warning",
-					Rule:     "oq-not-empty",
-					Message:  "Open Questions section appears empty",
-				})
-			}
-
-			return nil
-		})
-
+	walkErr := filepath.Walk(specRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil, err
+			return err
 		}
+		if info.IsDir() {
+			return nil
+		}
+		// Only README.md files participate in the section-presence check.
+		// The fix phase is broader (any .md), but only README.md is the
+		// canonical anchor for the Open Questions section per AGENTS.md.
+		if info.Name() != "README.md" {
+			return nil
+		}
+
+		result, parseErr := parseOQSection(path)
+		if parseErr != nil {
+			return nil
+		}
+
+		relPath, _ := filepath.Rel(specRoot, path)
+
+		switch {
+		case result.legacy:
+			violations = append(violations, Violation{
+				File:     relPath,
+				Line:     result.line,
+				Severity: "error",
+				Rule:     "oq-section",
+				Message:  `Legacy heading "## Outstanding Questions" found; rename to "## Open Questions" (run with --fix to migrate)`,
+			})
+		case !result.found:
+			violations = append(violations, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "oq-section",
+				Message:  "Open Questions section not found",
+			})
+		case result.empty:
+			violations = append(violations, Violation{
+				File:     relPath,
+				Line:     result.line,
+				Severity: "warning",
+				Rule:     "oq-not-empty",
+				Message:  "Open Questions section appears empty",
+			})
+		}
+
+		return nil
+	})
+
+	if walkErr != nil {
+		return nil, walkErr
 	}
 
 	return violations, nil
@@ -104,57 +98,42 @@ func (c *oqSectionChecker) check(specRoot string) ([]Violation, error) {
 // byte-for-byte unchanged. Prose, code blocks, and anchor identifiers
 // that mention "Outstanding Questions" are NOT touched.
 //
-// Walks spec/features/, spec/plans/, and spec/ideas/. While the check
-// phase only reports violations under features/ and plans/ (Idea files
-// have their own required-sections rule), the rewrite is structural and
-// equally safe to apply to Idea files — and applying it here means a
-// single `--fix` pass migrates the entire spec tree.
+// Walks every .md file under spec/ recursively — including the root
+// spec/README.md, sibling subtrees like spec/research/ and
+// spec/decisions/, single-file Idea artifacts, and nested
+// feature/plan READMEs. The fix is broader than the check (which only
+// considers README.md files): legacy headings in non-README .md files
+// are rare but possible (e.g., Idea slug files), and rewriting them in
+// the same pass means one `--fix` invocation migrates the whole tree.
 func (c *oqSectionChecker) fix(specRoot string) error {
-	specSubDirs := []string{
-		filepath.Join(specRoot, "features"),
-		filepath.Join(specRoot, "plans"),
-		filepath.Join(specRoot, "ideas"),
+	info, err := os.Stat(specRoot)
+	if err != nil || !info.IsDir() {
+		return nil
 	}
 
-	for _, dir := range specSubDirs {
-		info, err := os.Stat(dir)
-		if err != nil || !info.IsDir() {
-			continue
+	return filepath.Walk(specRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != ".md" {
+			return nil
 		}
 
-		walkErr := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			// Rewrite every markdown file under the walked subtrees. Idea
-			// files live one level under spec/ideas/ (single-file artifacts,
-			// not directories), so we cannot restrict to README.md as we do
-			// for features/plans.
-			if info.IsDir() {
-				return nil
-			}
-			if filepath.Ext(path) != ".md" {
-				return nil
-			}
-
-			content, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return nil
-			}
-
-			rewritten, changed := rewriteLegacyOQHeading(string(content))
-			if !changed {
-				return nil
-			}
-
-			return os.WriteFile(path, []byte(rewritten), 0o644)
-		})
-		if walkErr != nil {
-			return walkErr
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
 		}
-	}
 
-	return nil
+		rewritten, changed := rewriteLegacyOQHeading(string(content))
+		if !changed {
+			return nil
+		}
+
+		return os.WriteFile(path, []byte(rewritten), 0o644)
+	})
 }
 
 // rewriteLegacyOQHeading replaces any line whose trimmed form equals

@@ -79,11 +79,11 @@ This REQ does NOT violate `fix-is-safe-subset`. Status flows from a structurally
 
 ### Open Questions section
 
-Every feature and plan README MUST contain a `## Open Questions` section. The `oq-section` rule validates the section's presence; a separate `oq-not-empty` rule (warning severity) flags an existing section that has no body content. The canonical heading text is `## Open Questions`; a legacy `## Outstanding Questions` heading is rejected with a distinct, actionable message and is autofixable. The `oq` rule-name abbreviation is preserved across the rename.
+Every `README.md` under the `spec/` tree MUST contain a `## Open Questions` section — including the root `spec/README.md` and READMEs under `spec/research/`, `spec/decisions/`, and other sibling subtrees, not only `spec/features/` and `spec/plans/`. This mirrors the convention declared in `AGENTS.md`: *"Every README.md MUST have an Open Questions section."* The `oq-section` rule validates the section's presence; a separate `oq-not-empty` rule (warning severity) flags an existing section that has no body content. The canonical heading text is `## Open Questions`; a legacy `## Outstanding Questions` heading is rejected with a distinct, actionable message and is autofixable. The `oq` rule-name abbreviation is preserved across the rename.
 
 #### REQ: oq-section-required
 
-`oq-section` MUST report a violation when a `README.md` under `spec/features/` or `spec/plans/` lacks a level-2 `## Open Questions` heading and also lacks a legacy `## Outstanding Questions` heading (which is reported by `REQ:oq-section-legacy-heading` instead). Severity: `error`. Message: `Open Questions section not found`.
+`oq-section` MUST report a violation when any `README.md` anywhere under `spec/` (recursive) lacks a level-2 `## Open Questions` heading and also lacks a legacy `## Outstanding Questions` heading (which is reported by `REQ:oq-section-legacy-heading` instead). Severity: `error`. Message: `Open Questions section not found`.
 
 #### REQ: oq-section-legacy-heading
 
@@ -91,7 +91,7 @@ Every feature and plan README MUST contain a `## Open Questions` section. The `o
 
 #### REQ: oq-section-fix-rewrites-legacy-heading
 
-When `--fix` runs and `REQ:oq-section-legacy-heading` reports a violation, the fixer MUST replace the heading line matching `^##\s+Outstanding\s+Questions\s*$` with `## Open Questions`. The rewrite MUST be line-scoped: the rest of the file MUST be preserved byte-for-byte. Other occurrences of the phrase "Outstanding Questions" (prose, code blocks, anchor identifiers, link text) MUST NOT be modified by this autofix.
+When `--fix` runs and `REQ:oq-section-legacy-heading` reports a violation, the fixer MUST replace the heading line matching `^##\s+Outstanding\s+Questions\s*$` with `## Open Questions`. The rewrite MUST be line-scoped: the rest of the file MUST be preserved byte-for-byte. Other occurrences of the phrase "Outstanding Questions" (prose, code blocks, anchor identifiers, link text) MUST NOT be modified by this autofix. The fixer MUST walk every `.md` file under `spec/` (recursive), not only the `README.md` files the check phase reports on — so legacy headings in single-file Idea artifacts (`spec/ideas/<slug>.md`) and other ad-hoc `.md` files under `spec/` migrate in the same pass.
 
 #### REQ: oq-not-empty-rule
 
@@ -226,7 +226,7 @@ Given a feature tree where `spec/features/orphan/README.md` exists on disk but `
 
 **Requirements:** cli/spec/lint#req:oq-section-required
 
-A feature README that contains no `## Open Questions` heading and no `## Outstanding Questions` heading exits `1` with one `oq-section` violation whose message reads `Open Questions section not found`.
+A README under `spec/` that contains no `## Open Questions` heading and no `## Outstanding Questions` heading exits `1` with one `oq-section` violation whose message reads `Open Questions section not found`. This applies equally to `spec/README.md` itself, `spec/research/README.md`, `spec/decisions/README.md`, and to every nested feature/plan/idea README — every `README.md` under the `spec/` tree is in scope.
 
 ### AC: oq-section-legacy-heading-flagged-and-fixed
 

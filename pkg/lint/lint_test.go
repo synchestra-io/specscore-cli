@@ -272,6 +272,69 @@ func TestOQSection_FixRewritesLegacyHeading(t *testing.T) {
 	}
 }
 
+func TestOQSection_ChecksRootSpecReadme(t *testing.T) {
+	// Pre-broadening, the check walked spec/features/ and spec/plans/ only;
+	// the root spec/README.md and sibling subtrees like spec/research/ were
+	// invisible. Now every README.md under spec/ is in scope.
+	root := setupSpecTree(t, map[string]string{
+		"README.md":             "# Project\n\n## Summary\n\nNo OQ section.\n",
+		"research/README.md":    "# Research\n\n## Summary\n\nNo OQ section either.\n",
+		"features/cli/README.md": "# CLI\n\n## Open Questions\n\n- ok\n",
+	})
+
+	c := newOQSectionChecker()
+	v, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v) != 2 {
+		t.Fatalf("expected 2 violations (root + research), got %d: %v", len(v), v)
+	}
+	files := map[string]bool{}
+	for _, vi := range v {
+		files[vi.File] = true
+		if vi.Rule != "oq-section" {
+			t.Errorf("expected oq-section, got %s", vi.Rule)
+		}
+		if vi.Message != "Open Questions section not found" {
+			t.Errorf("unexpected message: %s", vi.Message)
+		}
+	}
+	if !files["README.md"] || !files["research/README.md"] {
+		t.Errorf("expected violations for both root and research READMEs, got files: %v", files)
+	}
+}
+
+func TestOQSection_FixWalksAllSpecMdFiles(t *testing.T) {
+	// Pre-broadening, the fix walked features/plans/ideas only. Now any
+	// .md file under spec/ — including spec/README.md, spec/research/foo.md,
+	// and arbitrary sibling subtrees — gets the legacy-heading rewrite.
+	root := setupSpecTree(t, map[string]string{
+		"README.md":                 "# Project\n\n## Outstanding Questions\n\n- root oq?\n",
+		"research/notes.md":         "# Notes\n\n## Outstanding Questions\n\n- note?\n",
+		"decisions/0001-x.md":       "# Decision 1\n\n## Outstanding Questions\n\n- d?\n",
+		"features/cli/README.md":    "# CLI\n\n## Outstanding Questions\n\n- cli?\n",
+	})
+
+	c := newOQSectionChecker().(fixer)
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix returned error: %v", err)
+	}
+
+	for _, rel := range []string{"README.md", "research/notes.md", "decisions/0001-x.md", "features/cli/README.md"} {
+		got, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		if strings.Contains(string(got), "## Outstanding Questions") {
+			t.Errorf("%s: legacy heading not rewritten:\n%s", rel, string(got))
+		}
+		if !strings.Contains(string(got), "## Open Questions") {
+			t.Errorf("%s: canonical heading missing:\n%s", rel, string(got))
+		}
+	}
+}
+
 // --- indexEntriesChecker ---
 
 func TestIndexEntries_Valid(t *testing.T) {

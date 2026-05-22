@@ -38,7 +38,7 @@ func setupFeatureSpec(t *testing.T, status string) string {
 		t.Fatalf("mkdir: %v", err)
 	}
 
-	specReadme := "# Specifications\n\n## Contents\n\n- [features](features/README.md)\n"
+	specReadme := "# Specifications\n\n## Contents\n\n- [features](features/README.md)\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(specDir, "README.md"), []byte(specReadme), 0o644); err != nil {
 		t.Fatalf("write spec/README.md: %v", err)
 	}
