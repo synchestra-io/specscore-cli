@@ -1,7 +1,12 @@
 package cli
 
 import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/specscore/specscore-cli/pkg/event"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/gitremote"
 	"github.com/spf13/cobra"
 )
 
@@ -80,6 +85,41 @@ var envelopeRequiredFlags = []envelopeRequiredFlag{
 	{"artifact-type", "artifact.type"},
 	{"artifact-id", "artifact.id"},
 	{"artifact-path", "artifact.path"},
+}
+
+// autofillEnvelope populates the four bookkeeping fields of e that the
+// caller is not required to supply: version, uuid, timestamp, and
+// artifact.revision. Per cli/event/emit#ac:envelope-auto-fill-*:
+//
+//   - version is always 1.
+//   - uuid is a fresh lowercase-hyphenated v4 (matches the AC regex).
+//   - timestamp is time.Now().UTC() formatted RFC 3339 with the `Z`
+//     suffix (Go's time.RFC3339 format yields `Z` for UTC times).
+//   - artifact.revision is, in priority order: (1) the override
+//     argument when non-empty, else (2) the output of `git rev-parse
+//     HEAD` run from projectRoot, else (3) the literal string
+//     "uncommitted" when git fails (no .git/, no commits, etc.).
+//
+// The function is intentionally pure-ish — it mutates only e and reads
+// the filesystem only through gitremote.HeadSHA. End-to-end wiring
+// (RunE → dispatch) lands in Task 6; this function is exercised
+// directly by unit tests in this batch.
+func autofillEnvelope(e *event.Event, projectRoot string, revisionOverride string) {
+	e.Version = 1
+	e.UUID = uuid.NewString()
+	e.Timestamp = time.Now().UTC()
+
+	switch {
+	case revisionOverride != "":
+		e.Artifact.Revision = revisionOverride
+	default:
+		sha, err := gitremote.HeadSHA(projectRoot)
+		if err != nil {
+			e.Artifact.Revision = "uncommitted"
+		} else {
+			e.Artifact.Revision = sha
+		}
+	}
 }
 
 func runEventEmit(cmd *cobra.Command, _ []string) error {

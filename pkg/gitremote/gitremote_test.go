@@ -1,6 +1,67 @@
 package gitremote
 
-import "testing"
+import (
+	"os/exec"
+	"strings"
+	"testing"
+)
+
+// runGit is a tiny helper for spinning up a real git repo inside t.TempDir().
+// Tests skip themselves cleanly when git is unavailable on the host.
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	// Quiet the porcelain — we only care about exit code / final state.
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s in %s: %v\n%s", strings.Join(args, " "), dir, err, out)
+	}
+}
+
+// TestHeadSHA initialises a real git repo, makes one commit, and asserts
+// HeadSHA returns the matching 40-char hex SHA.
+func TestHeadSHA(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available on PATH")
+	}
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q", "-b", "main")
+	runGit(t, dir, "config", "user.email", "t@example.com")
+	runGit(t, dir, "config", "user.name", "T")
+	runGit(t, dir, "commit", "--allow-empty", "-q", "-m", "initial")
+
+	got, err := HeadSHA(dir)
+	if err != nil {
+		t.Fatalf("HeadSHA returned error: %v", err)
+	}
+	// Cross-check against `git rev-parse HEAD` directly.
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "HEAD")
+	expected, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git rev-parse HEAD failed: %v", err)
+	}
+	want := strings.TrimSpace(string(expected))
+	if got != want {
+		t.Errorf("HeadSHA = %q; want %q", got, want)
+	}
+	if len(got) != 40 {
+		t.Errorf("HeadSHA length = %d; want 40 hex chars (got %q)", len(got), got)
+	}
+}
+
+// TestHeadSHA_NoGitRepo asserts HeadSHA returns an error when invoked
+// against a directory that is not a git repo. The error path is what
+// the auto-fill caller uses to substitute the literal "uncommitted".
+func TestHeadSHA_NoGitRepo(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available on PATH")
+	}
+	dir := t.TempDir()
+	if _, err := HeadSHA(dir); err == nil {
+		t.Fatal("HeadSHA on non-git dir returned nil error; want error")
+	}
+}
 
 func TestParse(t *testing.T) {
 	tests := []struct {

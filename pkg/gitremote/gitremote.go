@@ -53,3 +53,18 @@ func OriginURL(dir string) (string, error) {
 	}
 	return strings.TrimSpace(string(out)), nil
 }
+
+// HeadSHA returns the 40-char hex SHA of HEAD for the git repository at
+// dir. It returns an error when dir is not a git repository, has no
+// commits yet, or any other `git rev-parse HEAD` failure occurs.
+// Callers that need an always-succeed path (e.g. envelope auto-fill)
+// should substitute their own fallback value on error rather than
+// propagating it.
+func HeadSHA(dir string) (string, error) {
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
