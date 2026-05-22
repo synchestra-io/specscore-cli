@@ -209,8 +209,224 @@ func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation
 		out = append(out, checkIssueI004(d.RelPath, iss)...)
 		out = append(out, checkIssueI005(d.RelPath, iss)...)
 		out = append(out, checkIssueI006(d.RelPath, iss)...)
+		out = append(out, checkIssueI007(d.RelPath, iss)...)
+		out = append(out, checkIssueI008(d.RelPath, iss)...)
 	}
 	return out
+}
+
+// issueRequiredSections names the three required H2 section titles in
+// canonical order per rule I-008.
+var issueRequiredSections = []string{
+	"Description",
+	"Steps to Reproduce",
+	"Expected vs Actual",
+}
+
+// h1Pattern is the canonical H1 contract for an issue body per rule
+// I-007: the line must start with `# Issue: ` followed by at least one
+// non-whitespace character. The check is implemented inline against
+// raw body lines (no markdown-tree parser dependency) because the
+// shape we care about is a single anchored prefix.
+const h1Pattern = "^# Issue: .+$"
+
+// checkIssueI007 enforces the canonical H1 line. Missing H1 or an H1
+// whose prefix is not `# Issue: ` (followed by at least one non-
+// whitespace character) emits a single violation.
+func checkIssueI007(relPath string, iss *issue.Issue) []Violation {
+	h1 := firstH1(iss.Body)
+	if h1 != "" && isCanonicalIssueH1(h1) {
+		return nil
+	}
+	return []Violation{{
+		File:     relPath,
+		Line:     0,
+		Severity: "error",
+		Rule:     "I-007",
+		Message:  fmt.Sprintf("H1 must match %q", h1Pattern),
+	}}
+}
+
+// firstH1 returns the first markdown H1 line (verbatim, without trailing
+// newline) in body, or "" if none is found. A line is treated as an H1
+// when it starts with `# ` after no leading whitespace.
+func firstH1(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(line, "# ") {
+			return strings.TrimRight(line, "\r")
+		}
+	}
+	return ""
+}
+
+// isCanonicalIssueH1 reports whether line matches `^# Issue: .+$` —
+// i.e. starts with the literal `# Issue: ` and contains at least one
+// non-whitespace character after it.
+func isCanonicalIssueH1(line string) bool {
+	const prefix = "# Issue: "
+	if !strings.HasPrefix(line, prefix) {
+		return false
+	}
+	return strings.TrimSpace(line[len(prefix):]) != ""
+}
+
+// checkIssueI008 validates the three required H2 sections in canonical
+// order. The rule emits distinct violation sub-types via distinct
+// message templates so future advisory grouping can be added without
+// changing rule IDs:
+//
+//   - "missing required section: `## <Name>`"
+//   - "required section is empty: `## <Name>`"
+//   - "required section appears more than once: `## <Name>`"
+//   - "required sections must appear in canonical order: Description, Steps to Reproduce, Expected vs Actual"
+//
+// Additional H2s after the third canonical section are unconstrained
+// and are not inspected.
+func checkIssueI008(relPath string, iss *issue.Issue) []Violation {
+	sections := collectH2Sections(iss.Body)
+
+	// Bucket presence/duplication by canonical name.
+	counts := make(map[string]int, len(issueRequiredSections))
+	bodies := make(map[string]string, len(issueRequiredSections))
+	for _, s := range sections {
+		counts[s.title]++
+		// Keep the first occurrence's body for the empty check; that
+		// matches "appears exactly once" semantics — if a section is
+		// duplicated we emit the duplicated violation separately.
+		if _, seen := bodies[s.title]; !seen {
+			bodies[s.title] = s.body
+		}
+	}
+
+	var vs []Violation
+
+	// (a) missing sections.
+	for _, name := range issueRequiredSections {
+		if counts[name] == 0 {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-008",
+				Message:  fmt.Sprintf("missing required section: `## %s`", name),
+			})
+		}
+	}
+
+	// (b) duplicated sections.
+	for _, name := range issueRequiredSections {
+		if counts[name] > 1 {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-008",
+				Message:  fmt.Sprintf("required section appears more than once: `## %s`", name),
+			})
+		}
+	}
+
+	// (c) empty sections — only when the section is present.
+	for _, name := range issueRequiredSections {
+		if counts[name] >= 1 && strings.TrimSpace(bodies[name]) == "" {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-008",
+				Message:  fmt.Sprintf("required section is empty: `## %s`", name),
+			})
+		}
+	}
+
+	// (d) order check — only meaningful when all three required
+	// sections are present. The first three H2 encounters whose
+	// titles are in the required set must equal the canonical order.
+	if counts[issueRequiredSections[0]] >= 1 &&
+		counts[issueRequiredSections[1]] >= 1 &&
+		counts[issueRequiredSections[2]] >= 1 {
+		var observed []string
+		seen := make(map[string]bool, len(issueRequiredSections))
+		for _, s := range sections {
+			isRequired := false
+			for _, r := range issueRequiredSections {
+				if s.title == r {
+					isRequired = true
+					break
+				}
+			}
+			if !isRequired || seen[s.title] {
+				continue
+			}
+			seen[s.title] = true
+			observed = append(observed, s.title)
+			if len(observed) == len(issueRequiredSections) {
+				break
+			}
+		}
+		ordered := len(observed) == len(issueRequiredSections)
+		if ordered {
+			for i, name := range issueRequiredSections {
+				if observed[i] != name {
+					ordered = false
+					break
+				}
+			}
+		}
+		if !ordered {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-008",
+				Message: fmt.Sprintf(
+					"required sections must appear in canonical order: %s",
+					strings.Join(issueRequiredSections, ", "),
+				),
+			})
+		}
+	}
+
+	return vs
+}
+
+// h2Section captures an H2 heading and the raw body text that follows
+// it (up to but not including the next H2 or end of body).
+type h2Section struct {
+	title string
+	body  string
+}
+
+// collectH2Sections scans body for H2 headings (lines starting with
+// `## `) and returns each heading title plus the text between it and
+// the next H2 (or end of body). The returned slice preserves source
+// order.
+func collectH2Sections(body string) []h2Section {
+	lines := strings.Split(body, "\n")
+	var sections []h2Section
+	var current *h2Section
+	var buf []string
+	flush := func() {
+		if current != nil {
+			current.body = strings.Join(buf, "\n")
+			sections = append(sections, *current)
+		}
+	}
+	for _, line := range lines {
+		stripped := strings.TrimRight(line, "\r")
+		if strings.HasPrefix(stripped, "## ") {
+			flush()
+			title := strings.TrimSpace(strings.TrimPrefix(stripped, "## "))
+			current = &h2Section{title: title}
+			buf = nil
+			continue
+		}
+		if current != nil {
+			buf = append(buf, stripped)
+		}
+	}
+	flush()
+	return sections
 }
 
 func checkIssueI001(relPath string, iss *issue.Issue) []Violation {

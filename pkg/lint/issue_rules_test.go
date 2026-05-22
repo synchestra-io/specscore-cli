@@ -333,6 +333,80 @@ func TestIssueRules_I006_RejectionReasonEnum(t *testing.T) {
 	}
 }
 
+// AC: h1-prefix-violation. A fixture issue whose H1 reads
+// `# Bug: Menu crashes` (instead of `# Issue: ...`) trips I-007 with a
+// message stating the H1 must match `^# Issue: .+$`. No other I-rule
+// should fire on this fixture.
+func TestIssueRules_I007_H1PrefixViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/h1-prefix/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i007 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-007" {
+			i007 = &vs[i]
+			break
+		}
+	}
+	if i007 == nil {
+		t.Fatalf("expected an I-007 violation; got %+v", vs)
+	}
+	if !strings.Contains(i007.Message, "^# Issue: .+$") {
+		t.Errorf("I-007 message %q does not name the required H1 pattern", i007.Message)
+	}
+	if i007.Severity != "error" {
+		t.Errorf("severity = %q; want error", i007.Severity)
+	}
+	// No I-008 should fire — the three required sections are present
+	// in canonical order with non-empty bodies.
+	for _, v := range vs {
+		if v.Rule == "I-008" {
+			t.Errorf("unexpected I-008 violation on h1-prefix fixture: %+v", v)
+		}
+	}
+}
+
+// AC: body-section-order-violation. A fixture issue with the three
+// required H2 sections present but in non-canonical order trips I-008
+// with a message naming the canonical order. I-007 must stay silent
+// (the H1 is canonical).
+func TestIssueRules_I008_BodySectionOrderViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/body-section-order/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i008 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-008" {
+			i008 = &vs[i]
+			break
+		}
+	}
+	if i008 == nil {
+		t.Fatalf("expected an I-008 violation; got %+v", vs)
+	}
+	if !strings.Contains(i008.Message, "canonical order") {
+		t.Errorf("I-008 message %q does not mention canonical order", i008.Message)
+	}
+	for _, want := range []string{"Description", "Steps to Reproduce", "Expected vs Actual"} {
+		if !strings.Contains(i008.Message, want) {
+			t.Errorf("I-008 message %q does not name canonical section %q", i008.Message, want)
+		}
+	}
+	if i008.Severity != "error" {
+		t.Errorf("severity = %q; want error", i008.Severity)
+	}
+	// I-007 must stay silent — the H1 is `# Issue: Foo`.
+	for _, v := range vs {
+		if v.Rule == "I-007" {
+			t.Errorf("unexpected I-007 violation on body-section-order fixture: %+v", v)
+		}
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

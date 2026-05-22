@@ -46,7 +46,7 @@ Create `pkg/lint/rules/issue/lifecycle.go` — these two rules share state-condi
 
 ### Task 5: Rules `I-007` (H1 title) and `I-008` (body sections)
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:h1-prefix-violation, cli/spec/lint/issue-rules#ac:body-section-order-violation
 
 Create `pkg/lint/rules/issue/body.go`. Implement rule `I-007` to match the first H1 against `^# Issue: .+$` using the existing markdown-tree parser already used by other body-checks; non-match → violation. Implement rule `I-008` to validate the three required H2 sections (`## Description`, `## Steps to Reproduce`, `## Expected vs Actual`) in canonical order, each appearing exactly once with non-empty content (≥ 1 non-whitespace character below the heading). Additional H2 sections after the third are unconstrained. The rule emits distinct violation sub-types (missing, out-of-order, empty, duplicated) so future advisory grouping in the lint output is possible without rule-id changes. Extend fixture tests.
