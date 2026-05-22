@@ -1,6 +1,6 @@
 # Feature: Task New
 
-> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=request-change) |
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task/new?op=request-change) |
 >
 > **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/task/references/new.md) · [local](../../../../../../ai-plugin-specscore/skills/task/references/new.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 

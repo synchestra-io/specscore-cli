@@ -44,7 +44,20 @@ func (c *studioToolbarChecker) severity() string { return "error" }
 func RenderStudioToolbar(name, urlStr, host, org, repo, artifactPath string) string {
 	brand := renderBrandAttribution(name)
 	stripped := strings.TrimSuffix(urlStr, "/")
-	prefix := stripped + "/app/p/" + host + "/" + org + "/" + repo + "/" + escapeArtifactPath(artifactPath)
+	// Defensive escape: host/org/repo are single URL segments and MUST NOT
+	// contain "/" or other URL-reserved chars. In well-formed projects they
+	// come from git remotes (host) or specscore.yaml (org, repo) and are
+	// already clean — url.PathEscape is a no-op for typical inputs like
+	// "github.com", "specscore", etc. For pathological inputs (a
+	// misconfigured specscore.yaml passing "foo/bar" as a repo name, or
+	// a host with a space), escaping prevents URL structural break and
+	// injection. The artifact path is multi-segment and uses its own
+	// escapeArtifactPath which preserves "/" as a literal separator.
+	prefix := stripped + "/app/" +
+		url.PathEscape(host) + "/" +
+		url.PathEscape(org) + "/" +
+		url.PathEscape(repo) + "/" +
+		escapeArtifactPath(artifactPath)
 	explore := prefix + "?op=explore"
 	edit := prefix + "?op=edit"
 	ask := prefix + "?op=ask"
@@ -244,9 +257,13 @@ func classifyDeviation(actual, expected string) string {
 // an "@<branch>" suffix between the host/org/repo path segments. Matches
 // "github.com/owner/repo@main" but not the literal "@" inside a label.
 func containsBranchPin(line string) bool {
-	// Cheap heuristic: look for "/app/p/...@" — any "@" appearing inside
-	// the path component (between /app/p/ and the next ?) is suspicious.
-	i := strings.Index(line, "/app/p/")
+	// Cheap heuristic: look for "/app/...@" — any "@" appearing inside
+	// the path component (between /app/ and the next ?) is suspicious.
+	// The canonical URL form has no "/p/" or "/project/" prefix anymore
+	// (see D-0001 amendment); scanning at the "/app/" boundary catches
+	// both the canonical form AND any lingering legacy prefixes whose
+	// "/p/" or "/project/" path text would fall inside the scanned region.
+	i := strings.Index(line, "/app/")
 	for i >= 0 {
 		rest := line[i:]
 		q := strings.Index(rest, "?")
@@ -257,7 +274,7 @@ func containsBranchPin(line string) bool {
 		if strings.Contains(rest[:end], "@") {
 			return true
 		}
-		next := strings.Index(rest[1:], "/app/p/")
+		next := strings.Index(rest[1:], "/app/")
 		if next < 0 {
 			break
 		}

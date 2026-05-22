@@ -1,6 +1,6 @@
 # Feature: Usage Telemetry (CLI)
 
-> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=request-change) |
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/usage-telemetry?op=request-change) |
 **Status:** Implementing
 **Date:** 2026-05-21
 **Owner:** alexandertrakhimenok

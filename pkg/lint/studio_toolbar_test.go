@@ -23,10 +23,10 @@ const (
 // per AC: toolbar-rendered-with-defaults. Used as the byte-equality target
 // for several AC tests.
 const acDefaultExpectedLine = "> [SpecScore.**Studio**](https://specscore.studio): | " +
-	"[Explore](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=explore) | " +
-	"[Edit](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=edit) | " +
-	"[Ask question](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=ask) | " +
-	"[Request change](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=request-change) |"
+	"[Explore](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=explore) | " +
+	"[Edit](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=edit) | " +
+	"[Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=ask) | " +
+	"[Request change](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=request-change) |"
 
 // setupDefaultStudioProject writes a header-only specscore.yaml so the
 // studio defaults apply (name=SpecScore.Studio, url=https://specscore.studio/),
@@ -133,10 +133,10 @@ func TestRenderStudioToolbar_DefaultsMatchAC(t *testing.T) {
 		"spec/features/repo-config",
 	)
 	want := "> [SpecScore.**Studio**](https://specscore.studio): | " +
-		"[Explore](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=explore) | " +
-		"[Edit](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=edit) | " +
-		"[Ask question](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=ask) | " +
-		"[Request change](https://specscore.studio/app/p/github.com/synchestra-io/specscore/spec/features/repo-config?op=request-change) |\n"
+		"[Explore](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=explore) | " +
+		"[Edit](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=edit) | " +
+		"[Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=ask) | " +
+		"[Request change](https://specscore.studio/app/github.com/synchestra-io/specscore/spec/features/repo-config?op=request-change) |\n"
 	if got != want {
 		t.Errorf("renderer mismatch.\n got: %q\nwant: %q", got, want)
 	}
@@ -186,7 +186,7 @@ func TestRenderStudioToolbar_TrailingSlashStripped(t *testing.T) {
 	if strings.Contains(got, "//app") {
 		t.Errorf("double slash before /app/: %q", got)
 	}
-	want := "https://x.example/app/p/github.com/bar/baz/spec/features/foo?op=edit"
+	want := "https://x.example/app/github.com/bar/baz/spec/features/foo?op=edit"
 	if !strings.Contains(got, want) {
 		t.Errorf("expected canonical edit URL %q in render; got: %q", want, got)
 	}
@@ -205,7 +205,7 @@ func TestRenderStudioToolbar_PathPreservesSlashes(t *testing.T) {
 		"github.com", "o", "r",
 		"spec/features/a-b_c.d/nested",
 	)
-	want := "https://s.example/app/p/github.com/o/r/spec/features/a-b_c.d/nested?op=explore"
+	want := "https://s.example/app/github.com/o/r/spec/features/a-b_c.d/nested?op=explore"
 	if !strings.Contains(got, want) {
 		t.Errorf("path with `-`, `_`, `.`, `/` should survive escaping intact; got: %q", got)
 	}
@@ -512,7 +512,7 @@ func TestAC_UrlGrammarStripsTrailingSlash(t *testing.T) {
 	}
 	data, _ := os.ReadFile(readme)
 	lines := strings.Split(string(data), "\n")
-	wantEdit := "[Edit](https://x.example/app/p/github.com/bar/baz/spec/features/foo?op=edit)"
+	wantEdit := "[Edit](https://x.example/app/github.com/bar/baz/spec/features/foo?op=edit)"
 	if !strings.Contains(lines[2], wantEdit) {
 		t.Errorf("expected canonical Edit URL %q in line 3; got %q", wantEdit, lines[2])
 	}

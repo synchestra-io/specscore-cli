@@ -1,6 +1,6 @@
 # Feature: Idea Relocate
 
-> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=explore) | [Edit](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=edit) | [Ask question](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=ask) | [Request change](https://specscore.studio/app/p/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=request-change) |
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/relocate?op=request-change) |
 >
 > **AI skill:** _planned_ — `specstudio:relocate-idea` (sibling Feature in [`specscore/specstudio-skills`](https://github.com/specscore/specstudio-skills)) will wrap this verb as a thin shell and surface it as `/relocate-idea` for slash-trigger discoverability.
 
