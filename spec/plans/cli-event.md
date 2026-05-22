@@ -63,7 +63,7 @@ Add `pkg/event/envelope.go` with a pure `Validate(Event) error` function coverin
 
 ### Task 6: Implement `events:` config schema loader
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 2, 3, 4
 **Verifies:** cli/event#ac:events-config-default-when-absent, cli/event#ac:events-config-explicit-empty-is-noop, cli/event#ac:events-config-unknown-type-rejected
 
@@ -85,7 +85,7 @@ Add `pkg/event/dispatcher.go` exposing `Dispatch(ctx, Event, []Subscriber) Dispa
 
 Add `docs/events.md` with the seven required second-level sections in order: `## Overview`, `## The events: config block`, `## Built-in subscribers`, `## Writing an Exec subscriber`, `## Envelope shape`, `## Default behavior`, `## Disabling events`. Under `## Built-in subscribers`, third-level subsections `### jsonl`, `### noop`, `### exec`. Under `## Envelope shape`, mirror REQ:envelope-validation's rule set as user-facing prose. Land last so any flag-name or schema details that shifted during tasks 1–7 are captured in the user-facing doc rather than drift from it. The user-facing tone differs from the spec's MUST/MUST-NOT phrasing — write the doc in declarative prose.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 
