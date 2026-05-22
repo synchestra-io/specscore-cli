@@ -476,6 +476,53 @@ func TestIssueRules_I011_GlobalSlugUniquenessViolation(t *testing.T) {
 	}
 }
 
+// AC: affected-component-ref-violation. A fixture issue with
+// `affected_component: nonexistent-feature` and no
+// `spec/features/nonexistent-feature/README.md` trips I-012 with a
+// message naming the unresolved slug.
+func TestIssueRules_I012_AffectedComponentRefViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/affected-component-ref/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i012 []Violation
+	for _, v := range vs {
+		if v.Rule == "I-012" {
+			i012 = append(i012, v)
+		}
+	}
+	if len(i012) != 1 {
+		t.Fatalf("expected exactly one I-012 violation; got %d: %+v", len(i012), i012)
+	}
+	v := i012[0]
+	if !strings.Contains(v.Message, "nonexistent-feature") {
+		t.Errorf("I-012 message %q does not name the unresolved slug 'nonexistent-feature'", v.Message)
+	}
+	if v.Severity != "error" {
+		t.Errorf("severity = %q; want error", v.Severity)
+	}
+	if v.File != "issues/foo.md" {
+		t.Errorf("violation file = %q; want %q", v.File, "issues/foo.md")
+	}
+}
+
+// AC: affected-component-ref-violation (positive case). When
+// `affected_component` resolves to an existing
+// `spec/features/<slug>/README.md`, I-012 stays silent.
+func TestIssueRules_I012_AffectedComponentRefResolves(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/affected-component-ref-resolves/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	for _, v := range vs {
+		if v.Rule == "I-012" {
+			t.Errorf("unexpected I-012 violation on resolving fixture: %+v", v)
+		}
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

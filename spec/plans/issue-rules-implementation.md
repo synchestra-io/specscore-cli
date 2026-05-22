@@ -60,7 +60,7 @@ Extend `pkg/slug/` with `IssueSlug(s string) string` — the canonical slug-deri
 
 ### Task 7: Rule `I-012` (affected_component cross-artifact validation)
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:affected-component-ref-violation
 
 Create `pkg/lint/rules/issue/affected_component.go`. When `affected_component` is present on an `issue` artifact, validate that `spec/features/<value>/README.md` exists. Directory present without `README.md` is treated as nonexistent (matching the existing Source-Ideas reference-validation behavior). Reuse the existing Feature-reference lookup helper in the lint engine; do not duplicate the file-existence logic. Absence of `affected_component` is valid (Task 3 already covers shape; this task adds the cross-artifact reference check). Add fixture tests.

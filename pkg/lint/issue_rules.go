@@ -213,8 +213,37 @@ func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation
 		out = append(out, checkIssueI007(d.RelPath, iss)...)
 		out = append(out, checkIssueI008(d.RelPath, iss)...)
 		out = append(out, checkIssueI010(d.RelPath, iss)...)
+		out = append(out, checkIssueI012(specRoot, d.RelPath, iss)...)
 	}
 	return out
+}
+
+// checkIssueI012 enforces the affected_component cross-artifact
+// reference. When `affected_component` is present and non-empty, the
+// referenced Feature directory must contain a README.md at
+// `spec/features/<value>/README.md`. A missing README (including when
+// the directory itself does not exist) emits one violation.
+//
+// Absence or present-but-empty are handled by other rules (I-001
+// missing/known-fields and I-003 non-empty-string shape) — I-012 stays
+// silent in those cases.
+func checkIssueI012(specRoot, relPath string, iss *issue.Issue) []Violation {
+	slug, present := iss.Frontmatter["affected_component"]
+	if !present || strings.TrimSpace(slug) == "" {
+		return nil
+	}
+	readme := filepath.Join(specRoot, "features", slug, "README.md")
+	info, err := os.Stat(readme)
+	if err == nil && !info.IsDir() {
+		return nil
+	}
+	return []Violation{{
+		File:     relPath,
+		Line:     0,
+		Severity: "error",
+		Rule:     "I-012",
+		Message:  fmt.Sprintf("affected_component %q does not resolve to spec/features/%s/README.md", slug, slug),
+	}}
 }
 
 // checkIssueI010 enforces the filename-vs-frontmatter slug equality
