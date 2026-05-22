@@ -15,4 +15,5 @@ go.work.sum
 
 # Tooling local state
 .claude/
+.specscore/
 .synchestra/
