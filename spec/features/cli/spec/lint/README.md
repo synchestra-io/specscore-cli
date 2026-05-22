@@ -97,6 +97,26 @@ When `--fix` runs and `REQ:oq-section-legacy-heading` reports a violation, the f
 
 A separate `oq-not-empty` rule MUST report a warning when the `## Open Questions` section exists but contains no body content (only blank lines before the next heading or end-of-file). Severity: `warning`. Message: `Open Questions section appears empty`.
 
+### Dogfood version pin
+
+CI workflows that dogfood `specscore spec lint` typically install a specific released CLI version (`SPECSCORE_VERSION: vX.Y.Z` in `.github/workflows/dogfood.yml` or similar). When a convention change ships in a new CLI release, the pinned version must be bumped or CI will run with an old CLI that doesn't understand the new convention — silently passing locally while failing in CI, or vice versa. The `dogfood-version-bump` rule catches drift between the pinned CLI version and the CLI version actually running the lint.
+
+#### REQ: dogfood-version-bump-detects-stale-pin
+
+`dogfood-version-bump` (severity: `warning`) MUST scan every YAML file under `.github/workflows/` (extensions `.yml` and `.yaml`) for lines whose pattern matches `SPECSCORE_VERSION:\s*"?v?(\d+\.\d+\.\d+)"?` (optional quotes, optional `v` prefix; trailing comments allowed). For each match, the rule compares the parsed semver against the CLI's own version (as reported by `--version`). When the pinned version is strictly less than the CLI version, the rule MUST emit one violation per match. Message: `Pinned SPECSCORE_VERSION v<pinned> is older than the running CLI version v<cli>; bump the pin to match`. The rule MUST emit no violation when pinned == CLI version, when pinned > CLI version (the user's deliberate forward-pin), or when no `SPECSCORE_VERSION` is found in any workflow file.
+
+#### REQ: dogfood-version-bump-skips-when-binary-version-unparseable
+
+When the CLI's own version cannot be parsed as semver (e.g., `dev` for local builds, or anything else not matching `v?\d+\.\d+\.\d+`), the rule MUST emit NO violations regardless of what is pinned. Dev builds are explicit overrides and the rule has nothing meaningful to say in that mode.
+
+#### REQ: dogfood-version-bump-skips-when-pin-unparseable
+
+When a `SPECSCORE_VERSION:` line is present but the value does not parse as semver (e.g., `latest`, `main`, `${{ inputs.version }}`), the rule MUST skip that match silently. Non-semver pins are intentional overrides (rolling, dispatch-driven, etc.) and out of scope.
+
+#### REQ: dogfood-version-bump-no-autofix
+
+`dogfood-version-bump` MUST NOT support `--fix`. Bumping a pinned CLI version is a deliberate human decision (per the convention `# bump intentionally via PR` comment seen in dogfood workflows) and the rule's role is purely to surface drift — never to silently rewrite the pin.
+
 ### Severity filtering
 
 Each rule has a built-in severity (`error`, `warning`, `info`). `--severity` sets the minimum severity reported.
@@ -233,6 +253,12 @@ A README under `spec/` that contains no `## Open Questions` heading and no `## O
 **Requirements:** cli/spec/lint#req:oq-section-legacy-heading, cli/spec/lint#req:oq-section-fix-rewrites-legacy-heading
 
 A README whose OQ-style heading is `## Outstanding Questions` exits `1` with one `oq-section` violation pointing at the legacy heading and the actionable rename message. Running `specscore spec lint --fix` rewrites the single heading line in place to `## Open Questions`, preserves every other line byte-for-byte (including any prose mentions of "Outstanding Questions"), and a second consecutive `spec lint --fix` yields no further changes (per `fix-is-idempotent`).
+
+### AC: dogfood-version-bump-flags-stale-pin
+
+**Requirements:** cli/spec/lint#req:dogfood-version-bump-detects-stale-pin, cli/spec/lint#req:dogfood-version-bump-skips-when-binary-version-unparseable, cli/spec/lint#req:dogfood-version-bump-skips-when-pin-unparseable
+
+Given a `.github/workflows/dogfood.yml` that pins `SPECSCORE_VERSION: v0.2.0` while the running `specscore` binary reports version `0.3.0`, `specscore spec lint --severity warning` exits `1` with one `dogfood-version-bump` warning naming both versions. When the binary's version is `dev` (or any non-semver string), or when the pinned value is `latest` / `main` / a `${{ inputs.* }}` expression, the rule emits no violation regardless of what else the workflow contains. A workflow with `SPECSCORE_VERSION: v0.3.0` against a `0.3.0` binary is silent.
 
 ### AC: missing-specscore-yaml-exits-3
 

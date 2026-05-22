@@ -133,11 +133,12 @@ func runSpecLint(cmd *cobra.Command, args []string) error {
 	fix, _ := cmd.Flags().GetBool("fix")
 
 	opts := lint.Options{
-		SpecRoot: specRoot,
-		Rules:    rules,
-		Ignore:   ignore,
-		Severity: severity,
-		Fix:      fix,
+		SpecRoot:   specRoot,
+		Rules:      rules,
+		Ignore:     ignore,
+		Severity:   severity,
+		Fix:        fix,
+		CLIVersion: version,
 	}
 
 	violations, err := lint.Lint(opts)

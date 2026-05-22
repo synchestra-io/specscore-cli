@@ -21,6 +21,11 @@ type Options struct {
 	Ignore   []string // disabled rules
 	Severity string   // minimum severity: error, warning, info
 	Fix      bool     // when true, auto-fixable violations are repaired on disk by checkers that support it
+	// CLIVersion is the running CLI's own version as a semver string (e.g.
+	// "0.3.0", with optional leading "v"). Used by the dogfood-version-bump
+	// rule to detect stale pins in .github/workflows/*.yml. Empty, "dev",
+	// or any non-semver value disables the comparison silently.
+	CLIVersion string
 }
 
 // Lint runs all enabled lint rules against the spec tree.
@@ -101,19 +106,20 @@ func ResetCustomCheckers() {
 
 // allRuleNames is the canonical list of known rule names.
 var allRuleNames = map[string]bool{
-	"readme-exists":      true,
-	"oq-section":         true,
-	"oq-not-empty":       true,
-	"index-entries":      true,
-	"heading-levels":     true,
-	"feature-ref-syntax": true,
-	"internal-links":     true,
-	"forward-refs":       true,
-	"code-annotations":   true,
-	"plan-hierarchy":     true,
-	"plan-roi-metadata":  true,
-	"adherence-footer":   true,
-	"studio-toolbar":     true,
+	"readme-exists":        true,
+	"oq-section":           true,
+	"oq-not-empty":         true,
+	"index-entries":        true,
+	"heading-levels":       true,
+	"feature-ref-syntax":   true,
+	"internal-links":       true,
+	"forward-refs":         true,
+	"code-annotations":     true,
+	"plan-hierarchy":       true,
+	"plan-roi-metadata":    true,
+	"adherence-footer":     true,
+	"studio-toolbar":       true,
+	"dogfood-version-bump": true,
 	// Idea lint rules.
 	"idea-location":                     true,
 	"idea-slug-format":                  true,
