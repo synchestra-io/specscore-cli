@@ -1,6 +1,7 @@
 # Plan: Event Emit Verb
 
-**Status:** Approved
+**Status:** Implementing
+**Mode:** full
 **Source Feature:** cli/event/emit
 **Date:** 2026-05-22
 **Owner:** alexandertrakhimenok
@@ -22,41 +23,53 @@ No ACs are deferred. All 12 ACs in `cli/event/emit` are covered.
 
 ### Task 1: Register `event` cobra parent and `event emit` subcommand with `--help`
 
+**Status:** in-progress
+**Depends-On:** —
 **Verifies:** cli/event/emit#ac:verb-registers-and-helps
 
 Add `internal/cli/event.go` registering the `event` cobra parent (prints help on bare invocation, exits `0`) and the `emit` subcommand stub. Add the canonical docs link `https://specscore.md/event-emit` to the `emit --help` output. The verb's `RunE` is a stub returning success in this task — actual flag wiring lands in later tasks. Isolating the cobra plumbing from the verb's logic lets the registration AC verify in isolation and lets a regression in flag wiring not break the basic discoverability check.
 
 ### Task 2: Implement envelope flag set with required-flag validation
 
+**Status:** in-progress
+**Depends-On:** 1
 **Verifies:** cli/event/emit#ac:required-flag-missing-fails-2
 
 Add the seven envelope flags to the `emit` subcommand: `--name`, `--actor-kind`, `--actor-id`, `--artifact-type`, `--artifact-id`, `--artifact-path` (required); `--artifact-revision` (optional). Wire cobra's required-flag enforcement so a missing required flag exits `2` with a stderr line naming the flag and the envelope field it supplies. Reject extra positional arguments — the verb is flag-form only to keep the call shape stable across shells. No payload reading yet; no envelope construction yet (auto-fill is task 3).
 
 ### Task 3: Implement envelope auto-fill (version, uuid, timestamp, artifact.revision)
 
+**Status:** pending
+**Depends-On:** 2
 **Verifies:** cli/event/emit#ac:envelope-auto-fill-fields, cli/event/emit#ac:envelope-auto-fill-revision-no-git, cli/event/emit#ac:envelope-artifact-revision-override
 
 In the verb's `RunE`, after flag parsing, populate the envelope bookkeeping fields: `version = 1`; `uuid` = fresh v4 (lowercase, hyphenated, no surrounding whitespace); `timestamp` = `time.Now().UTC()` formatted RFC 3339 with the `Z` suffix; `artifact.revision` = output of `git rev-parse HEAD` invoked in the project root. Resolve the project root via the existing `pkg/projectdef`; invoke git via `pkg/gitremote` (or extend it with a thin `HeadSHA(dir)` helper if it doesn't already expose one — the source Feature's Architecture table calls this out as "`pkg/gitremote` or equivalent"). On `git rev-parse HEAD` failure (no `.git/`, no commits yet, other git error), fill the literal string `"uncommitted"` rather than failing the verb. The optional `--artifact-revision` flag, when present, wins over the auto-fill — the user-supplied value is not overridden by the git call.
 
 ### Task 4: Implement payload input modes — read bytes from `--payload-json` / `--payload-file` / stdin
 
+**Status:** pending
+**Depends-On:** 2
 **Verifies:** cli/event/emit#ac:payload-json-flag-shape, cli/event/emit#ac:payload-file-flag-shape, cli/event/emit#ac:payload-stdin-shape
 
 Add `--payload-json '<json>'` and `--payload-file <path>` flags. Implement payload-byte resolution: when `--payload-json` is set, the flag value IS the payload bytes; when `--payload-file` is set, read the file's bytes (resolve relative paths against the project root); otherwise read all bytes from stdin until EOF. Pass the bytes through to the envelope's `Payload` field as `json.RawMessage` — no payload mutation, no field-level inspection. This task covers the three happy-path ACs only; mode arbitration and parse-error paths land in task 5.
 
 ### Task 5: Implement payload mode arbitration + JSON parse pre-check (exit-2 paths)
 
+**Status:** pending
+**Depends-On:** 4
 **Verifies:** cli/event/emit#ac:payload-mode-conflict-fails-2, cli/event/emit#ac:payload-tty-stdin-fails-2, cli/event/emit#ac:payload-bad-json-fails-2
 
 Layer the exit-`2` paths over task 4's reader: reject when both `--payload-json` and `--payload-file` are set (stderr names the conflict and the three accepted modes); reject when either flag is set AND stdin is a non-TTY pipe with bytes — detect via `os.Stat(os.Stdin)` for a `ModeNamedPipe` or character-device check rather than byte-peeking stdin (peeking consumes); reject when no payload flag is set AND stdin is a TTY (exit `2` within 1 second; the verb MUST NOT block on keyboard input that the caller almost certainly did not intend); validate the resolved payload bytes parse as a JSON object before handoff, and on parse failure exit `2` with stderr naming the input mode (`--payload-json` / `--payload-file <path>` / `stdin`) and the JSON parse error. **Test-scaffolding note:** the `payload-tty-stdin-fails-2` AC needs a PTY harness in tests (consider `creack/pty` or equivalent); call this out at implementation time so the test-fixture cost is sized correctly.
 
 ### Task 6: Implement dispatch handoff + exit code adoption
 
+**Status:** pending
+**Depends-On:** 3, 4, 5
 **Verifies:** cli/event/emit#ac:dispatch-exit-code-handoff
 
 Wire the verb's `RunE` to invoke `pkg/event.Dispatch(ctx, event, subscribers)` with the constructed envelope and the config-loaded subscriber list (config loading is provided by the parent Plan's `events:` config-loader work — the verb consumes it, doesn't reimplement it). Adopt the parent Feature's exit-code contract verbatim — 0, 2, 3, 10 only; the verb MUST NOT introduce new exit codes. Cover the all-subscribers-fail end-to-end path so exit `10` is verified through the full verb → dispatcher path, not only at the dispatcher unit-test level.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

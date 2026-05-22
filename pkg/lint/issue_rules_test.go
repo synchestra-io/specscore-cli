@@ -407,6 +407,75 @@ func TestIssueRules_I008_BodySectionOrderViolation(t *testing.T) {
 	}
 }
 
+// AC: slug-mismatch-violation. A fixture issue at spec/issues/foo.md
+// whose frontmatter `slug` is `bar` trips I-010 with a message naming
+// the mismatch.
+func TestIssueRules_I010_SlugMismatchViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/slug-mismatch/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i010 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-010" {
+			i010 = &vs[i]
+			break
+		}
+	}
+	if i010 == nil {
+		t.Fatalf("expected an I-010 violation; got %+v", vs)
+	}
+	if !strings.Contains(i010.Message, "bar") {
+		t.Errorf("I-010 message %q does not name the frontmatter slug 'bar'", i010.Message)
+	}
+	if !strings.Contains(i010.Message, "foo") {
+		t.Errorf("I-010 message %q does not name the filename slug 'foo'", i010.Message)
+	}
+	if i010.Severity != "error" {
+		t.Errorf("severity = %q; want error", i010.Severity)
+	}
+	if i010.File != "issues/foo.md" {
+		t.Errorf("violation file = %q; want %q", i010.File, "issues/foo.md")
+	}
+}
+
+// AC: slug-globally-unique-violation. Two fixture issues at
+// spec/issues/foo.md and spec/features/example/issues/foo.md, both
+// lint-valid in isolation, trip I-011 with a message naming both paths
+// and the colliding slug `foo`.
+func TestIssueRules_I011_GlobalSlugUniquenessViolation(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/slug-globally-unique/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i011 []Violation
+	for _, v := range vs {
+		if v.Rule == "I-011" {
+			i011 = append(i011, v)
+		}
+	}
+	if len(i011) == 0 {
+		t.Fatalf("expected at least one I-011 violation; got %+v", vs)
+	}
+	// One violation should name both paths and the colliding slug.
+	found := false
+	for _, v := range i011 {
+		if strings.Contains(v.Message, "foo") &&
+			strings.Contains(v.Message, "issues/foo.md") &&
+			strings.Contains(v.Message, "features/example/issues/foo.md") {
+			found = true
+			if v.Severity != "error" {
+				t.Errorf("severity = %q; want error", v.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected I-011 violation naming both paths and slug 'foo'; got %+v", i011)
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

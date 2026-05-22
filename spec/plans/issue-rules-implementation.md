@@ -53,7 +53,7 @@ Create `pkg/lint/rules/issue/body.go`. Implement rule `I-007` to match the first
 
 ### Task 6: Slug helper (`pkg/slug.IssueSlug`) + rules `I-010` (slug-mismatch) and `I-011` (global slug uniqueness)
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:slug-helper-truncation, cli/spec/lint/issue-rules#ac:slug-mismatch-violation, cli/spec/lint/issue-rules#ac:slug-globally-unique-violation
 
 Extend `pkg/slug/` with `IssueSlug(s string) string` — the canonical slug-derivation algorithm (lowercase Unicode casefolding → `[^a-z0-9]→-` → collapse `-` runs → trim → truncate-at-≤60-at-nearest-`-`-boundary). Reuse internal helpers from the existing sidekick-seed slug code where possible; do NOT duplicate. Implement rule `I-010` (filename-vs-frontmatter slug match) — equivalent to the field-validity check from Task 2 but registered under the `I-010` rule ID for consistent diagnostics. Implement rule `I-011` (global slug uniqueness): perform one corpus pass collecting `slug → []path` for every `issue` artifact across both location patterns; for any slug appearing in more than one path, emit a violation naming all colliding paths. The corpus scan integrates with the lint engine's existing pre-rule pass infrastructure. Add a unit test for `IssueSlug` exercising the truncation fixture from the contract Plan. Extend lint fixture tests for the two rules.

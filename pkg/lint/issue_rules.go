@@ -141,6 +141,7 @@ func (c *issueRulesChecker) check(specRoot string) ([]Violation, error) {
 	var violations []Violation
 	violations = append(violations, lintI009(specRoot, discovered)...)
 	violations = append(violations, lintI001AndI002(specRoot, discovered)...)
+	violations = append(violations, lintI011(discovered)...)
 
 	// Stable order: by file, then rule.
 	sort.SliceStable(violations, func(i, j int) bool {
@@ -211,6 +212,72 @@ func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation
 		out = append(out, checkIssueI006(d.RelPath, iss)...)
 		out = append(out, checkIssueI007(d.RelPath, iss)...)
 		out = append(out, checkIssueI008(d.RelPath, iss)...)
+		out = append(out, checkIssueI010(d.RelPath, iss)...)
+	}
+	return out
+}
+
+// checkIssueI010 enforces the filename-vs-frontmatter slug equality
+// invariant. I-001 already emits a (semantically equivalent) violation
+// under its slug-vs-filename template; I-010 fires the same diagnostic
+// under its own rule ID so --rules/--ignore can target the slug-match
+// concern specifically. By Plan design both rules emit on a mismatch —
+// they're intentionally redundant.
+//
+// I-010 stays silent when slug is absent or empty (those are I-001
+// missing-field cases, not slug-mismatch cases).
+func checkIssueI010(relPath string, iss *issue.Issue) []Violation {
+	slugVal, present := iss.Frontmatter["slug"]
+	if !present || strings.TrimSpace(slugVal) == "" {
+		return nil
+	}
+	if slugVal == iss.Slug {
+		return nil
+	}
+	return []Violation{{
+		File:     relPath,
+		Line:     0,
+		Severity: "error",
+		Rule:     "I-010",
+		Message:  fmt.Sprintf("frontmatter slug %q does not match filename %q", slugVal, iss.Slug),
+	}}
+}
+
+// lintI011 enforces global slug uniqueness across all `issue` artifacts.
+// One corpus pass builds slug → []relPath; any slug appearing under more
+// than one path emits a single violation that names every colliding path.
+//
+// The violation is attached to the first colliding path (alphabetically;
+// `discovered` is pre-sorted by DiscoverAll) so diagnostic ordering stays
+// deterministic. Off-pattern files are still considered for collision —
+// they declare `type: issue` and so should not silently reuse a slug
+// owned by an on-pattern artifact.
+func lintI011(discovered []issue.Discovered) []Violation {
+	bySlug := make(map[string][]string, len(discovered))
+	for _, d := range discovered {
+		bySlug[d.Slug] = append(bySlug[d.Slug], d.RelPath)
+	}
+
+	// Emit in deterministic order: iterate slugs sorted alphabetically.
+	var slugs []string
+	for s, paths := range bySlug {
+		if len(paths) > 1 {
+			slugs = append(slugs, s)
+		}
+	}
+	sort.Strings(slugs)
+
+	var out []Violation
+	for _, s := range slugs {
+		paths := bySlug[s]
+		// paths are already in sorted order because discovered is sorted.
+		out = append(out, Violation{
+			File:     paths[0],
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-011",
+			Message:  fmt.Sprintf("slug %q used by multiple issue artifacts: %s", s, strings.Join(paths, ", ")),
+		})
 	}
 	return out
 }
