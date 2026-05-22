@@ -277,8 +277,8 @@ func TestOQSection_ChecksRootSpecReadme(t *testing.T) {
 	// the root spec/README.md and sibling subtrees like spec/research/ were
 	// invisible. Now every README.md under spec/ is in scope.
 	root := setupSpecTree(t, map[string]string{
-		"README.md":             "# Project\n\n## Summary\n\nNo OQ section.\n",
-		"research/README.md":    "# Research\n\n## Summary\n\nNo OQ section either.\n",
+		"README.md":              "# Project\n\n## Summary\n\nNo OQ section.\n",
+		"research/README.md":     "# Research\n\n## Summary\n\nNo OQ section either.\n",
 		"features/cli/README.md": "# CLI\n\n## Open Questions\n\n- ok\n",
 	})
 
@@ -310,10 +310,10 @@ func TestOQSection_FixWalksAllSpecMdFiles(t *testing.T) {
 	// .md file under spec/ — including spec/README.md, spec/research/foo.md,
 	// and arbitrary sibling subtrees — gets the legacy-heading rewrite.
 	root := setupSpecTree(t, map[string]string{
-		"README.md":                 "# Project\n\n## Outstanding Questions\n\n- root oq?\n",
-		"research/notes.md":         "# Notes\n\n## Outstanding Questions\n\n- note?\n",
-		"decisions/0001-x.md":       "# Decision 1\n\n## Outstanding Questions\n\n- d?\n",
-		"features/cli/README.md":    "# CLI\n\n## Outstanding Questions\n\n- cli?\n",
+		"README.md":              "# Project\n\n## Outstanding Questions\n\n- root oq?\n",
+		"research/notes.md":      "# Notes\n\n## Outstanding Questions\n\n- note?\n",
+		"decisions/0001-x.md":    "# Decision 1\n\n## Outstanding Questions\n\n- d?\n",
+		"features/cli/README.md": "# CLI\n\n## Outstanding Questions\n\n- cli?\n",
 	})
 
 	c := newOQSectionChecker().(fixer)
