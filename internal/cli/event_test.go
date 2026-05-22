@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -482,6 +483,133 @@ func TestStdinIsTTY(t *testing.T) {
 
 	if stdinIsTTY() {
 		t.Error("stdinIsTTY() with pipe stdin = true; want false")
+	}
+}
+
+// captureStderr replaces os.Stderr with a pipe for the duration of fn and
+// returns the bytes written. The dispatcher emits its per-subscriber failure
+// lines to a package-private `dispatchStderr` sink that defaults to os.Stderr;
+// the CLI verb's end-to-end ACs assert on those lines, so the test must read
+// the real fd.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	orig := os.Stderr
+	os.Stderr = w
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+
+	fn()
+
+	os.Stderr = orig
+	_ = w.Close()
+	out := <-done
+	_ = r.Close()
+	return out
+}
+
+// writeSpecscoreYAML writes a minimal specscore.yaml at root with the given
+// `events:` block body. Schema-header validation isn't enforced by
+// event.LoadSubscribers (it does not call projectdef.ReadSpecConfig), so a
+// bare YAML body is sufficient.
+func writeSpecscoreYAML(t *testing.T, root, body string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write specscore.yaml: %v", err)
+	}
+}
+
+// TestEventEmit_AllSubscribersFail_ExitCode10 covers AC:
+// dispatch-exit-code-handoff. Two `/bin/false` exec subscribers both exit 1;
+// the verb MUST return exit code 10 and MUST emit two stderr failure lines in
+// the dispatcher's contracted key=value format.
+func TestEventEmit_AllSubscribersFail_ExitCode10(t *testing.T) {
+	if _, statErr := os.Stat("/bin/false"); os.IsNotExist(statErr) {
+		t.Skip("/bin/false not available on this OS")
+	}
+
+	tmp := t.TempDir()
+	withCwd(t, tmp)
+	writeSpecscoreYAML(t, tmp, `events:
+  subscribers:
+    - type: exec
+      command: [/bin/false]
+    - type: exec
+      command: [/bin/false]
+`)
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		_, _, runErr = runEvent(t,
+			"emit",
+			"--name", "idea.drafted",
+			"--actor-kind", "skill",
+			"--actor-id", "skill:t",
+			"--artifact-type", "idea",
+			"--artifact-id", "x",
+			"--artifact-path", "spec/ideas/x.md",
+			"--payload-json", "{}",
+		)
+	})
+	if runErr == nil {
+		t.Fatal("expected error from all-subscribers-fail path; got nil")
+	}
+
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(runErr, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", runErr)
+	}
+	if got := ec.ExitCode(); got != 10 {
+		t.Errorf("exit code = %d; want 10", got)
+	}
+
+	// Exactly two failure lines in the dispatcher's contracted format —
+	// one per subscriber.
+	failureLine := regexp.MustCompile(`event-dispatch failure: subscriber=exec:/bin/false event=idea\.drafted error="[^"]+"`)
+	matches := failureLine.FindAllString(stderr, -1)
+	if len(matches) != 2 {
+		t.Errorf("expected 2 failure lines matching the parent's REQ:fan-out-dispatch format; got %d:\n%s",
+			len(matches), stderr)
+	}
+}
+
+// TestEventEmit_NoopSubscriber_ExitCode0 — happy-path companion to the
+// all-fail test: a single noop subscriber returns nil from Deliver, so
+// Delivered=1, Failed=0, and the verb MUST return exit 0.
+func TestEventEmit_NoopSubscriber_ExitCode0(t *testing.T) {
+	tmp := t.TempDir()
+	withCwd(t, tmp)
+	writeSpecscoreYAML(t, tmp, `events:
+  subscribers:
+    - type: noop
+`)
+
+	var runErr error
+	stderr := captureStderr(t, func() {
+		_, _, runErr = runEvent(t,
+			"emit",
+			"--name", "idea.drafted",
+			"--actor-kind", "skill",
+			"--actor-id", "skill:t",
+			"--artifact-type", "idea",
+			"--artifact-id", "x",
+			"--artifact-path", "spec/ideas/x.md",
+			"--payload-json", "{}",
+		)
+	})
+	if runErr != nil {
+		t.Fatalf("expected nil error on noop success path; got: %v\nstderr=%s", runErr, stderr)
+	}
+	if strings.Contains(stderr, "event-dispatch failure") {
+		t.Errorf("expected no failure lines on success path; got stderr:\n%s", stderr)
 	}
 }
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -231,6 +232,20 @@ func autofillEnvelope(e *event.Event, projectRoot string, revisionOverride strin
 	}
 }
 
+// determineInputMode names the payload source for stderr/error messages so the
+// user can tell which input produced bad bytes. Mirrors the priority order
+// implemented in resolvePayload (flag > file > stdin).
+func determineInputMode(payloadJSON, payloadFile string) string {
+	switch {
+	case payloadJSON != "":
+		return "--payload-json"
+	case payloadFile != "":
+		return "--payload-file " + payloadFile
+	default:
+		return "stdin"
+	}
+}
+
 func runEventEmit(cmd *cobra.Command, _ []string) error {
 	for _, rf := range envelopeRequiredFlags {
 		v, _ := cmd.Flags().GetString(rf.flag)
@@ -240,9 +255,74 @@ func runEventEmit(cmd *cobra.Command, _ []string) error {
 				rf.flag, rf.field)
 		}
 	}
-	// Payload reading, envelope auto-fill, and dispatch land in later tasks.
-	// For now, returning nil here is unreachable: at least one required flag
-	// will always be missing until Task 4 wires payload modes (and the AC
-	// for this batch only covers the missing-flag path).
+
+	// Read flag values up front so the rest of the function reads as
+	// straight-line composition of the helpers introduced in Tasks 3-5.
+	flagName, _ := cmd.Flags().GetString("name")
+	flagActorKind, _ := cmd.Flags().GetString("actor-kind")
+	flagActorID, _ := cmd.Flags().GetString("actor-id")
+	flagArtifactType, _ := cmd.Flags().GetString("artifact-type")
+	flagArtifactID, _ := cmd.Flags().GetString("artifact-id")
+	flagArtifactPath, _ := cmd.Flags().GetString("artifact-path")
+	flagArtifactRevision, _ := cmd.Flags().GetString("artifact-revision")
+	flagPayloadJSON, _ := cmd.Flags().GetString("payload-json")
+	flagPayloadFile, _ := cmd.Flags().GetString("payload-file")
+
+	// Discover the project root. Same heuristic the rest of the CLI uses
+	// (`findRepoConfigRoot` in spec.go); missing root → exit 3 (NotFound).
+	startDir, err := os.Getwd()
+	if err != nil {
+		return exitcode.UnexpectedErrorf("getwd: %v", err)
+	}
+	projectRoot, err := findRepoConfigRoot(startDir)
+	if err != nil {
+		return err
+	}
+
+	// Arbitrate payload mode BEFORE reading any input — see Task 5.
+	if err := arbitratePayloadMode(flagPayloadJSON, flagPayloadFile, stdinIsTTY(), false); err != nil {
+		return err
+	}
+
+	// Resolve payload bytes (flag → file → stdin).
+	payloadBytes, err := resolvePayload(flagPayloadJSON, flagPayloadFile, os.Stdin, projectRoot)
+	if err != nil {
+		return exitcode.InvalidArgsErrorf("reading payload: %v", err)
+	}
+
+	inputMode := determineInputMode(flagPayloadJSON, flagPayloadFile)
+	if err := validatePayloadJSON(payloadBytes, inputMode); err != nil {
+		return err
+	}
+
+	e := event.Event{
+		Name:  flagName,
+		Actor: event.Actor{Kind: flagActorKind, ID: flagActorID},
+		Artifact: event.Artifact{
+			Type: flagArtifactType,
+			ID:   flagArtifactID,
+			Path: flagArtifactPath,
+		},
+		Payload: payloadBytes,
+	}
+	autofillEnvelope(&e, projectRoot, flagArtifactRevision)
+
+	subscribers, err := event.LoadSubscribers(projectRoot)
+	if err != nil {
+		return exitcode.InvalidArgsErrorf("%v", err)
+	}
+
+	result := event.Dispatch(cmd.Context(), e, subscribers)
+	if result.ValidationError != nil {
+		fmt.Fprintln(cmd.ErrOrStderr(), result.ValidationError.Error())
+		return exitcode.InvalidArgsErrorf("envelope validation failed")
+	}
+
+	// REQ:dispatch-exit-codes:
+	//   - delivered ≥ 1 OR list empty → exit 0
+	//   - all subscribers in non-empty list failed → exit 10
+	if len(subscribers) > 0 && result.Delivered == 0 && result.Failed > 0 {
+		return exitcode.UnexpectedErrorf("all %d subscriber(s) failed", result.Failed)
+	}
 	return nil
 }
