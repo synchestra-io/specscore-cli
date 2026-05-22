@@ -25,7 +25,7 @@ Create `pkg/issue/parser.go` and `pkg/issue/types.go` mirroring `pkg/idea/` and 
 
 ### Task 2: Rules `I-001` (required fields) and `I-002` (status enum), plus unknown-frontmatter-key handling
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:valid-minimal-issue-passes, cli/spec/lint/issue-rules#ac:missing-required-field-violation, cli/spec/lint/issue-rules#ac:invalid-status-enum-violation, cli/spec/lint/issue-rules#ac:unknown-frontmatter-key-violation
 
 Create `pkg/lint/rules/issue/schema.go`. Implement rule `I-001` to validate the five always-required frontmatter fields (`type`, `slug`, `status`, `captured_at`, `captured_by`); missing field → violation with a "missing required field" message template naming the field. Implement rule `I-002` to validate `status` is one of `{open, investigating, resolved, rejected}`; invalid value → violation listing the four valid values. Implement strict unknown-key handling: unknown frontmatter keys → rule `I-001` violation under a distinct "unknown field" message template (separate from missing-field) so violation taxonomy stays unambiguous when both occur on the same artifact. Validate that the frontmatter `slug` field equals the filename slug (basename minus `.md`) — this is part of `I-001`'s field-validity check, not yet rule `I-010` (which handles the same invariant via the slug helper in Task 6; both produce equivalent diagnostics). Extend the fixture tests to cover the four ACs.

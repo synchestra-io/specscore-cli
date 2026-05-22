@@ -3,6 +3,7 @@ package lint
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -93,6 +94,101 @@ func TestIssueRules_I009_DualLocationViolation(t *testing.T) {
 	}
 	if i009.Severity != "error" {
 		t.Errorf("violation severity = %q; want %q", i009.Severity, "error")
+	}
+}
+
+// AC: missing-required-field-violation. A fixture issue missing the
+// `captured_by` frontmatter field trips I-001 with a "missing required
+// field" message naming the field.
+func TestIssueRules_I001_MissingRequiredField(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/missing-field/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i001 []Violation
+	for _, v := range vs {
+		if v.Rule == "I-001" {
+			i001 = append(i001, v)
+		}
+	}
+	if len(i001) == 0 {
+		t.Fatalf("expected an I-001 violation; got %+v", vs)
+	}
+	found := false
+	for _, v := range i001 {
+		if strings.Contains(v.Message, "captured_by") && strings.Contains(v.Message, "missing") {
+			found = true
+			if v.Severity != "error" {
+				t.Errorf("severity = %q; want error", v.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected I-001 violation naming captured_by under 'missing' template; got %+v", i001)
+	}
+}
+
+// AC: invalid-status-enum-violation. A fixture issue with
+// `status: triaged` trips I-002 listing the four valid values.
+func TestIssueRules_I002_InvalidStatusEnum(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/invalid-status/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i002 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-002" {
+			i002 = &vs[i]
+			break
+		}
+	}
+	if i002 == nil {
+		t.Fatalf("expected an I-002 violation; got %+v", vs)
+	}
+	for _, want := range []string{"open", "investigating", "resolved", "rejected"} {
+		if !strings.Contains(i002.Message, want) {
+			t.Errorf("I-002 message %q does not list valid value %q", i002.Message, want)
+		}
+	}
+	if !strings.Contains(i002.Message, "triaged") {
+		t.Errorf("I-002 message %q does not name the invalid value 'triaged'", i002.Message)
+	}
+}
+
+// AC: unknown-frontmatter-key-violation. A fixture issue with an
+// unknown `priority: high` key trips I-001 under a distinct "unknown
+// field" template naming `priority`.
+func TestIssueRules_I001_UnknownFrontmatterKey(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/unknown-key/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i001 []Violation
+	for _, v := range vs {
+		if v.Rule == "I-001" {
+			i001 = append(i001, v)
+		}
+	}
+	if len(i001) == 0 {
+		t.Fatalf("expected an I-001 violation; got %+v", vs)
+	}
+	found := false
+	for _, v := range i001 {
+		if strings.Contains(v.Message, "unknown") && strings.Contains(v.Message, "priority") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected I-001 violation under 'unknown' template naming priority; got %+v", i001)
+	}
+	// Also ensure no "missing" violation was emitted (required fields are all present).
+	for _, v := range i001 {
+		if strings.Contains(v.Message, "missing") {
+			t.Errorf("unexpected 'missing' I-001 violation when all required fields are present: %+v", v)
+		}
 	}
 }
 
