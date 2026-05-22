@@ -77,6 +77,26 @@ The fixer MUST NOT mutate any cell beyond the inserted row; existing rows are pr
 
 This REQ does NOT violate `fix-is-safe-subset`. Status flows from a structurally-parsed field; Kind and Description use placeholders the project has already codified for `feature new`, so the autofix is byte-identical to user-driven scaffolding. The placeholders are visibly under-filled (`—`, `TODO: ...`), inviting the author to populate them rather than masking missing intent.
 
+### Open Questions section
+
+Every feature and plan README MUST contain a `## Open Questions` section. The `oq-section` rule validates the section's presence; a separate `oq-not-empty` rule (warning severity) flags an existing section that has no body content. The canonical heading text is `## Open Questions`; a legacy `## Outstanding Questions` heading is rejected with a distinct, actionable message and is autofixable. The `oq` rule-name abbreviation is preserved across the rename.
+
+#### REQ: oq-section-required
+
+`oq-section` MUST report a violation when a `README.md` under `spec/features/` or `spec/plans/` lacks a level-2 `## Open Questions` heading and also lacks a legacy `## Outstanding Questions` heading (which is reported by `REQ:oq-section-legacy-heading` instead). Severity: `error`. Message: `Open Questions section not found`.
+
+#### REQ: oq-section-legacy-heading
+
+`oq-section` MUST treat a level-2 `## Outstanding Questions` heading as a violation distinct from "not found": severity `error`, rule name `oq-section`, message `Legacy heading "## Outstanding Questions" found; rename to "## Open Questions" (run with --fix to migrate)`. A file that contains the legacy heading MUST NOT also produce an `oq-section-required` violation — the two REQs are mutually exclusive per file.
+
+#### REQ: oq-section-fix-rewrites-legacy-heading
+
+When `--fix` runs and `REQ:oq-section-legacy-heading` reports a violation, the fixer MUST replace the heading line matching `^##\s+Outstanding\s+Questions\s*$` with `## Open Questions`. The rewrite MUST be line-scoped: the rest of the file MUST be preserved byte-for-byte. Other occurrences of the phrase "Outstanding Questions" (prose, code blocks, anchor identifiers, link text) MUST NOT be modified by this autofix.
+
+#### REQ: oq-not-empty-rule
+
+A separate `oq-not-empty` rule MUST report a warning when the `## Open Questions` section exists but contains no body content (only blank lines before the next heading or end-of-file). Severity: `warning`. Message: `Open Questions section appears empty`.
+
 ### Severity filtering
 
 Each rule has a built-in severity (`error`, `warning`, `info`). `--severity` sets the minimum severity reported.
@@ -202,12 +222,24 @@ Given a root features index that lists `auth` while a `billing/` directory with 
 
 Given a feature tree where `spec/features/orphan/README.md` exists on disk but `spec/features/README.md` does not link to `orphan/`, running `specscore spec lint` exits `1` with an `index-entries` violation on `features/README.md` whose message names the unlisted child directory.
 
+### AC: oq-section-missing-flagged
+
+**Requirements:** cli/spec/lint#req:oq-section-required
+
+A feature README that contains no `## Open Questions` heading and no `## Outstanding Questions` heading exits `1` with one `oq-section` violation whose message reads `Open Questions section not found`.
+
+### AC: oq-section-legacy-heading-flagged-and-fixed
+
+**Requirements:** cli/spec/lint#req:oq-section-legacy-heading, cli/spec/lint#req:oq-section-fix-rewrites-legacy-heading
+
+A README whose OQ-style heading is `## Outstanding Questions` exits `1` with one `oq-section` violation pointing at the legacy heading and the actionable rename message. Running `specscore spec lint --fix` rewrites the single heading line in place to `## Open Questions`, preserves every other line byte-for-byte (including any prose mentions of "Outstanding Questions"), and a second consecutive `spec lint --fix` yields no further changes (per `fix-is-idempotent`).
+
 ### AC: missing-specscore-yaml-exits-3
 
 **Requirements:** cli/spec/lint#req:specscore-yaml-required
 
 Running `specscore spec lint` in a directory tree that has no `specscore.yaml` in any ancestor exits `3`. The error message names `specscore.yaml` as mandatory and instructs the caller to run `specscore init` to create it. The presence of a bare `spec/features/` directory does NOT satisfy the gate.
-## Outstanding Questions
+## Open Questions
 
 - Should `spec lint` accept a path argument (`spec lint spec/features/cli/`) to lint a subtree, for faster feedback during development? Today the full tree is always scanned.
 - Should `--fix` have a paired `--dry-run` that prints the intended edits without applying them, so authors can preview fixes before accepting?

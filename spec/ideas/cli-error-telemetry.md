@@ -74,7 +74,7 @@ This Idea promotes into a single child Feature under the shared `cli/telemetry` 
 
 **Dependencies:** Sentry Go SDK; a Sentry project provisioned in EU region (for symmetry with the PostHog choice in `cli-telemetry`); release-tagging wired into goreleaser so Sentry can correlate crashes to CLI versions.
 
-## Outstanding Questions
+## Open Questions
 
 - **Initial allowlist of safe panic-message IDs.** The `telemetry.SafePanic` wrapper needs a starting set of stable identifiers (e.g. `spec-parse-failed`, `feature-not-found`, `lint-internal-error`). Enumerated at `/specify` time after the panic-site audit reveals the actual surface.
 - **`SafePanic` retrofit migration path.** Audit, wrap, or mark-unscrubbed every existing panic site before v0.3.0 ships. Whether this is one PR or a series, and whether unwrapped panics block the release, gets settled when the audit produces a count.

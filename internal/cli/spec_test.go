@@ -69,11 +69,11 @@ func TestSpecLint_FindsSpecscoreYAMLInAncestor(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "spec", "features"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	specReadme := "# Specifications\n\nTest tree.\n\n## Outstanding Questions\n\nNone at this time.\n"
+	specReadme := "# Specifications\n\nTest tree.\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(root, "spec", "README.md"), []byte(specReadme), 0o644); err != nil {
 		t.Fatalf("write spec/README.md: %v", err)
 	}
-	featReadme := "# Features\n\n## Index\n\n| Feature | Status | Description |\n|---------|--------|-------------|\n\n## Outstanding Questions\n\nNone at this time.\n"
+	featReadme := "# Features\n\n## Index\n\n| Feature | Status | Description |\n|---------|--------|-------------|\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(root, "spec", "features", "README.md"), []byte(featReadme), 0o644); err != nil {
 		t.Fatalf("write features/README.md: %v", err)
 	}

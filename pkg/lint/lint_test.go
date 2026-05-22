@@ -88,7 +88,7 @@ func TestViolation_JSONRoundTrip(t *testing.T) {
 		Line:     42,
 		Severity: "error",
 		Rule:     "oq-section",
-		Message:  "Outstanding Questions section not found",
+		Message:  "Open Questions section not found",
 	}
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestReadmeExists_SkipsHiddenDirs(t *testing.T) {
 
 func TestOQSection_Present(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/cli/README.md": "# CLI\n\n## Outstanding Questions\n\n- Should we add X?\n",
+		"features/cli/README.md": "# CLI\n\n## Open Questions\n\n- Should we add X?\n",
 	})
 
 	c := newOQSectionChecker()
@@ -191,7 +191,7 @@ func TestOQSection_Missing(t *testing.T) {
 
 func TestOQSection_Empty(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/cli/README.md": "# CLI\n\n## Outstanding Questions\n\n## Next Section\n",
+		"features/cli/README.md": "# CLI\n\n## Open Questions\n\n## Next Section\n",
 	})
 
 	c := newOQSectionChecker()
@@ -207,6 +207,68 @@ func TestOQSection_Empty(t *testing.T) {
 	}
 	if v[0].Severity != "warning" {
 		t.Errorf("expected severity warning, got %s", v[0].Severity)
+	}
+}
+
+func TestOQSection_LegacyHeadingFlagged(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": "# CLI\n\n## Outstanding Questions\n\n- Should we add X?\n",
+	})
+
+	c := newOQSectionChecker()
+	v, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v) != 1 {
+		t.Fatalf("expected 1 violation, got %d: %v", len(v), v)
+	}
+	if v[0].Rule != "oq-section" {
+		t.Errorf("expected rule oq-section, got %s", v[0].Rule)
+	}
+	if v[0].Severity != "error" {
+		t.Errorf("expected severity error, got %s", v[0].Severity)
+	}
+	if !strings.Contains(v[0].Message, "Legacy heading") {
+		t.Errorf("expected legacy-heading message, got: %s", v[0].Message)
+	}
+	if !strings.Contains(v[0].Message, "--fix") {
+		t.Errorf("expected message to point at --fix, got: %s", v[0].Message)
+	}
+}
+
+func TestOQSection_FixRewritesLegacyHeading(t *testing.T) {
+	// Includes a prose mention of "Outstanding Questions" inside the body
+	// to verify the autofix is line-scoped — prose MUST NOT be touched.
+	body := "# CLI\n\n## Outstanding Questions\n\n- Should we rename Outstanding Questions?\n"
+	root := setupSpecTree(t, map[string]string{
+		"features/cli/README.md": body,
+	})
+
+	c := newOQSectionChecker().(fixer)
+	if err := c.fix(root); err != nil {
+		t.Fatalf("fix returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(root, "features/cli/README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "# CLI\n\n## Open Questions\n\n- Should we rename Outstanding Questions?\n"
+	if string(got) != want {
+		t.Errorf("autofix mismatch:\ngot:\n%s\nwant:\n%s", string(got), want)
+	}
+
+	// Idempotence: running fix again on the now-canonical file changes nothing.
+	if err := c.fix(root); err != nil {
+		t.Fatalf("second fix returned error: %v", err)
+	}
+	got2, err := os.ReadFile(filepath.Join(root, "features/cli/README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got2) != want {
+		t.Errorf("second fix mutated file:\ngot:\n%s\nwant:\n%s", string(got2), want)
 	}
 }
 
@@ -314,7 +376,7 @@ func TestIndexEntries_FixInsertsOrphanRowAtRoot(t *testing.T) {
 			"| Feature | Status | Kind | Description |\n" +
 			"|---------|--------|------|-------------|\n" +
 			"| [auth](auth/README.md) | Implementing | Command | linked |\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n",
+			"## Open Questions\n\nNone at this time.\n",
 		"features/auth/README.md":    "# Feature: Auth\n\n**Status:** Implementing\n",
 		"features/billing/README.md": "# Feature: Billing\n\n**Status:** Stable\n",
 	})
@@ -368,7 +430,7 @@ func TestIndexEntries_FixInsertsOrphanRowNested(t *testing.T) {
 			"| Child | Description |\n" +
 			"|---|---|\n" +
 			"| [list](list/README.md) | linked |\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n",
+			"## Open Questions\n\nNone at this time.\n",
 		"features/cli/list/README.md": "# Feature: List\n\n**Status:** Stable\n",
 		"features/cli/info/README.md": "# Feature: Info\n\n**Status:** Implementing\n",
 	})
@@ -432,7 +494,7 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 			"**Status:** Stable\n" +
 			"**Source Ideas:** auth-overhaul\n\n" +
 			"## Summary\n\nPlaceholder.\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"## Open Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/feature-specification*\n",
 
 		// Idea is stuck at Approved/—. Expected to be auto-derived to
@@ -454,7 +516,7 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 			"| Tier | Assumption | How to validate |\n|---|---|---|\n" +
 			"| Must-be-true | placeholder | placeholder |\n\n" +
 			"## SpecScore Integration\n\n- placeholder\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"## Open Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/idea-specification*\n",
 
 		// Index row is also stale (Approved/—). Must end up Specified/auth
@@ -463,7 +525,7 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 			"| Idea | Status | Date | Owner | Promotes To |\n" +
 			"|------|--------|------|-------|-------------|\n" +
 			"| [auth-overhaul](auth-overhaul.md) | Approved | 2026-05-18 | tester | — |\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"## Open Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 	})
 
@@ -745,7 +807,7 @@ func TestRegisterChecker(t *testing.T) {
 	dir := t.TempDir()
 	mkdir(t, filepath.Join(dir, "spec", "features"))
 	writeFile(t, filepath.Join(dir, "spec", "features", "README.md"),
-		"# Features\n\n## Outstanding Questions\n\nNone.\n")
+		"# Features\n\n## Open Questions\n\nNone.\n")
 
 	violations, err := Lint(Options{SpecRoot: dir, Rules: []string{"custom-rule"}})
 	if err != nil {

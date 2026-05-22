@@ -294,7 +294,7 @@ After Agent E returns success, the human implementer (or `claude` directly) runs
 | Date | Git Hash | Action | Comment |
 |---|---|---|---|
 
-## Outstanding Questions
+## Open Questions
 
 - Should the `ai-plugin-specscore` skill references (one per kind) land in a follow-on plan immediately after this one merges, or be batched until multiple lifecycle features ship? Current position: separate follow-on plan; the skills wrap the verbs but don't change them.
 - Should the `pkg/lifecycle/` package be promoted to a public Go module path for external consumers (e.g., Synchestra calling into it directly), or stay internal until a real consumer asks? Current position: internal.

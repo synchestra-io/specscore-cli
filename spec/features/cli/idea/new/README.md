@@ -120,7 +120,7 @@ Running the command twice for the same slug, without `--force`, exits `1` on the
 
 In a project that has `specscore.yaml` but no `spec/` tree, running `specscore idea new my-idea` creates `spec/README.md`, `spec/ideas/README.md`, and `spec/ideas/my-idea.md`. A subsequent `specscore spec lint` returns no error-severity violations outside `spec/ideas/my-idea.md` itself.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `idea new` accept an `--edit` flag that opens the scaffolded file in `$EDITOR` after writing, for a smoother author flow?
 - Should the `--owner` default be GitHub username (from git config / `gh auth status`) instead of `$USER`, matching how `gh` attributes authorship?

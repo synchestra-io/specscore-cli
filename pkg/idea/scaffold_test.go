@@ -20,11 +20,11 @@ func writeSpecTree(t *testing.T, body []byte, slug string) string {
 	if err := os.MkdirAll(filepath.Join(ideasDir, "archived"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	index := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	index := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(ideasDir, "README.md"), []byte(index), 0o644); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
-	archIdx := "# Archived Ideas\n\n_No archived ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	archIdx := "# Archived Ideas\n\n_No archived ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(ideasDir, "archived", "README.md"), []byte(archIdx), 0o644); err != nil {
 		t.Fatalf("write arch idx: %v", err)
 	}

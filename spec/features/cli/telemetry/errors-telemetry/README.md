@@ -391,7 +391,7 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs. The Sentry alert-r
 **When** the file `docs/telemetry.md` is opened
 **Then** the file MUST contain a `### crash-reports` subsection inside `## Channels` with at least the literal strings `panic`, `exit code`, and `de.sentry.io`; a `### crash-reports events` subsection inside `## Event Schema` enumerating the Sentry event shape (`message`, `release`, `debug` tag); and a `### crash-reports` subsection inside `## Data Retention` referencing Sentry's free-tier retention policy.
 
-## Outstanding Questions
+## Open Questions
 
 - **Initial `messageID` allowlist contents.** REQ:panic-message-safe-allowlist starts the production allowlist populated by the Plan's panic-site-audit task. The list depends on the audit results, but the audit is scoped (per resolution below) to **high-value sites only**, not full retrofit.
 

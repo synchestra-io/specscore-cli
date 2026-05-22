@@ -201,7 +201,7 @@ func Scaffold(opts ScaffoldOptions) ([]byte, error) {
 	fmt.Fprintf(&out, "- **New Features this would create:** %s\n", newFeats)
 	fmt.Fprintf(&out, "- **Existing Features affected:** %s\n", existing)
 	fmt.Fprintf(&out, "- **Dependencies:** %s\n\n", deps)
-	fmt.Fprintf(&out, "## Outstanding Questions\n\n%s\n", oq)
+	fmt.Fprintf(&out, "## Open Questions\n\n%s\n", oq)
 
 	return []byte(out.String()), nil
 }

@@ -82,7 +82,7 @@ Default text output lists one feature ID per line. YAML / JSON output is a struc
 
 `deps --transitive` on a graph where `a → b, a → c, b → c` returns `b` and `c` exactly once. On a cycle `a → b → a`, the command returns `b` (and `a` if the implementation reports the root on self-cycle) without hanging.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `--transitive` have a depth limit (`--depth 2`) for large graphs, or is the cycle-safe full walk always acceptable?
 

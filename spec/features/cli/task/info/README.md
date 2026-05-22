@@ -90,7 +90,7 @@ For a task whose board row shows `in_progress` and whose README has title `Build
 
 `specscore task info` (no `--task`) exits `2` with a message naming the missing flag.
 
-## Outstanding Questions
+## Open Questions
 
 - Should the `--task` flag become a positional argument (`specscore task info <slug>`) for consistency with `feature info <id>`? The inconsistency is tracked as an OQ on the parent group.
 

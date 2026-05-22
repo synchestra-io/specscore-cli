@@ -302,7 +302,7 @@ Given the source repo is processed and committed successfully, but the target re
 
 Given the target repo's `spec/ideas/` directory is write-protected (chmod 555 for the test) so file copy fails, running `specscore idea relocate foo --to-repo=specscore` exits `10` (IOFailure). The source artifact remains at its original path in `specstudio-skills` (delete-step was rolled back or never reached). The target has no partial file at `spec/ideas/foo.md`. Stderr names the I/O failure and the restore actions performed.
 
-## Outstanding Questions
+## Open Questions
 
 - Should the verb invoke `specscore spec lint` (or `--fix`) automatically in each affected repo post-mutation, before committing? The manual ritual ends with a lint pass to sync indexes. Lean: skip in v1 — lint is fast and the `--no-commit` workflow naturally invites a manual lint check; revisit if dogfooding shows users routinely forget.
 - Bare-text mentions of a slug in prose (not as a markdown link, not as bold-prefixed metadata) are NOT updated by the cross-repo link-cleanup pass. Should they be? Lean: no — too ambiguous (slugs can collide with common nouns or appear inside larger words; false positives would mangle prose). The verb's stdout MAY optionally suggest a workspace-wide `grep` for prose mentions as a post-step.

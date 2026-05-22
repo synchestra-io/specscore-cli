@@ -66,7 +66,7 @@ Implement `internal/cli/telemetry.go` with three verbs each taking an optional p
 
 Author `docs/telemetry.md` with the six required `##` headings in order: `Overview`, `Channels`, `Event Schema`, `What We Don't Collect`, `Opt-out`, `Data Retention`. Populate the parent-owned sections: `Overview`, `What We Don't Collect` (enumerate spec content, feature names, file paths, project paths, git remotes, hostnames, usernames, arbitrary user input), and `Opt-out` (env vars, `specscore telemetry disable`, CI auto-disable). Leave the per-channel subsections (`### usage-stats`, `### crash-reports`) as empty placeholders with a one-line stub — the sibling Plans for `usage-telemetry` and `errors-telemetry` populate them. Verify the file lints clean and the AC's required literal strings are present.
 
-## Outstanding Questions
+## Open Questions
 
 - **Exact prose of the first-run notice (Task 6).** Source Feature REQ:first-run-notice-content fixes the three-line shape, the proper-noun "SpecScore" capitalization, the two channel names, and the literal command/env-var strings. The connective prose gets a copy-review pass during Task 6 implementation. Lean draft is in the source Feature's Outstanding Questions section — implementer should reuse or refine.
 - **Test fixture for the boundary-check (Task 1).** The boundary test rejects a "synthetic violation" — exactly how that violation is induced (a hidden-build-tag file? a test that mutates source then restores it? a static AST walk against a fixture-text constant?) is left to the implementer. The simplest form (AST walk over a string constant containing the forbidden import) is preferred.

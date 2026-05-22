@@ -124,13 +124,13 @@ func TestInit_GreenfieldNoRemote(t *testing.T) {
 
 	// spec/ideas/README.md and spec/features/README.md must contain the canonical headings.
 	ideasIdx, _ := os.ReadFile(filepath.Join(root, "spec/ideas/README.md"))
-	for _, want := range []string{"# Ideas", "## Index", "## Outstanding Questions", "ideas-index-specification"} {
+	for _, want := range []string{"# Ideas", "## Index", "## Open Questions", "ideas-index-specification"} {
 		if !strings.Contains(string(ideasIdx), want) {
 			t.Errorf("spec/ideas/README.md missing %q:\n%s", want, ideasIdx)
 		}
 	}
 	featuresIdx, _ := os.ReadFile(filepath.Join(root, "spec/features/README.md"))
-	for _, want := range []string{"# Features", "## Index", "## Outstanding Questions", "features-index-specification"} {
+	for _, want := range []string{"# Features", "## Index", "## Open Questions", "features-index-specification"} {
 		if !strings.Contains(string(featuresIdx), want) {
 			t.Errorf("spec/features/README.md missing %q:\n%s", want, featuresIdx)
 		}

@@ -170,7 +170,7 @@ func TestGenerateReadme(t *testing.T) {
 		"## Problem",
 		"## Behavior",
 		"## Acceptance Criteria",
-		"## Outstanding Questions",
+		"## Open Questions",
 	}
 
 	tests := []struct {
@@ -302,7 +302,7 @@ func TestParseDependencies_BareIDs(t *testing.T) {
 - claim-and-push
 - conflict-resolution
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -335,7 +335,7 @@ func TestParseDependencies_MarkdownLinks(t *testing.T) {
 - [API](../api/README.md) — callback endpoint
 - [Project Definition](../project-definition/README.md) — config format
 
-## Outstanding Questions
+## Open Questions
 `
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(content), 0o644); err != nil {
@@ -366,7 +366,7 @@ func TestParseDependencies_NoDependencies(t *testing.T) {
 
 Does its own thing.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -529,7 +529,7 @@ Some text.
 - dep-a
 - dep-b
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -666,7 +666,7 @@ func TestParseFieldNames(t *testing.T) {
 	}
 }
 
-func TestExtractOutstandingQuestions(t *testing.T) {
+func TestExtractOpenQuestions(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
@@ -674,11 +674,11 @@ func TestExtractOutstandingQuestions(t *testing.T) {
 		want    []string
 	}{
 		"multiple items": {
-			content: "# Feature: X\n\n## Outstanding Questions\n\n- First question?\n- Second question?\n\n## Other\n",
+			content: "# Feature: X\n\n## Open Questions\n\n- First question?\n- Second question?\n\n## Other\n",
 			want:    []string{"First question?", "Second question?"},
 		},
 		"empty section": {
-			content: "# Feature: X\n\n## Outstanding Questions\n\n## Other\n",
+			content: "# Feature: X\n\n## Open Questions\n\n## Other\n",
 			want:    nil,
 		},
 		"section absent": {
@@ -686,11 +686,11 @@ func TestExtractOutstandingQuestions(t *testing.T) {
 			want:    nil,
 		},
 		"last section in file": {
-			content: "# Feature: X\n\n## Outstanding Questions\n\n- Only one\n",
+			content: "# Feature: X\n\n## Open Questions\n\n- Only one\n",
 			want:    []string{"Only one"},
 		},
 		"ignores non-list paragraphs": {
-			content: "# Feature: X\n\n## Outstanding Questions\n\nIntro paragraph.\n\n- Captured\n",
+			content: "# Feature: X\n\n## Open Questions\n\nIntro paragraph.\n\n- Captured\n",
 			want:    []string{"Captured"},
 		},
 	}
@@ -703,7 +703,7 @@ func TestExtractOutstandingQuestions(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.content), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			got, err := ExtractOutstandingQuestions(path)
+			got, err := ExtractOpenQuestions(path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -721,17 +721,17 @@ func TestExtractOutstandingQuestions(t *testing.T) {
 
 func TestCountMatchesExtract(t *testing.T) {
 	t.Parallel()
-	content := "# Feature: X\n\n## Outstanding Questions\n\n- A\n- B\n- C\n"
+	content := "# Feature: X\n\n## Open Questions\n\n- A\n- B\n- C\n"
 	dir := t.TempDir()
 	path := filepath.Join(dir, "README.md")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	count, err := CountOutstandingQuestions(path)
+	count, err := CountOpenQuestions(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	items, err := ExtractOutstandingQuestions(path)
+	items, err := ExtractOpenQuestions(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +787,7 @@ func TestParseFeatureTitle(t *testing.T) {
 func TestResolveFields_TitleAndQuestions(t *testing.T) {
 	t.Parallel()
 	featDir := setupTestFeatures(t, map[string]string{
-		"a": "# Feature: Alpha\n\n## Outstanding Questions\n\n- Q1?\n- Q2?\n",
+		"a": "# Feature: Alpha\n\n## Open Questions\n\n- Q1?\n- Q2?\n",
 	})
 
 	ef, err := ResolveFields(featDir, "a", []string{"title", "oq", "questions"})
@@ -817,7 +817,7 @@ func TestUpdateFeatureIndex_FourColumnLegacy(t *testing.T) {
 			"| Feature | Status | Kind | Description |\n"+
 			"|---------|--------|------|-------------|\n"+
 			"| [auth](auth/README.md) | Implementing | Command | linked |\n\n"+
-			"## Outstanding Questions\n\nNone at this time.\n",
+			"## Open Questions\n\nNone at this time.\n",
 	), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -849,7 +849,7 @@ func TestUpdateFeatureIndex_SevenColumnSchema(t *testing.T) {
 			"| Feature | Status | Kind | URL | Consumer Path | Index | Description |\n"+
 			"|---------|--------|------|-----|---------------|-------|-------------|\n"+
 			"| [idea](idea/README.md) | Conceptual | Document | `https://specscore.md/idea-specification` | `spec/ideas/*.md` | [ideas-index](ideas-index/README.md) | Pre-spec one-pager |\n\n"+
-			"## Outstanding Questions\n\nNone.\n",
+			"## Open Questions\n\nNone.\n",
 	), 0o644); err != nil {
 		t.Fatal(err)
 	}

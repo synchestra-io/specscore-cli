@@ -41,7 +41,7 @@ const archivedIndexStub = `# Archived Ideas
 
 _No archived ideas yet._
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `

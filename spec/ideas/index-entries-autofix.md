@@ -69,7 +69,7 @@ Phase 1 runs before Phase 2 inside the same `--fix` pass so the insertion phase 
 - **Existing Features affected:** [`cli/spec/lint`](../features/cli/spec/lint/README.md) (adds autofix support to the `index-entries` rule).
 - **Dependencies:** `feature.ParseFeatureStatus`, `feature.UpdateFeatureIndex`, `feature.UpdateParentContents` — all already public in `pkg/feature/`.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

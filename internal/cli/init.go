@@ -266,7 +266,7 @@ SpecScore-formatted specifications for this project.
 | [` + "`features/`" + `](features/README.md) | Feature specifications — one per sub-system |
 | [` + "`ideas/`" + `](ideas/README.md) | Pre-spec one-pagers exploring problem-direction-MVP |
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -282,7 +282,7 @@ Pre-spec one-pagers. Each Idea is a lint-clean problem-direction-MVP one-pager t
 | Idea | Status | Date | Owner | Promotes To |
 |------|--------|------|-------|-------------|
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 
@@ -301,7 +301,7 @@ Feature specifications for this project.
 | Feature | Status | Description |
 |---------|--------|-------------|
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

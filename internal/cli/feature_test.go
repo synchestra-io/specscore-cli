@@ -47,14 +47,14 @@ func setupFeatureSpec(t *testing.T, status string) string {
 		"| Feature | Status | Kind | Description |\n" +
 		"|---------|--------|------|-------------|\n" +
 		fmt.Sprintf("| [auth](auth/README.md) | %s | Command | desc-auth |\n", status) +
-		"\n## Outstanding Questions\n\nNone at this time.\n\n" +
+		"\n## Open Questions\n\nNone at this time.\n\n" +
 		"---\n*This document follows the https://specscore.md/features-index-specification*\n"
 	if err := os.WriteFile(filepath.Join(featDir, "README.md"), []byte(idxBody), 0o644); err != nil {
 		t.Fatalf("write features/README.md: %v", err)
 	}
 
 	fBody := "# Feature: Auth\n\n**Status:** " + status + "\n\n## Summary\n\nPlaceholder.\n\n" +
-		"## Outstanding Questions\n\nNone at this time.\n\n" +
+		"## Open Questions\n\nNone at this time.\n\n" +
 		"---\n*This document follows the https://specscore.md/feature-specification*\n"
 	if err := os.WriteFile(filepath.Join(featDir, "auth", "README.md"), []byte(fBody), 0o644); err != nil {
 		t.Fatalf("write auth/README.md: %v", err)
@@ -227,7 +227,7 @@ func TestFeatureChangeStatus_NestedFeatureID(t *testing.T) {
 		t.Fatalf("mkdir nested: %v", err)
 	}
 	body := "# Feature: Change Status\n\n**Status:** Draft\n\n## Summary\n\nPlaceholder.\n\n" +
-		"## Outstanding Questions\n\nNone at this time.\n\n" +
+		"## Open Questions\n\nNone at this time.\n\n" +
 		"---\n*This document follows the https://specscore.md/feature-specification*\n"
 	if err := os.WriteFile(filepath.Join(nested, "README.md"), []byte(body), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
@@ -249,7 +249,7 @@ func TestFeatureChangeStatus_NestedFeatureID(t *testing.T) {
 			"**Status:** Approved\n\n## Summary\n\nPlaceholder.\n\n" +
 			"## Contents\n\n" +
 			"- [" + p.child + "](" + p.child + "/README.md)\n\n" +
-			"## Outstanding Questions\n\nNone at this time.\n\n" +
+			"## Open Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/feature-specification*\n"
 		if err := os.WriteFile(filepath.Join(p.dir, "README.md"), []byte(readme), 0o644); err != nil {
 			t.Fatalf("write parent: %v", err)
@@ -455,7 +455,7 @@ func TestFeatureChangeStatus_FeatureNotFound(t *testing.T) {
 // error-severity violation: a feature with NO `**Status:**` line at
 // all — which feature-index-row-sync silently skips (it cannot
 // determine a wanted status), but the `oq-section` rule reports as
-// an error on the missing Outstanding Questions section. Even though
+// an error on the missing Open Questions section. Even though
 // the oq-section rule reports on a totally unrelated file, the Meta
 // REQ rollback-on-lint-failure is explicit: ANY error-severity
 // violation in the spec tree after --fix triggers rollback.
@@ -464,7 +464,7 @@ func TestFeatureChangeStatus_LintFailureRollsBack(t *testing.T) {
 
 	// Plant a broken feature that the lint pass will flag as
 	// error-severity but feature-index-row-sync's --fix cannot
-	// silence. A README missing the Outstanding Questions section
+	// silence. A README missing the Open Questions section
 	// fires oq-section (error). The features-index does NOT list
 	// this feature, so feature-index-row-sync stays silent.
 	broken := filepath.Join(root, "spec", "features", "broken")

@@ -112,7 +112,7 @@ Running the command twice with the same slug exits `1` on the second run. No sta
 
 Every task created by this command has status `planning`. The command exposes no flag for overriding this.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `task new` accept a `--commit` / `--push` flag pair for parity with `feature new`, enabling one-shot agent workflows that create and push a task in a single call?
 - Should the board row be inserted at a sorted position (by slug or by creation date) rather than appended, to keep the board diff-friendly across concurrent creators?

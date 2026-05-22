@@ -13,7 +13,7 @@ Pre-spec one-pagers for the `specscore` CLI. Each Idea refines a vague concept i
 | [index-entries-autofix](index-entries-autofix.md) | Specified | 2026-05-18 | alexander.trakhimenok | cli/spec/lint |
 | [lifecycle-verbs-for-idea-and-feature](lifecycle-verbs-for-idea-and-feature.md) | Implementing | 2026-05-18 | alexander.trakhimenok | cli/feature/change-status, cli/idea/change-status, cli/lifecycle-transitions |
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

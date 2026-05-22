@@ -167,7 +167,7 @@ In a Plan with `**Mode:** stub`, a placeholder body on a task whose `**Status:**
 
 #### REQ: no-rule-overlap
 
-`P-001`–`P-004` MUST NOT duplicate violations already surfaced by other registered rules (`adherence-footer`, `oq-section`, `heading-levels`, `internal-links`, etc.). When an issue is structurally covered by another rule (e.g., a missing `## Outstanding Questions` section), the existing rule reports it; `P-001`–`P-004` operate only on Plan-specific semantics (AC coverage, AC reference validity, dependency-graph well-formedness, posture/status validity).
+`P-001`–`P-004` MUST NOT duplicate violations already surfaced by other registered rules (`adherence-footer`, `oq-section`, `heading-levels`, `internal-links`, etc.). When an issue is structurally covered by another rule (e.g., a missing `## Open Questions` section), the existing rule reports it; `P-001`–`P-004` operate only on Plan-specific semantics (AC coverage, AC reference validity, dependency-graph well-formedness, posture/status validity).
 
 ### Rule registration in `specscore spec lint`
 
@@ -292,7 +292,7 @@ Violations from `P-001`–`P-004` MUST use the existing `lint.Violation` struct 
 | [SpecStudio `plan` Feature](https://github.com/synchestra-io/specstudio-skills/blob/main/spec/features/skills/plan/README.md) | Locks the upstream contract for `P-001`–`P-004`, the `**Mode:**` / `**Status:**` / `**Depends-On:**` task fields, and the placeholder body token. Any change to that contract MUST land in the upstream Feature first; this CLI Feature is the downstream implementation. |
 | [SpecStudio `implement` Idea](https://github.com/synchestra-io/specstudio-skills/blob/main/spec/ideas/specstudio-implement-skill.md) | Hard-blocks on these rules and parser extensions. `specstudio:implement` cannot ship until this Feature ships. |
 
-## Outstanding Questions
+## Open Questions
 
 - **Placeholder body token (working decision).** The upstream `plan` Feature lists three candidates: `<!-- implement: pending -->` (HTML comment, invisible in rendered markdown, machine-friendly), `**Implementation:** _pending_` (visible, scannable), and `_to be journaled by `implement`_` (visible, self-documenting). This Feature picks `<!-- implement: pending -->` for the MVP because (a) HTML comments are invisible in rendered Plans (zero visual noise in stub Plans the user only ever interacts with through `implement`), (b) the token is byte-exact and unambiguous to parse, and (c) the convention is well-established in the markdown ecosystem. The upstream Outstanding Question remains open; if the SpecStudio team selects a different token, this Feature MUST revise the parser before `specstudio:implement` ships.
 - **`P-002` for the case where the source Feature exists but its AC list is empty.** Today every Feature MUST have at least one AC per `cli/feature/README.md`, so this is structurally impossible — but if that requirement is ever relaxed, `P-001` against an AC-less source Feature would silently pass for all-deferred Plans. Revisit if the Feature-AC-required rule changes.

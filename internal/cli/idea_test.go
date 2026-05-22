@@ -28,9 +28,9 @@ func setupSpecRoot(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(ideasDir, "archived"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	idx := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	idx := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	_ = os.WriteFile(filepath.Join(ideasDir, "README.md"), []byte(idx), 0o644)
-	arch := "# Archived\n\n_No archived ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	arch := "# Archived\n\n_No archived ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	_ = os.WriteFile(filepath.Join(ideasDir, "archived", "README.md"), []byte(arch), 0o644)
 	return root
 }
@@ -212,7 +212,7 @@ func TestIdeaNew_BareProjectMaterializesAncestorIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("spec/ideas/README.md missing: %v", err)
 	}
-	for _, want := range []string{"# Ideas", "## Index", "## Outstanding Questions", "ideas-index-specification"} {
+	for _, want := range []string{"# Ideas", "## Index", "## Open Questions", "ideas-index-specification"} {
 		if !strings.Contains(string(ideasReadme), want) {
 			t.Errorf("spec/ideas/README.md missing %q:\n%s", want, ideasReadme)
 		}
@@ -307,7 +307,7 @@ func stageActiveIdea(t *testing.T, slug, status string, extraHeader string) stri
 	// idea new does NOT materialize spec/features/README.md (that's
 	// init's job). Hand-write a minimal lint-clean Features index so
 	// lint passes across the whole tree.
-	featuresReadme := "# Features\n\n## Index\n\n| Feature | Status |\n|---------|--------|\n\n_No features yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	featuresReadme := "# Features\n\n## Index\n\n| Feature | Status |\n|---------|--------|\n\n_No features yet._\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(
 		filepath.Join(root, "spec", "features", "README.md"),
 		[]byte(featuresReadme), 0o644); err != nil {

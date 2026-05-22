@@ -16,7 +16,7 @@ Implements the two `change-status` CLI verbs (one per doc kind), the shared `pkg
 
 None at this time.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

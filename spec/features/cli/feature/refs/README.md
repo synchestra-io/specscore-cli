@@ -84,7 +84,7 @@ For any feature `f` in a project, every feature returned by `refs f --transitive
 
 `refs <f>` for a feature no one references exits `0` with empty output — not `3`.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `refs` also scan Plans and Ideas for references (via their own "affects features" metadata), or is feature-to-feature scope sufficient for the MVP?
 

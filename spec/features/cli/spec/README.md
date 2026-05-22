@@ -22,7 +22,7 @@ A specification tree is only as useful as its structural consistency. Without a 
 
 ### lint
 
-Scans the spec tree and reports violations of structural conventions (README presence, Outstanding Questions sections, heading levels, feature references, internal links, index entries, adherence footers, Idea-specific rules). `--fix` applies autofixes for rules that support them.
+Scans the spec tree and reports violations of structural conventions (README presence, Open Questions sections, heading levels, feature references, internal links, index entries, adherence footers, Idea-specific rules). `--fix` applies autofixes for rules that support them.
 
 ## Behavior
 
@@ -41,7 +41,7 @@ Commands under `specscore spec` operate on the specification tree as a whole —
 | [CLI](../README.md) | Inherits shared exit-code contract and `--project` semantics. |
 | [`spec/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `spec lint`. Treats this feature spec as the authoritative contract. |
 
-## Outstanding Questions
+## Open Questions
 
 - Should this group grow a `spec search` command for full-text search across the spec tree, complementing the structural queries in the `feature` group?
 - Should `spec lint` also live as `specscore lint` (top-level alias), matching the convention in many single-command tools (`go vet`, `go fmt`)? Or does the `spec` scope justify the prefix?

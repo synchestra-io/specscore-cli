@@ -165,7 +165,7 @@ Once T1-T6 are green:
 - Tag the release; the existing build pipeline (Homebrew tap, Scoop bucket, WinGet, curl install) publishes artifacts.
 - Notify the sibling [specscore plan](https://github.com/specscore/specscore/blob/main/spec/plans/studio-toolbar/README.md) (its T3 is the explicit wait state).
 
-## Outstanding Questions
+## Open Questions
 
 - The exact location of the new rule implementation file is left to the implementer's call based on existing `pkg/lint/` / `internal/lint/` conventions in this repo. The pattern from the `lifecycle-verbs-implementation` plan (`pkg/lint/feature_index.go` style) is a reasonable model.
 - The renderer function signature `RenderToolbar(cfg StudioConfig, artifactPath string) string` is a suggested shape; implementers may prefer to take a `*ProjectConfig` plus a `*FeatureRef` if those exist. The constraint is that the renderer and the lint validator MUST share one implementation so they cannot drift.

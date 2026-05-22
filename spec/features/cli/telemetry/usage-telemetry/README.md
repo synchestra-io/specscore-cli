@@ -317,7 +317,7 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs. The PostHog-funnel
 **When** the file `docs/telemetry.md` is opened
 **Then** the file MUST contain a `### usage-stats` subsection inside `## Channels` with at least the literal strings `cli.command.completed` and `eu.i.posthog.com`; a `### usage-stats events` subsection inside `## Event Schema` enumerating all ten property keys AND enumerating the closed `caller` enum (the file MUST contain at least the literal strings `cli`, `claude`, `codex`, and `other` to demonstrate the enum is documented end-to-end); and a `### usage-stats` subsection inside `## Data Retention` referencing PostHog's retention defaults and the GDPR deletion endpoint.
 
-## Outstanding Questions
+## Open Questions
 
 - **Exact wording of the `--caller` `--help` text.** REQ:caller-flag fixes the *content* (audience: AI coding agents; pointer to `docs/telemetry.md` for the enumerated values) but the prose is settled at Plan time during a copy-review pass.
 - **Specstudio-skills sub-segmentation.** REQ:caller-enum-known-values folds the plugin's invocations into `caller=claude` and relies on command-pattern approximation to tell plugin users from raw-Claude users. If that approximation proves too lossy (e.g. raw-Claude users start running the same skill-shaped commands by hand), file a follow-up Idea adding a `caller_subtype` property or similar. Defer until post-W4 signal available.

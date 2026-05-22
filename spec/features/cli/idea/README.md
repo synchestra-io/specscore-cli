@@ -61,7 +61,7 @@ A file produced by any `specscore idea` mutation command MUST satisfy every lint
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
 | [`idea/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) (ai-plugin-specscore) | Agent-side wrapper for `idea new`. Treats this feature spec as the authoritative contract. |
 
-## Outstanding Questions
+## Open Questions
 
 - Should `specscore idea` grow read commands (`idea list`, `idea info`) symmetric with `feature list` / `feature info`, or does the index in `spec/ideas/README.md` (maintained by `spec lint --fix`) cover the same ground at lower cost?
 

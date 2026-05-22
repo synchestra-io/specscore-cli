@@ -77,7 +77,7 @@ This Idea promotes into a **two-feature structure** under a shared parent. The h
 
 **Dependencies:** PostHog Go SDK (vendor); a PostHog project provisioned in EU region; one funnel configured (`first_run → first feature.create → second feature.create within 7 days`).
 
-## Outstanding Questions
+## Open Questions
 
 - **Exact first-run notice copy** (three lines, shown once when no `install_id`) — wording to be settled at `/specify` time. Tone target: factual, not apologetic, links to `docs/telemetry.md`.
 - **`other` rate threshold for re-thinking the `caller` enum.** Enum-with-`other` is the v1 design; if `other` exceeds some share of events (10%? 20%?) we revisit. Threshold and the "revisit" action to be defined when the PostHog funnel is configured.

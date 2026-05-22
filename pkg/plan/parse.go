@@ -18,7 +18,7 @@ import (
 
 // PlaceholderBodyToken is the byte-exact marker the parser recognizes as a
 // placeholder task body in `**Mode:** stub` Plans. The MVP working decision
-// (see Outstanding Questions in the plan-rules Feature) is an HTML comment so
+// (see Open Questions in the plan-rules Feature) is an HTML comment so
 // the marker is invisible in rendered markdown.
 const PlaceholderBodyToken = "<!-- implement: pending -->"
 

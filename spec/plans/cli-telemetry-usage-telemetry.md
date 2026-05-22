@@ -48,7 +48,7 @@ Operational task, not code. (a) Create a PostHog project named `specscore-cli` i
 
 Populate the parent's already-built `docs/telemetry.md` skeleton with this child's content. Inside `## Channels`: add `### usage-stats` subsection with a one-paragraph description, the literal event name `cli.command.completed`, a link to PostHog's privacy/data-handling page, and an EU-region callout (literal `eu.i.posthog.com`). Inside `## Event Schema`: add `### usage-stats events` subsection enumerating all 10 property keys (matching REQ:usage-stats-event-properties) AND enumerating the closed `caller` enum end-to-end (all 20 values including `cli` and `other`) — this closes the loop on REQ:caller-flag's `--help` pointer at `docs/telemetry.md`. Inside `## Data Retention`: add `### usage-stats` subsection naming PostHog's retention policy (7 years per free-tier defaults) and how to request deletion via PostHog's GDPR endpoint, parameterised by `install_id`.
 
-## Outstanding Questions
+## Open Questions
 
 - **Exact prose of the `--caller` `--help` text (Task 2).** REQ:caller-flag fixes the audience ("AI coding agents driving the CLI") and the pointer ("see `docs/telemetry.md` for the full list") but the connective wording gets a copy-review pass during Task 2 implementation. Lean draft from the source Feature's user-review notes: `--caller string   The AI coding agent driving the CLI (e.g. claude, codex, aider). See docs/telemetry.md for the full list. Default: cli (human at terminal).`
 - **`pi.dev` and `antigravity.google` description prose (Task 5).** REQ:caller-enum-known-values pins the value strings; the one-line product descriptions in `docs/telemetry.md` should reference the canonical URLs (`https://pi.dev/`, `https://antigravity.google/`).

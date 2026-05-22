@@ -68,7 +68,7 @@ func GenerateReadme(title, status, description string, deps []string) string {
 	b.WriteString("TODO: Define acceptance criteria.\n")
 
 	b.WriteByte('\n')
-	b.WriteString("## Outstanding Questions\n")
+	b.WriteString("## Open Questions\n")
 	b.WriteByte('\n')
 	b.WriteString("None at this time.\n")
 

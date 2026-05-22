@@ -70,7 +70,7 @@ Hand-walk every rule in `pkg/lint/lint.go` `allRuleNames`, fill in the 4-column 
 - **Existing Features affected:** [`cli/spec/lint`](../features/cli/spec/lint/README.md) — the audit's contract is whatever this Feature documents about rule behavior.
 - **Dependencies:** none. The audit reads code that already exists.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

@@ -141,7 +141,7 @@ A `specscore` binary built without `-ldflags` (e.g., `go run ./cmd/specscore --v
 
 Version output follows Go-ecosystem convention: no `v` prefix on the printed number, even though the underlying git tag is `v`-prefixed. Any CLI output containing `v0.` or `v1.` at the start of the version field is a regression.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `specscore version` gain a `--json` (or `--format`) flag for machine consumption that includes the commit and date, now that the bare `--version` flag is reserved for the minimal scripting form?
 - Should the build-date field have a normative time-zone requirement (UTC only) to make output reproducible across release machines, or is any valid RFC 3339 value acceptable?

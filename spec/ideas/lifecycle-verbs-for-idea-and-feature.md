@@ -107,7 +107,7 @@ One cycle. Implement `specscore idea change-status` and `specscore feature chang
   - [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) plugin — **follow-on, not in this Idea.** The downstream skill updates (one `references/change-status.md` per kind, plus SKILL.md table updates) MUST include a pre-flight detection rule: *if both `specscore` and a corresponding Synchestra command are installed, the skill SHOULD prefer the Synchestra command for that doc kind.* For Idea and Feature today, no Synchestra equivalent exists and `specscore` is always the canonical path.
 - **Dependencies:** None blocking. Builds on existing `spec lint --fix` infrastructure (specifically `idea-index-row-sync` + the new `feature-index-row-sync` rule) and the existing exit-code contract.
 
-## Outstanding Questions
+## Open Questions
 
 Resolved post-ship (the shipped Features carry the canonical answers; this list is the historical record):
 

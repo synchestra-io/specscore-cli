@@ -60,7 +60,7 @@ If any mutation fails before the commit phase begins, restore on-disk state to i
 
 Single integration test exercising both happy paths against a temp workspace fixture: a parent dir with `specstudio-skills/` (containing `spec/ideas/foo.md` for the Idea path, and `spec/ideas/seeds/bar.md` for the seed path), `specscore/` (target, empty), and `specscore-cli/` (sibling with a Feature containing a markdown link to the Idea). Run `specscore idea relocate foo --to-repo=specscore` and `specscore idea relocate bar --to-repo=specscore`, assert exit 0 in both cases, verify file presence at new location, verify per-repo commits with canonical subject lines, verify stdout per-repo lines + summary, verify any cross-repo links got rewritten. Final state: `specscore spec lint --project <tmpdir>/specstudio-skills` and `--project <tmpdir>/specscore` both return 0 violations.
 
-## Outstanding Questions
+## Open Questions
 
 - Should each task in this Plan be implemented behind an experimental flag in the CLI verb (e.g., `--experimental` gating sibling-scan, or a build-tag gating the whole subcommand) so the verb can ship behind a flag per the source Idea's cross-repo sequencing strategy? Recommended position: yes — register the subcommand but emit a "experimental" notice in `--help` and on first invocation; promote to GA in a follow-on plan after `specstudio-skills` ships its consumer skill. Resolve at implementation time.
 - What test-fixture infrastructure exists in the repo for "create N temp git repos, each with `specscore.yaml`"? If none, Task 1 needs to first author a tiny test helper (~50 lines) before any pre-flight or cross-repo AC can be exercised. Resolve in Task 1.

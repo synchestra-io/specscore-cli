@@ -106,7 +106,7 @@ The two smoke-test fixtures already in the meta-spec repo ([`spec/features/idea/
   - `internal/cli/entity.go`, `internal/cli/property.go` (new) — cobra subcommand wiring.
 - **Dependencies:** None blocking. Builds on existing `spec lint --fix` infrastructure, the `gopkg.in/yaml.v3` dependency already in the tree, and the three approved meta-spec Features ([`entity`](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md), [`property`](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md), [`document-types-registry`](https://github.com/synchestra-io/specscore/blob/main/spec/features/document-types-registry/README.md)). The smoke-test fixtures committed to the meta-spec repo are the canonical integration-test target.
 
-## Outstanding Questions
+## Open Questions
 
 - **`Status` field on entity / property instances** — entities and properties have no lifecycle today (no `**Status:**` in frontmatter). Should the CLI silently accept that absence, or should an explicit `status: stable` be added to the frontmatter contract in a future Idea? Lean: silent for MVP; revisit if users adopt a stable-vs-draft entity workflow.
 - **Where does the spec-level `pkg/yamlfront/` extraction live if a third caller arrives?** Inline parsing in `pkg/entity/` and `pkg/property/` is the MVP, but if `pkg/projectdef/` and the new packages converge on similar code, factoring becomes attractive. Decide at the second-call-site point.

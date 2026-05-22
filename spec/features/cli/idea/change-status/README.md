@@ -182,7 +182,7 @@ Running `specscore idea change-status nonexistent --to=approved` where `spec/ide
 
 Given a transition that exercises the archive path and a corrupted `spec/ideas/archived/README.md` that fails `idea-archived-index-chronological`, the verb exits `10`, restores `spec/ideas/foo.md` at the active path with the original status line, and leaves no file at `spec/ideas/archived/foo.md`.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `change-status` accept `--reason "<text>"` to capture the rationale (especially valuable when archiving)? Deferred per the source Idea.
 - When the Idea status enumeration grows beyond `Draft`/`Approved`/`Archived` to first-class `Specified`/`Implementing` values (today they're managed externally by Synchestra and plan tools), is the legal-transition matrix updated? Lock down at the time the new statuses become user-facing.

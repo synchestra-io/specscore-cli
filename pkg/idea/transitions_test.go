@@ -69,11 +69,11 @@ func stageIdeaTree(t *testing.T, slug, status string) string {
 	// Minimal index README files. Real index sync happens via lint --fix
 	// — these are well-formed placeholders sufficient for tests that
 	// don't exercise the lint pass.
-	idx := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	idx := "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n\n_No active ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(ideasDir, "README.md"), []byte(idx), 0o644); err != nil {
 		t.Fatalf("write idx: %v", err)
 	}
-	arch := "# Archived\n\n_No archived ideas yet._\n\n## Outstanding Questions\n\nNone at this time.\n"
+	arch := "# Archived\n\n_No archived ideas yet._\n\n## Open Questions\n\nNone at this time.\n"
 	if err := os.WriteFile(filepath.Join(ideasDir, "archived", "README.md"), []byte(arch), 0o644); err != nil {
 		t.Fatalf("write archived idx: %v", err)
 	}

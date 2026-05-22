@@ -93,7 +93,7 @@ Supplying `--type feature` causes the output to contain only feature references;
 
 A file containing both a `specscore:` annotation and a bare `https://specscore.md/...` URL in comments reports the referenced resources without duplication.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `--path` accept a comma-separated list of globs for unions (e.g., `pkg/**/*.go,internal/**/*.go`) or should the current single-glob behavior stay, requiring callers to run the command twice?
 

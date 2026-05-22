@@ -80,7 +80,7 @@ None. All inputs are flags.
 
 `specscore feature list --fields status` returns a YAML list where each entry has `id` and `status` keys. `--format text --fields status` upgrades to YAML rather than producing mixed text output.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `--status <value>` and `--parent <id>` become first-class filters, or is post-filtering with `yq` / `grep` adequate for the foreseeable future?
 

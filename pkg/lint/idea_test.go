@@ -57,7 +57,7 @@ Small.
 ## SpecScore Integration
 - **New Features this would create:** TBD
 
-## Outstanding Questions
+## Open Questions
 None at this time.
 `)
 	return header.String()
@@ -97,14 +97,14 @@ const activeIndex = `# SpecScore Ideas
 | Idea | Status | Date | Owner | Promotes To |
 |------|--------|------|-------|-------------|
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
 
 const archivedIndex = `# Archived Ideas
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -130,7 +130,7 @@ func activeIndexWith(slugs ...string) string {
 	for _, s := range slugs {
 		b.WriteString("| [" + s + "](" + s + ".md) | Approved | 2026-04-10 | alice | — |\n")
 	}
-	b.WriteString("\n## Outstanding Questions\n\nNone at this time.\n")
+	b.WriteString("\n## Open Questions\n\nNone at this time.\n")
 	return b.String()
 }
 
@@ -352,7 +352,7 @@ func TestCheckIdeas_SyncDriftDetectedAndFixed(t *testing.T) {
 ## Summary
 Stuff.
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -403,7 +403,7 @@ func TestCheckIdeas_FeatureReferencesDraftIdea(t *testing.T) {
 **Status:** Draft
 **Source Ideas:** offline-mode
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -456,7 +456,7 @@ func TestCheckIdeas_IndexRowDriftDetectedAndFixed(t *testing.T) {
 |------|--------|------|-------|-------------|
 | [offline-mode](offline-mode.md) | Draft | 2026-04-10 | alice | — |
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -504,7 +504,7 @@ func TestCheckIdeas_ArchivedIndexOutOfOrderAndFixed(t *testing.T) {
 - 2025-03-10 — [newer](newer.md) — pivoted
 - 2024-11-02 — [older](older.md) — pivoted
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 `
@@ -555,7 +555,7 @@ func featureBody(title, status, sourceIdeas string) string {
 	if sourceIdeas != "" {
 		b.WriteString("**Source Ideas:** " + sourceIdeas + "\n")
 	}
-	b.WriteString("\n## Summary\n\nStuff.\n\n## Outstanding Questions\n\nNone at this time.\n")
+	b.WriteString("\n## Summary\n\nStuff.\n\n## Open Questions\n\nNone at this time.\n")
 	return b.String()
 }
 

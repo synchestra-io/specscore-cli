@@ -8,7 +8,7 @@ Features of the `specscore` CLI.
 |---------|--------|------|-------------|
 | [cli](cli/README.md) | Implementing | Command | `specscore` CLI — parent feature for command-level specifications |
 
-## Outstanding Questions
+## Open Questions
 
 None at this time.
 

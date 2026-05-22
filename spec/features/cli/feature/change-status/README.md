@@ -188,7 +188,7 @@ Running `specscore feature change-status nonexistent --to=approved` where `spec/
 
 A `feature-index-row-sync` failure after a successful rewrite triggers rollback and exit `10`.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `feature change-status --to=approved` enforce a prior `Under Review` for projects that nominally require review, via a `--require-review` flag or repo-config? Deferred; today both `Draft → Approved` and `Under Review → Approved` are unconditionally accepted.
 - Should `feature change-status --to=deprecated` require `--reason "<text>"` and/or `--successor <feature_id>` to record why and what supersedes? The source Idea Open Question. Lean: defer to a follow-on revision once usage demands it.

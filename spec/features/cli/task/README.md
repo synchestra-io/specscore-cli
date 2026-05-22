@@ -60,7 +60,7 @@ Every non-listing command takes a task slug via `--task <slug>` (a flag, not pos
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
 | [`task/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `task list`, `task info`, and `task new`. Treats this feature spec as the authoritative contract. |
 
-## Outstanding Questions
+## Open Questions
 
 - When should lifecycle commands (`task claim`, `task release`, `task status`) land? They depend on answering how concurrency and multi-agent claim semantics work in a git-backed board — which is a feature spec in its own right.
 - Should `--task` move from a flag to a positional argument (`specscore task info <slug>`) for consistency with `feature info <id>`? Today the two groups diverge on this point.

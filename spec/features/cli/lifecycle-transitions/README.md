@@ -59,7 +59,7 @@ On valid transition, the artifact's `**Status:** <old>` line MUST be rewritten t
 
 #### REQ: index-sync-on-success
 
-After a successful file rewrite, the verb MUST invoke `specscore spec lint --fix` scoped to the project root (full-tree today; see Outstanding Questions for future narrowing to the affected index row only). The lint pass picks up the relevant `*-index-row-sync` rule (e.g., `idea-index-row-sync` for Idea transitions) and rewrites the corresponding row in the artifact's index file. The verb's exit code MUST be `0` only if the file rewrite AND the lint pass BOTH succeed.
+After a successful file rewrite, the verb MUST invoke `specscore spec lint --fix` scoped to the project root (full-tree today; see Open Questions for future narrowing to the affected index row only). The lint pass picks up the relevant `*-index-row-sync` rule (e.g., `idea-index-row-sync` for Idea transitions) and rewrites the corresponding row in the artifact's index file. The verb's exit code MUST be `0` only if the file rewrite AND the lint pass BOTH succeed.
 
 #### REQ: rollback-on-lint-failure
 
@@ -114,7 +114,7 @@ A lifecycle verb MUST map errors to the codes above per their declared meanings.
 | Synchestra `task` commands | Out-of-scope counterpart. Synchestra's task lifecycle owns concurrency, sync policy, and claim/release. `specscore` lifecycle verbs do not touch the task doc kind (see [REQ: scope-no-task-lifecycle](#req-scope-no-task-lifecycle)). |
 | `ai-plugin-specscore` skill wrappers _(planned, downstream)_ | When the plugin grows references for any lifecycle verb, each reference MUST include a Synchestra-presence pre-flight: if both `specscore` and a corresponding Synchestra command are installed on the user's machine, the skill SHOULD prefer the Synchestra command for that doc kind. Today no Synchestra equivalent exists for Idea or Feature lifecycle; `specscore` is the canonical path. |
 
-## Outstanding Questions
+## Open Questions
 
 - Should `--reason "<text>"` become a shared flag on lifecycle verbs in a future revision, captured in the git commit body or in an audit-trail file? Currently deferred per the source Idea.
 - Should `--format yaml|json` be added in a future revision so tooling consumes structured output (returning the artifact's full front-matter)? Currently text-only.

@@ -80,14 +80,14 @@ func ResolveFields(featuresDir, featureID string, fields []string) (*EnrichedFea
 				ef.Status = s
 			}
 		case "oq":
-			n, err := CountOutstandingQuestions(readmePath)
+			n, err := CountOpenQuestions(readmePath)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("oq: %v", err))
 			} else {
 				ef.OQ = &n
 			}
 		case "questions":
-			qs, err := ExtractOutstandingQuestions(readmePath)
+			qs, err := ExtractOpenQuestions(readmePath)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("questions: %v", err))
 			} else {

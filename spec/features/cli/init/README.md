@@ -87,11 +87,11 @@ The `spec/` tree's mandatory subdirectories and indexes are created on every suc
 
 #### REQ: ideas-tree-created
 
-Init MUST create `spec/ideas/README.md` as a lint-clean Ideas Index per the [Ideas Index](../../ideas-index/README.md) Feature: title `# Ideas`, `## Index` section with an empty index table (header row only), `## Outstanding Questions` containing `None at this time.`, and the adherence footer `*This document follows the https://specscore.md/ideas-index-specification*`.
+Init MUST create `spec/ideas/README.md` as a lint-clean Ideas Index per the [Ideas Index](../../ideas-index/README.md) Feature: title `# Ideas`, `## Index` section with an empty index table (header row only), `## Open Questions` containing `None at this time.`, and the adherence footer `*This document follows the https://specscore.md/ideas-index-specification*`.
 
 #### REQ: features-tree-created
 
-Init MUST create `spec/features/README.md` as a lint-clean Features Index per the [Features Index](../../features-index/README.md) Feature: title `# Features`, `## Index` section with an empty index table (header row only), `## Outstanding Questions` containing `None at this time.`, and the adherence footer.
+Init MUST create `spec/features/README.md` as a lint-clean Features Index per the [Features Index](../../features-index/README.md) Feature: title `# Features`, `## Index` section with an empty index table (header row only), `## Open Questions` containing `None at this time.`, and the adherence footer.
 
 #### REQ: optional-subtrees-out-of-scope
 
@@ -157,7 +157,7 @@ This command takes no positional arguments. All inputs are flag-driven.
 
 **Given** an empty directory at `/tmp/test-greenfield-no-remote` with `git init` run but NO git remote configured
 **When** `cd /tmp/test-greenfield-no-remote && specscore init` runs with no flags
-**Then** `specscore.yaml` exists at the project root with line 1 exactly equal to `# SpecScore Repo Config Schema: https://specscore.md/repo-config`; the `project:` block is either absent or contains only `title:` derived from the directory basename (`host:`, `org:`, `repo:` are omitted because no remote is configured and no flags supplied); `spec/ideas/README.md` and `spec/features/README.md` exist as lint-clean indexes (titles `# Ideas` and `# Features`, `## Index` sections with empty header-only tables, `## Outstanding Questions` containing `None at this time.`, and the adherence footers); `spec/research/` and `spec/decisions/` directories are NOT created (out of MVP scope); `specscore spec lint` immediately afterwards exits `0`; the command exits `0`.
+**Then** `specscore.yaml` exists at the project root with line 1 exactly equal to `# SpecScore Repo Config Schema: https://specscore.md/repo-config`; the `project:` block is either absent or contains only `title:` derived from the directory basename (`host:`, `org:`, `repo:` are omitted because no remote is configured and no flags supplied); `spec/ideas/README.md` and `spec/features/README.md` exist as lint-clean indexes (titles `# Ideas` and `# Features`, `## Index` sections with empty header-only tables, `## Open Questions` containing `None at this time.`, and the adherence footers); `spec/research/` and `spec/decisions/` directories are NOT created (out of MVP scope); `specscore spec lint` immediately afterwards exits `0`; the command exits `0`.
 
 ### AC: greenfield-with-remote-inference
 
@@ -230,7 +230,7 @@ This command takes no positional arguments. All inputs are flag-driven.
 
 **Then** each documented exit code surfaces under its documented condition; no other exit codes are ever returned by this command.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `init` accept a `--from <repo-url>` flag to inherit `project:` block fields from a remote repository's `specscore.yaml` (i.e., bootstrap as a sibling of an existing SpecScore project)? Useful for monorepo-style multi-project setups; not in MVP.
 - Should the `viewer:` block be settable via flag (`--viewer-name`, `--viewer-url`) for projects that publish to a non-SpecStudio viewer? Today the canonical default applies; flag would be additive when needed.

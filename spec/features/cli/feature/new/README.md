@@ -119,7 +119,7 @@ None. All inputs are flags.
 
 When `--push` is used against a remote that has diverged from the local branch, the command exits `1` (Conflict). The local scaffolded files remain so the author can reconcile manually.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `feature new` accept a `--dry-run` flag that prints the intended paths and README content to stdout without writing, so agents can preview before committing?
 - Should the scaffolded README's `## Source Ideas` field be auto-populated when `--from-idea <slug>` is supplied, tightening the Idea → Feature promotion flow?

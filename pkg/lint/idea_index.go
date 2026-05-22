@@ -307,7 +307,7 @@ func rewriteActiveIndex(path string, active []idea.Discovered, parsed map[string
 	}
 	lines := strings.Split(string(data), "\n")
 
-	// Locate "## Index" and "## Outstanding Questions".
+	// Locate "## Index" and "## Open Questions".
 	indexStart := -1
 	oqStart := -1
 	for i, ln := range lines {
@@ -364,7 +364,7 @@ func rewriteActiveIndex(path string, active []idea.Discovered, parsed map[string
 
 // rewriteArchivedIndex regenerates the chronological list. Preserves the
 // prologue up to (but not including) the first `- YYYY-MM-DD` entry or the
-// `_No archived ideas yet._` marker, and the "## Outstanding Questions"
+// `_No archived ideas yet._` marker, and the "## Open Questions"
 // section if present.
 func rewriteArchivedIndex(path string, archived []idea.Discovered, parsed map[string]*idea.Idea) error {
 	data, err := os.ReadFile(path)
@@ -374,10 +374,10 @@ func rewriteArchivedIndex(path string, archived []idea.Discovered, parsed map[st
 	lines := strings.Split(string(data), "\n")
 
 	// Find the insertion region: after the code fence line closing "```"
-	// (format description), and before "## Outstanding Questions".
+	// (format description), and before "## Open Questions".
 	oqStart := -1
 	for i, ln := range lines {
-		if strings.HasPrefix(strings.TrimSpace(ln), "## Outstanding Questions") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "## Open Questions") {
 			oqStart = i
 			break
 		}

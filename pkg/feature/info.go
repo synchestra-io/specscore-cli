@@ -376,22 +376,22 @@ func ParseSections(readmePath string) ([]SectionInfo, error) {
 	return sections, nil
 }
 
-// CountOutstandingQuestions counts list items in the
-// ## Outstanding Questions section.
-func CountOutstandingQuestions(readmePath string) (int, error) {
-	items, err := ExtractOutstandingQuestions(readmePath)
+// CountOpenQuestions counts list items in the
+// ## Open Questions section.
+func CountOpenQuestions(readmePath string) (int, error) {
+	items, err := ExtractOpenQuestions(readmePath)
 	if err != nil {
 		return 0, err
 	}
 	return len(items), nil
 }
 
-// ExtractOutstandingQuestions returns the text of each top-level list item
-// under the ## Outstanding Questions section, with the leading "- " stripped.
+// ExtractOpenQuestions returns the text of each top-level list item
+// under the ## Open Questions section, with the leading "- " stripped.
 // Returns an empty slice when the section is absent or contains no items.
 // One question per "- " line; multi-line items capture only the first line,
-// matching CountOutstandingQuestions's notion of an item.
-func ExtractOutstandingQuestions(readmePath string) ([]string, error) {
+// matching CountOpenQuestions's notion of an item.
+func ExtractOpenQuestions(readmePath string) ([]string, error) {
 	f, err := os.Open(readmePath)
 	if err != nil {
 		return nil, err
@@ -403,7 +403,7 @@ func ExtractOutstandingQuestions(readmePath string) ([]string, error) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if line == "## Outstanding Questions" {
+		if line == "## Open Questions" {
 			inOQ = true
 			continue
 		}

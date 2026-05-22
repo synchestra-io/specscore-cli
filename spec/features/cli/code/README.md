@@ -42,7 +42,7 @@ No `specscore code` subcommand may write to disk, make network calls, or require
 | [CLI](../README.md) | Inherits shared exit-code contract, project autodetection, and output-format conventions. |
 | [`code/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `code deps`. Treats this feature spec as the authoritative contract. |
 
-## Outstanding Questions
+## Open Questions
 
 - Should there be a `specscore code refs <feature_id>` command that returns the inverse (source files → feature), complementing `feature refs`? Today that query is only available via grep.
 

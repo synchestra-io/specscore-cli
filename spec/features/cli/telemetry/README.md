@@ -357,7 +357,7 @@ Per-AC Rehearse stubs MAY be scaffolded for the testable ACs (file-presence, exi
 **When** the file `docs/telemetry.md` is opened
 **Then** the file MUST contain the following second-level headings, in order: `## Overview`, `## Channels`, `## Event Schema`, `## What We Don't Collect`, `## Opt-out`, `## Data Retention`. The `## What We Don't Collect` section MUST enumerate at least: spec content, feature names, file paths, project paths, git remotes, hostnames, usernames, and arbitrary user input. The `## Channels` section MUST contain third-level subsections `### usage-stats` and `### crash-reports` even if their content is initially populated by the child Features.
 
-## Outstanding Questions
+## Open Questions
 
 - **Exact first-run-notice prose.** REQ:first-run-notice-content fixes the three-line shape, the proper-noun "SpecScore" capitalization, the two channel names (`usage-stats`, `crash-reports`), and the literal command/env-var strings that MUST appear. The prose connective tissue gets a copy-review at Plan time before v0.2.0 ships.
 

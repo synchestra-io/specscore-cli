@@ -35,7 +35,7 @@ func featuresIndex(rows ...[2]string) string {
 		b.WriteString(slug)
 		b.WriteString(" |\n")
 	}
-	b.WriteString("\n## Outstanding Questions\n\nNone at this time.\n")
+	b.WriteString("\n## Open Questions\n\nNone at this time.\n")
 	return b.String()
 }
 
@@ -179,7 +179,7 @@ func TestFeatureIndex_TopLevelOnly(t *testing.T) {
 	// drift; for a sub-feature it MUST be ignored.
 	indexBody := featureIndexHeader +
 		"| [cli/idea/change-status](cli/idea/change-status/README.md) | Draft | Command | sub-feature row |\n" +
-		"\n## Outstanding Questions\n\nNone at this time.\n"
+		"\n## Open Questions\n\nNone at this time.\n"
 	specRoot := writeSpec(t, map[string]string{
 		"features/README.md":                        indexBody,
 		"features/cli/idea/change-status/README.md": featureReadme("Change Status", "Approved"),

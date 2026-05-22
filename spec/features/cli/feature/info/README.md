@@ -86,7 +86,7 @@ An unresolved `<feature_id>` MUST exit `3` (NotFound) with a message that names 
 
 `specscore feature info does-not-exist` exits `3` with a stderr message naming the missing ID. No partial output is written to stdout.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `feature info` optionally include the section *bodies* (with `--fields body`) for consumers that want the full spec in one call, or should body reads stay separate via `cat`?
 

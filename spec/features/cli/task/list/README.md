@@ -90,7 +90,7 @@ None. All inputs are flags.
 
 `specscore task list --status not-a-status` exits `2` with a message naming the invalid value.
 
-## Outstanding Questions
+## Open Questions
 
 - Should `--status` accept a comma-separated list for multi-status filters (e.g., `--status queued,in_progress`), or is single-status filtering plus `yq` post-filtering adequate?
 
