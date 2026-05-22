@@ -309,9 +309,7 @@ func parseTaskBody(t *Task) {
 		case "Verifies":
 			t.VerifiesPresent = true
 			t.VerifiesLine = absLine
-			for _, v := range splitCommaList(val) {
-				t.Verifies = append(t.Verifies, v)
-			}
+			t.Verifies = append(t.Verifies, splitCommaList(val)...)
 		case "Status":
 			t.StatusPresent = true
 			t.StatusRaw = val

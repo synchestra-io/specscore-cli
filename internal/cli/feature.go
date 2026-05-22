@@ -13,10 +13,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
-	"github.com/synchestra-io/specscore-cli/pkg/feature"
-	"github.com/synchestra-io/specscore-cli/pkg/lifecycle"
-	"github.com/synchestra-io/specscore-cli/pkg/lint"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/feature"
+	"github.com/specscore/specscore-cli/pkg/lifecycle"
+	"github.com/specscore/specscore-cli/pkg/lint"
 	"gopkg.in/yaml.v3"
 )
 
@@ -807,8 +807,8 @@ func buildFeatureChangeStatusMatrix() string {
 	const fromWidth = 14
 	var b strings.Builder
 	b.WriteString("Legal transitions:\n\n")
-	b.WriteString(fmt.Sprintf("  %-*s To\n", fromWidth, "From"))
-	b.WriteString(fmt.Sprintf("  %-*s --\n", fromWidth, "-----"))
+	fmt.Fprintf(&b, "  %-*s To\n", fromWidth, "From")
+	fmt.Fprintf(&b, "  %-*s --\n", fromWidth, "-----")
 	for _, f := range froms {
 		targets := lifecycle.LegalTargets(lifecycle.KindFeature, f)
 		if len(targets) == 0 {
@@ -818,7 +818,7 @@ func buildFeatureChangeStatusMatrix() string {
 		for i, t := range targets {
 			names[i] = string(t)
 		}
-		b.WriteString(fmt.Sprintf("  %-*s %s\n", fromWidth, string(f), strings.Join(names, ", ")))
+		fmt.Fprintf(&b, "  %-*s %s\n", fromWidth, string(f), strings.Join(names, ", "))
 	}
 	return b.String()
 }

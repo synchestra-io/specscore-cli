@@ -292,7 +292,7 @@ func ReadSpecConfig(dir string) (SpecConfig, error) {
 		return cfg, err
 	}
 	if detectViewerKey(data) {
-		return cfg, errors.New("viewer: block is no longer supported. Rename to studio: in specscore.yaml. See https://specscore.md/repo-config-specification.")
+		return cfg, errors.New("viewer: block is no longer supported; rename to studio: in specscore.yaml (see https://specscore.md/repo-config-specification)")
 	}
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("parsing spec config: %w", err)
