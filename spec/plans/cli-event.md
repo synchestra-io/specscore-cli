@@ -31,7 +31,7 @@ Create `pkg/event/` with `subscriber.go` defining the `Subscriber` interface (`D
 
 ### Task 2: Implement `JsonlWriter` subscriber with project-root path resolution
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 1
 **Verifies:** cli/event#ac:jsonl-writer-appends-line, cli/event#ac:jsonl-writer-resolves-against-project-root
 
@@ -39,7 +39,7 @@ Add `pkg/event/jsonl.go` implementing `JsonlWriter`. `Deliver` serializes the `E
 
 ### Task 3: Implement `NoOp` subscriber
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 1
 **Verifies:** cli/event#ac:noop-discards
 
@@ -47,7 +47,7 @@ Add `pkg/event/noop.go` implementing `NoOp`. `Deliver` returns nil with no side 
 
 ### Task 4: Implement `Exec` subscriber with timeout + SIGTERM/SIGKILL
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 1
 **Verifies:** cli/event#ac:exec-pipes-event-to-stdin, cli/event#ac:exec-timeout-kills-hung-process
 
@@ -55,7 +55,7 @@ Add `pkg/event/exec.go` implementing `Exec`. Build `os/exec.Cmd` from the config
 
 ### Task 5: Implement envelope validator
 
-**Status:** pending
+**Status:** done
 **Depends-On:** 1
 **Verifies:** cli/event#ac:envelope-validation-rejects-bad-name, cli/event#ac:envelope-validation-rejects-bad-actor-kind, cli/event#ac:payload-is-opaque-passthrough
 
