@@ -38,6 +38,7 @@ func Run(args []string) error {
 		taskCommand(),
 		ideaCommand(),
 		initCommand(),
+		eventCommand(),
 		telemetryCommand(),
 		debugCommand(),
 	)
