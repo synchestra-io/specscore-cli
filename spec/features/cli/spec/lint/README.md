@@ -16,6 +16,7 @@
 | Directory | Description |
 |---|---|
 | [plan-rules/](plan-rules/README.md) | Lint rules `P-001`–`P-004` and parser extensions for single-file Plans (`**Mode:**`, `**Status:**`, `**Depends-On:**`, placeholder body token) |
+| [issue-rules](issue-rules/README.md) | Adds 15 lint rules (`I-001`–`I-015`) and the underlying `issue` artifact parser to `specscore spec lint`, implementing the contract reserved by the SpecStudio `issue-artifact-type` Feature in the [`specstudio-skills`](https://github.com/synchestra-io/specstudio-skills) repo. |
 
 ## Synopsis
 
