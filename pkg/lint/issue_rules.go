@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/specscore/specscore-cli/pkg/issue"
+	"gopkg.in/yaml.v3"
 )
 
 // issueRequiredKeys names the five always-required frontmatter fields
@@ -63,6 +64,29 @@ var issueStatusValueSet = func() map[string]bool {
 	}
 	return m
 }()
+
+// issueSeverityValues enumerates the five valid `severity` values per
+// rule I-003.
+var issueSeverityValues = []string{"low", "medium", "high", "critical", "unset"}
+
+var issueSeverityValueSet = func() map[string]bool {
+	m := make(map[string]bool, len(issueSeverityValues))
+	for _, v := range issueSeverityValues {
+		m[v] = true
+	}
+	return m
+}()
+
+// issueNonEmptyStringOptionals names the optional frontmatter fields
+// that I-003 requires to be a non-empty string when present. The
+// `severity` enum and `bugs` list are validated separately.
+var issueNonEmptyStringOptionals = []string{
+	"affected_component",
+	"first_seen",
+	"github_issue",
+	"rejection_reason",
+	"rejection_notes",
+}
 
 // issueRuleIDs enumerates the 15 canonical rule IDs in order.
 var issueRuleIDs = []string{
@@ -153,6 +177,8 @@ func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation
 		}
 		out = append(out, checkIssueI001(d.RelPath, iss)...)
 		out = append(out, checkIssueI002(d.RelPath, iss)...)
+		out = append(out, checkIssueI003(d.RelPath, iss)...)
+		out = append(out, checkIssueI004(d.RelPath, iss)...)
 	}
 	return out
 }
@@ -228,4 +254,83 @@ func checkIssueI002(relPath string, iss *issue.Issue) []Violation {
 		Rule:     "I-002",
 		Message:  fmt.Sprintf("status %q is not one of {%s}", status, strings.Join(issueStatusValues, ", ")),
 	}}
+}
+
+// checkIssueI003 validates the shape of optional frontmatter fields.
+// Absence of any optional field is always valid; only present-but-
+// malformed values emit a violation. Per the Plan, I-003 only checks
+// type and non-emptiness for the rejection_* fields — the
+// presence/absence wiring against `status: rejected` is I-006's job.
+func checkIssueI003(relPath string, iss *issue.Issue) []Violation {
+	var vs []Violation
+
+	// `severity` enum check.
+	if sev, present := iss.Frontmatter["severity"]; present {
+		if !issueSeverityValueSet[sev] {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-003",
+				Message:  fmt.Sprintf("severity %q is not one of {%s}", sev, strings.Join(issueSeverityValues, ", ")),
+			})
+		}
+	}
+
+	// Non-empty-string checks for the remaining optional string fields.
+	for _, k := range issueNonEmptyStringOptionals {
+		v, present := iss.Frontmatter[k]
+		if !present {
+			continue
+		}
+		if strings.TrimSpace(v) == "" {
+			vs = append(vs, Violation{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-003",
+				Message:  fmt.Sprintf("optional field %q must be a non-empty string when present", k),
+			})
+		}
+	}
+
+	return vs
+}
+
+// checkIssueI004 validates the reserved `bugs` field. Absence is valid;
+// an empty list is valid; a list whose every element is a string scalar
+// is valid. Anything else (scalar value, mapping, or list containing a
+// non-string element) emits one violation.
+//
+// Lint MUST NOT resolve the string elements to bug artifacts — the
+// `bug` artifact type does not exist in this MVP and the field is
+// opaque by design.
+func checkIssueI004(relPath string, iss *issue.Issue) []Violation {
+	node := iss.BugsRaw
+	if node == nil {
+		// Field absent — valid.
+		return nil
+	}
+	if node.Kind != yaml.SequenceNode {
+		return []Violation{{
+			File:     relPath,
+			Line:     0,
+			Severity: "error",
+			Rule:     "I-004",
+			Message:  "bugs must be a YAML list whose every element is a string",
+		}}
+	}
+	// Empty list is valid.
+	for i, elem := range node.Content {
+		if elem.Kind != yaml.ScalarNode || (elem.Tag != "" && elem.Tag != "!!str") {
+			return []Violation{{
+				File:     relPath,
+				Line:     0,
+				Severity: "error",
+				Rule:     "I-004",
+				Message:  fmt.Sprintf("bugs element at index %d (%q) is not a string; every element of bugs must be a string", i, elem.Value),
+			}}
+		}
+	}
+	return nil
 }

@@ -192,6 +192,71 @@ func TestIssueRules_I001_UnknownFrontmatterKey(t *testing.T) {
 	}
 }
 
+// AC: optional-field-shape-violation. A fixture issue with
+// `severity: extreme` trips I-003 under a message listing the five
+// valid `severity` values (`low`, `medium`, `high`, `critical`, `unset`).
+func TestIssueRules_I003_InvalidSeverityEnum(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/invalid-severity/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i003 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-003" {
+			i003 = &vs[i]
+			break
+		}
+	}
+	if i003 == nil {
+		t.Fatalf("expected an I-003 violation; got %+v", vs)
+	}
+	for _, want := range []string{"low", "medium", "high", "critical", "unset"} {
+		if !strings.Contains(i003.Message, want) {
+			t.Errorf("I-003 message %q does not list valid value %q", i003.Message, want)
+		}
+	}
+	if !strings.Contains(i003.Message, "severity") {
+		t.Errorf("I-003 message %q does not name the field 'severity'", i003.Message)
+	}
+	if i003.Severity != "error" {
+		t.Errorf("severity = %q; want error", i003.Severity)
+	}
+}
+
+// AC: bugs-opaque-non-string-violation. A fixture issue with
+// `bugs: [123, "valid-slug"]` trips I-004 stating every element of
+// `bugs` must be a string.
+func TestIssueRules_I004_BugsNonStringElement(t *testing.T) {
+	specRoot := copyTestdataSpec(t, "rules/issue/testdata/bugs-non-string/spec")
+	vs, err := Lint(Options{SpecRoot: specRoot})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var i004 *Violation
+	for i := range vs {
+		if vs[i].Rule == "I-004" {
+			i004 = &vs[i]
+			break
+		}
+	}
+	if i004 == nil {
+		t.Fatalf("expected an I-004 violation; got %+v", vs)
+	}
+	if !strings.Contains(i004.Message, "bugs") {
+		t.Errorf("I-004 message %q does not reference the `bugs` field", i004.Message)
+	}
+	if !strings.Contains(i004.Message, "string") {
+		t.Errorf("I-004 message %q does not state elements must be strings", i004.Message)
+	}
+	if !strings.Contains(i004.Message, "123") {
+		t.Errorf("I-004 message %q does not reference the non-string element 123", i004.Message)
+	}
+	if i004.Severity != "error" {
+		t.Errorf("severity = %q; want error", i004.Severity)
+	}
+}
+
 // copyTestdataSpec copies the spec/ subtree of a testdata fixture into
 // a temporary spec root. The fixture directory passed must contain a
 // `spec/` subtree (rules/issue/testdata/<name>/spec/...). The function

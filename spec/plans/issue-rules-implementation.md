@@ -32,7 +32,7 @@ Create `pkg/lint/rules/issue/schema.go`. Implement rule `I-001` to validate the 
 
 ### Task 3: Rules `I-003` (optional-field shapes) and `I-004` (`bugs` opaque)
 
-**Status:** pending
+**Status:** done
 **Verifies:** cli/spec/lint/issue-rules#ac:optional-field-shape-violation, cli/spec/lint/issue-rules#ac:bugs-opaque-non-string-violation
 
 Create `pkg/lint/rules/issue/optional.go` and `pkg/lint/rules/issue/bugs.go`. Implement rule `I-003` per-optional-field shape validation: `severity` enum (`low|medium|high|critical|unset`), `affected_component` / `first_seen` / `github_issue` as non-empty strings, `rejection_reason` / `rejection_notes` shape (presence/absence enforced by `I-006` in Task 4 — `I-003` only validates the type and non-emptiness when present). Absence of any optional field is valid; presence with malformed shape → violation naming the field and the violated constraint. Implement rule `I-004` to validate `bugs`: absence valid, empty list valid, non-list or list-with-non-string-element → violation. Lint MUST NOT resolve the string elements to bug artifacts (the `bug` artifact type does not yet exist in this MVP); the field is opaque by design. Extend fixture tests.

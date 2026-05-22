@@ -9,6 +9,8 @@
 // contract.
 package issue
 
+import "gopkg.in/yaml.v3"
+
 // PathPatterns names the two glob patterns (relative to the spec root)
 // where `issue` artifacts may live. Files outside these patterns that
 // declare `type: issue` violate rule I-009 (dual-location).
@@ -50,4 +52,8 @@ type Issue struct {
 	// HasFrontmatter is true when the file begins with `---` and a
 	// closing `---` line is found.
 	HasFrontmatter bool
+	// BugsRaw is the raw YAML node for the `bugs` frontmatter field, or
+	// nil when the field is absent. Exposed so list-aware rules (I-004)
+	// can inspect the node's Kind and elements without re-parsing.
+	BugsRaw *yaml.Node
 }

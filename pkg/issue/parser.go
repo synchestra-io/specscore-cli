@@ -43,7 +43,35 @@ func parseBytes(path string, content []byte) *Issue {
 	iss.Frontmatter = keys
 	iss.FrontmatterKeyOrder = order
 	iss.Type = keys["type"]
+	iss.BugsRaw = extractRawNode(front, "bugs")
 	return iss
+}
+
+// extractRawNode re-parses the frontmatter YAML and returns the raw
+// yaml.Node for the named top-level key, or nil if the key is absent
+// or the YAML is unparseable. Used by list-aware lint rules (I-004)
+// that need to inspect node Kind beyond the stringified map.
+func extractRawNode(front, key string) *yaml.Node {
+	if strings.TrimSpace(front) == "" {
+		return nil
+	}
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte(front), &node); err != nil {
+		return nil
+	}
+	if len(node.Content) == 0 {
+		return nil
+	}
+	root := node.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value == key {
+			return root.Content[i+1]
+		}
+	}
+	return nil
 }
 
 // splitFrontmatter mirrors pkg/lint.splitFrontmatter — extracts the
