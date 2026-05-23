@@ -1,7 +1,7 @@
 # Feature: Event Emit Verb
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/event/emit?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/event/emit?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/event/emit?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/event/emit?op=request-change) |
-**Status:** Approved
+**Status:** Stable
 **Date:** 2026-05-22
 **Owner:** alexandertrakhimenok
 **Source Ideas:** event-emit-dispatcher
