@@ -28,7 +28,7 @@ brew install specscore/tap/specscore
 scoop bucket add specscore https://github.com/specscore/scoop-bucket
 scoop install specscore
 # or
-winget install Synchestra.SpecScore
+winget install SpecScore.CLI
 ```
 
 See [installation docs](https://specscore.md/install) for options (version pinning, custom install dir).
