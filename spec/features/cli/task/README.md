@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/task?op=request-change) |
 >
-> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/task/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/task/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
+> **AI skill:** [GitHub](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/task/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/task/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Implementing
 
@@ -58,7 +58,7 @@ Every non-listing command takes a task slug via `--task <slug>` (a flag, not pos
 |---|---|
 | [task](../../task/README.md) | Source of truth for task file structure, board format, and allowed status values. |
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
-| [`task/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `task list`, `task info`, and `task new`. Treats this feature spec as the authoritative contract. |
+| [`task/` skill](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `task list`, `task info`, and `task new`. Treats this feature spec as the authoritative contract. |
 
 ## Open Questions
 

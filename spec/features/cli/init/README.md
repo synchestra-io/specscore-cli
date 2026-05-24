@@ -147,7 +147,7 @@ This command takes no positional arguments. All inputs are flag-driven.
 | [Features Index](../../features-index/README.md) | Source of truth for `spec/features/README.md` shape. Same pattern as Ideas Index. |
 | [CLI](../README.md) | Inherits the shared exit-code contract and `--project` flag convention. `init` is the only CLI command that creates `specscore.yaml` itself; every other CLI command assumes it exists. |
 | [Idea New (CLI)](../idea/new/README.md) | Sibling scaffolder. `idea new` requires an existing project root (i.e., a successful prior `init`). The two flows together form the full bootstrap → first-artifact path. |
-| [`init/` skill](https://github.com/synchestra-io/specstudio-skills/blob/main/spec/features/skills/init/README.md) (specstudio-skills) | Agent-side wrapper that delegates to this CLI for spec-tree scaffolding. The skill's `prefer-specscore-init-cli` REQ commits to invoking `specscore init` as the preferred path; this Feature is the contract that REQ targets. |
+| [`init/` skill](https://github.com/specscore/specstudio-skills/blob/main/spec/features/skills/init/README.md) (specstudio-skills) | Agent-side wrapper that delegates to this CLI for spec-tree scaffolding. The skill's `prefer-specscore-init-cli` REQ commits to invoking `specscore init` as the preferred path; this Feature is the contract that REQ targets. |
 
 ## Acceptance Criteria
 

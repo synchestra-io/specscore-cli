@@ -126,7 +126,7 @@ When `--project` is not supplied, commands MUST autodetect the project root by s
 
 ## Consumers
 
-The [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) Claude Code plugin wraps every command group below as an agent skill. Each skill loads per-verb references on demand and treats the feature spec in this tree as the authoritative contract — when a flag, exit code, or output shape changes here, the corresponding skill follows. The wrapper-skill catalogue lives at [`skills/README.md`](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue).
+The [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) Claude Code plugin wraps every command group below as an agent skill. Each skill loads per-verb references on demand and treats the feature spec in this tree as the authoritative contract — when a flag, exit code, or output shape changes here, the corresponding skill follows. The wrapper-skill catalogue lives at [`skills/README.md`](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue).
 
 ## Open Questions
 

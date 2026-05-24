@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature?op=request-change) |
 >
-> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/feature/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/feature/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
+> **AI skill:** [GitHub](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/feature/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/feature/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Stable
 
@@ -89,7 +89,7 @@ When a feature ID does not resolve to an existing feature directory, commands MU
 |---|---|
 | [feature](../../feature/README.md) | Defines what a feature is. This command group provides the CLI surface for querying and creating them. |
 | [CLI](../README.md) | Inherits shared exit-code contract, flag conventions, and project autodetection. |
-| [`feature/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper. Loads per-verb references on demand; treats this feature spec as the authoritative contract for command shape, flags, and output. |
+| [`feature/` skill](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper. Loads per-verb references on demand; treats this feature spec as the authoritative contract for command shape, flags, and output. |
 
 ## Open Questions
 

@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=request-change) |
 >
-> **AI skill:** _planned_ — a `skills/idea/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
+> **AI skill:** _planned_ — a `skills/idea/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
 
 **Status:** Approved
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature
@@ -75,7 +75,7 @@ The Meta's [REQ: rollback-on-lint-failure](../../lifecycle-transitions/README.md
 The post-mutation `specscore spec lint --fix` invocation (per [lifecycle-transitions#req:index-sync-on-success](../../lifecycle-transitions/README.md#req-index-sync-on-success)) MUST cause:
 
 - For `--to=approved`: `idea-index-row-sync` rewrites the row's Status cell in `spec/ideas/README.md` from the prior value to `Approved`.
-- For `--to=archived`: `idea-index-row-sync` removes the row from `spec/ideas/README.md` (per [ideas-index#req:status-excludes-archived](https://github.com/synchestra-io/specscore/blob/main/spec/features/ideas-index/README.md#req-status-excludes-archived)), AND `idea-archived-index-chronological` adds the row to `spec/ideas/archived/README.md` in chronological order by `**Date:**`.
+- For `--to=archived`: `idea-index-row-sync` removes the row from `spec/ideas/README.md` (per [ideas-index#req:status-excludes-archived](https://github.com/specscore/specscore/blob/main/spec/features/ideas-index/README.md#req-status-excludes-archived)), AND `idea-archived-index-chronological` adds the row to `spec/ideas/archived/README.md` in chronological order by `**Date:**`.
 
 Both rules already exist in `pkg/lint/`; no new lint rule is required for the Idea kind.
 
@@ -111,7 +111,7 @@ Both rules already exist in `pkg/lint/`; no new lint rule is required for the Id
 | [idea (CLI group)](../README.md) | Parent group. Contents table includes this sub-feature. |
 | [cli/feature/change-status](../../feature/change-status/README.md) | Sibling verb for the Feature kind. Same shared contract; the differences are the legal-transition matrix, the identifier name (`<feature_id>` vs `<slug>`), the kind-specific path, and the archive side effect (Feature has none). |
 | [spec lint](../../spec/lint/README.md) | Invoked internally by the shared contract. For Idea, `idea-index-row-sync` and (for archive) `idea-archived-index-chronological` fire after the mutation. |
-| [idea](../../../idea/README.md), [ideas-index](https://github.com/synchestra-io/specscore/blob/main/spec/features/ideas-index/README.md) | Sources of truth for the Idea document structure, the legal status enumeration, and the active-vs-archived index split. |
+| [idea](../../../idea/README.md), [ideas-index](https://github.com/specscore/specscore/blob/main/spec/features/ideas-index/README.md) | Sources of truth for the Idea document structure, the legal status enumeration, and the active-vs-archived index split. |
 | Source Idea: [lifecycle-verbs-for-idea-and-feature](../../../../ideas/lifecycle-verbs-for-idea-and-feature.md) | Specifies `change-status` as the single Idea-kind lifecycle verb. |
 
 ## Acceptance Criteria

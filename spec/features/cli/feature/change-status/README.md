@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=request-change) |
 >
-> **AI skill:** _planned_ — a `skills/feature/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
+> **AI skill:** _planned_ — a `skills/feature/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
 
 **Status:** Approved
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature
@@ -60,7 +60,7 @@ The `<feature_id>` positional argument MUST resolve to a directory at `spec/feat
 
 #### REQ: features-index-sync
 
-The post-mutation `specscore spec lint --fix` invocation MUST rely on the `feature-index-row-sync` rule (per [features-index#req:index-row-tracks-feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) in the meta-spec) to rewrite the row for `<feature_id>` in `spec/features/README.md` to the new status. The lint rule does not exist in `pkg/lint/` today (only `idea-index-row-sync` does); implementing this verb requires landing an analogous `feature-index-row-sync` rule. Implementation of the verb and the rule MUST land together.
+The post-mutation `specscore spec lint --fix` invocation MUST rely on the `feature-index-row-sync` rule (per [features-index#req:index-row-tracks-feature](https://github.com/specscore/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) in the meta-spec) to rewrite the row for `<feature_id>` in `spec/features/README.md` to the new status. The lint rule does not exist in `pkg/lint/` today (only `idea-index-row-sync` does); implementing this verb requires landing an analogous `feature-index-row-sync` rule. Implementation of the verb and the rule MUST land together.
 
 ## Parameters
 

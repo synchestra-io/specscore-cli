@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec?op=request-change) |
 >
-> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/spec/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/spec/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
+> **AI skill:** [GitHub](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/spec/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/spec/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Implementing
 
@@ -39,7 +39,7 @@ Commands under `specscore spec` operate on the specification tree as a whole —
 | Feature | Interaction |
 |---|---|
 | [CLI](../README.md) | Inherits shared exit-code contract and `--project` semantics. |
-| [`spec/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `spec lint`. Treats this feature spec as the authoritative contract. |
+| [`spec/` skill](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/README.md#planned-cli-wrapper-catalogue) (ai-plugin-specscore) | Agent-side wrapper for `spec lint`. Treats this feature spec as the authoritative contract. |
 
 ## Open Questions
 

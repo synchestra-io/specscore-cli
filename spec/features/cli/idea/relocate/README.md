@@ -26,7 +26,7 @@ specscore idea relocate <slug> --to-repo=<target> [--no-commit] [--project <path
 
 ## Problem
 
-When an Idea-creation surface (most commonly `specstudio:sidekick`, occasionally `specstudio:ideate` user-error) writes an artifact into the wrong repo in a multi-repo SpecScore workspace, the manual relocation ritual is ~30 minutes of careful, error-prone work. The 2026-05-20 relocate of `artifact-frontmatter-convention` from `specstudio-skills` to `specscore/specscore` (commits [`7e32851`](https://github.com/specscore/specscore/commit/7e32851), [`160ae03`](https://github.com/specscore/specstudio-skills/commit/160ae03)) is the worked reference: copy the file, rewrite stale `synchestra-io/*` org references to `specscore/*`, disambiguate "this repo" wording, then commit on both sides with cross-linking messages. In a workspace where other repos reference the artifact via `**Source Ideas:**`, `**Related Ideas:**`, `**Supersedes:**`, or back-link sections, the user would also need to update those references across every sibling repo and commit each. This verb collapses all of that into one command.
+When an Idea-creation surface (most commonly `specstudio:sidekick`, occasionally `specstudio:ideate` user-error) writes an artifact into the wrong repo in a multi-repo SpecScore workspace, the manual relocation ritual is ~30 minutes of careful, error-prone work. The 2026-05-20 relocate of `artifact-frontmatter-convention` from `specstudio-skills` to `specscore/specscore` (commits [`7e32851`](https://github.com/specscore/specscore/commit/7e32851), [`160ae03`](https://github.com/specscore/specstudio-skills/commit/160ae03)) is the worked reference: copy the file, rewrite stale `specscore/*` org references to `specscore/*`, disambiguate "this repo" wording, then commit on both sides with cross-linking messages. In a workspace where other repos reference the artifact via `**Source Ideas:**`, `**Related Ideas:**`, `**Supersedes:**`, or back-link sections, the user would also need to update those references across every sibling repo and commit each. This verb collapses all of that into one command.
 
 ## Behavior
 
@@ -86,7 +86,7 @@ After pre-flight passes and no collision exists, the verb MUST:
 
 1. Copy the artifact file from the source path to the destination path in the target repo, creating any missing parent directories.
 2. In the copied file, apply substitution rules:
-   - Every occurrence of `synchestra-io/<repo>` MUST be rewritten to `specscore/<repo>` for any `<repo>` value (org rename from the pre-2026 era).
+   - Every occurrence of `specscore/<repo>` MUST be rewritten to `specscore/<repo>` for any `<repo>` value (org rename from the pre-2026 era).
    - Every standalone occurrence of the phrase `this repo` (case-insensitive, word-bounded) in body prose MUST be rewritten to the target repo's slug (the value of `project.repo` in its `specscore.yaml`). Occurrences inside fenced code blocks (` ``` `), inline code spans (` ` `` ` `), or table cells MUST NOT be rewritten — disambiguation in those contexts is the user's responsibility post-relocate.
 3. Delete the artifact file from the source path.
 
@@ -210,7 +210,7 @@ Where `<N>` is the count of affected repos.
 ### AC: idea-relocate-happy-path
 **Requirements:** [#req:slug-resolves-idea-or-seed](#req-slug-resolves-idea-or-seed), [#req:target-repo-resolution](#req-target-repo-resolution), [#req:file-copy-with-rewrite](#req-file-copy-with-rewrite), [#req:auto-commit-default](#req-auto-commit-default), [#req:stdout-format](#req-stdout-format)
 
-Given a workspace at `~/projects/specscore/` with two repos — `specstudio-skills` (source, containing `spec/ideas/foo.md`) and `specscore` (target, no such file) — and both repos have clean working trees, running `specscore idea relocate foo --to-repo=specscore` from `specstudio-skills` exits `0`, removes `spec/ideas/foo.md` from `specstudio-skills`, creates `spec/ideas/foo.md` in `specscore/` with any `synchestra-io/specscore` substrings rewritten to `specscore/specscore`, commits each repo with the canonical subject-line format, and prints two per-repo lines (`specstudio-skills: moved idea foo  [<sha>]`, `specscore: received idea foo  [<sha>]`) plus the summary line `relocate complete: 2 repos affected`.
+Given a workspace at `~/projects/specscore/` with two repos — `specstudio-skills` (source, containing `spec/ideas/foo.md`) and `specscore` (target, no such file) — and both repos have clean working trees, running `specscore idea relocate foo --to-repo=specscore` from `specstudio-skills` exits `0`, removes `spec/ideas/foo.md` from `specstudio-skills`, creates `spec/ideas/foo.md` in `specscore/` with any `specscore/specscore` substrings rewritten to `specscore/specscore`, commits each repo with the canonical subject-line format, and prints two per-repo lines (`specstudio-skills: moved idea foo  [<sha>]`, `specscore: received idea foo  [<sha>]`) plus the summary line `relocate complete: 2 repos affected`.
 
 ### AC: seed-relocate-happy-path
 **Requirements:** [#req:slug-resolves-idea-or-seed](#req-slug-resolves-idea-or-seed), [#req:file-copy-with-rewrite](#req-file-copy-with-rewrite)
@@ -265,7 +265,7 @@ Given `spec/ideas/foo.md` exists in source AND `spec/ideas/foo.md` already exist
 ### AC: in-file-rewrite-org-rename
 **Requirements:** [#req:file-copy-with-rewrite](#req-file-copy-with-rewrite)
 
-Given the source artifact contains the substring `synchestra-io/specscore` somewhere in its body (legacy org reference), the copied artifact in the target repo has every occurrence rewritten to `specscore/specscore`. Matches the 2026-05-20 manual relocate of `artifact-frontmatter-convention` as the worked reference.
+Given the source artifact contains the substring `specscore/specscore` somewhere in its body (legacy org reference), the copied artifact in the target repo has every occurrence rewritten to `specscore/specscore`. Matches the 2026-05-20 manual relocate of `artifact-frontmatter-convention` as the worked reference.
 
 ### AC: in-file-rewrite-this-repo
 **Requirements:** [#req:file-copy-with-rewrite](#req-file-copy-with-rewrite)

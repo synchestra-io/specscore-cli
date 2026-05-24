@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec/lint?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec/lint?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec/lint?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/spec/lint?op=request-change) |
 >
-> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/spec/references/lint.md) · [local](../../../../../../ai-plugin-specscore/skills/spec/references/lint.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
+> **AI skill:** [GitHub](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/spec/references/lint.md) · [local](../../../../../../ai-plugin-specscore/skills/spec/references/lint.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Stable
 **Source Ideas:** index-entries-autofix
@@ -16,7 +16,7 @@
 | Directory | Description |
 |---|---|
 | [plan-rules/](plan-rules/README.md) | Lint rules `P-001`–`P-004` and parser extensions for single-file Plans (`**Mode:**`, `**Status:**`, `**Depends-On:**`, placeholder body token) |
-| [issue-rules](issue-rules/README.md) | Adds 15 lint rules (`I-001`–`I-015`) and the underlying `issue` artifact parser to `specscore spec lint`, implementing the contract reserved by the SpecStudio `issue-artifact-type` Feature in the [`specstudio-skills`](https://github.com/synchestra-io/specstudio-skills) repo. |
+| [issue-rules](issue-rules/README.md) | Adds 15 lint rules (`I-001`–`I-015`) and the underlying `issue` artifact parser to `specscore spec lint`, implementing the contract reserved by the SpecStudio `issue-artifact-type` Feature in the [`specstudio-skills`](https://github.com/specscore/specstudio-skills) repo. |
 
 ## Synopsis
 

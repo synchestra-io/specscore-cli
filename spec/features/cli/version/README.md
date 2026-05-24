@@ -69,9 +69,9 @@ The version, commit, and date fields are populated at build time and baked into 
 The three values MUST be injected via Go linker flags against package-level `var` symbols in `internal/cli`:
 
 ```
--X github.com/synchestra-io/specscore-cli/internal/cli.version=<semver>
--X github.com/synchestra-io/specscore-cli/internal/cli.commit=<full-sha>
--X github.com/synchestra-io/specscore-cli/internal/cli.date=<rfc3339>
+-X github.com/specscore/specscore-cli/internal/cli.version=<semver>
+-X github.com/specscore/specscore-cli/internal/cli.commit=<full-sha>
+-X github.com/specscore/specscore-cli/internal/cli.date=<rfc3339>
 ```
 
 A release build MUST supply all three. The release workflow (goreleaser / equivalent) is the canonical producer of these values.
@@ -111,7 +111,7 @@ The version command cannot fail under normal operation — missing build metadat
 |---|---|
 | [CLI](../README.md) | Parent feature. `version` inherits any shared CLI conventions introduced there. |
 | [Project Definition](../../project-definition/README.md) | Unrelated. The CLI version is a property of the binary, not of the spec repo it operates on. A spec repo does not pin a CLI version. |
-| [`install` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/install/SKILL.md) (ai-plugin-specscore) | Uses `specscore --version` as its post-install verification step; depends on the bare-semver shape pinned by [REQ: flag-output](#req-flag-output). |
+| [`install` skill](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/install/SKILL.md) (ai-plugin-specscore) | Uses `specscore --version` as its post-install verification step; depends on the bare-semver shape pinned by [REQ: flag-output](#req-flag-output). |
 
 The installation documentation in `docs/installation.md` shows users how to verify a successful install by matching the shape defined in [REQ: subcommand-output](#req-subcommand-output). Changes to that format MUST be reflected in the installation docs.
 

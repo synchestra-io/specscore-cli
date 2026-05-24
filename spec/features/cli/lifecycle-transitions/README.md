@@ -27,7 +27,7 @@ A verb that mutates fields other than `Status` (e.g., a future `owner-change` ve
 
 ### Architectural positioning vs Synchestra
 
-`specscore` is the local-file mutation primitive. [Synchestra](https://github.com/synchestra-io/synchestra) layers concurrency, sync policies, claim/release semantics, and multi-agent coordination on top — today only for the `task` doc kind. For doc kinds where local-file mutation IS the value (Idea, Feature) — transitions are deliberate, single-actor, contention-free — `specscore` is the canonical surface.
+`specscore` is the local-file mutation primitive. [Synchestra](https://github.com/specscore/synchestra) layers concurrency, sync policies, claim/release semantics, and multi-agent coordination on top — today only for the `task` doc kind. For doc kinds where local-file mutation IS the value (Idea, Feature) — transitions are deliberate, single-actor, contention-free — `specscore` is the canonical surface.
 
 #### REQ: no-coordination
 
@@ -35,7 +35,7 @@ Lifecycle verbs MUST NOT acquire locks (advisory or mandatory), push to remote g
 
 #### REQ: scope-no-task-lifecycle
 
-Lifecycle verbs governed by this contract MUST NOT target the `task` doc kind. Task lifecycle is Synchestra's domain (see [`synchestra task`](https://github.com/synchestra-io/synchestra/tree/main/spec/features/cli/task) for the canonical surface). Whether `specscore` should later mirror a thin `task status` primitive for standalone-OSS users is a separate Idea per the source Idea's Not Doing list.
+Lifecycle verbs governed by this contract MUST NOT target the `task` doc kind. Task lifecycle is Synchestra's domain (see [`synchestra task`](https://github.com/specscore/synchestra/tree/main/spec/features/cli/task) for the canonical surface). Whether `specscore` should later mirror a thin `task status` primitive for standalone-OSS users is a separate Idea per the source Idea's Not Doing list.
 
 ### State-machine semantics
 
@@ -119,7 +119,7 @@ A lifecycle verb MUST map errors to the codes above per their declared meanings.
 - Should `--reason "<text>"` become a shared flag on lifecycle verbs in a future revision, captured in the git commit body or in an audit-trail file? Currently deferred per the source Idea.
 - Should `--format yaml|json` be added in a future revision so tooling consumes structured output (returning the artifact's full front-matter)? Currently text-only.
 - Is `spec lint --fix` scope narrowed to only the affected index row (faster on large repos) or kept full-tree (safer)? Today's lint is fast enough that full-tree is acceptable, but measurement on representative consumer repos will decide if a narrow-scope path is worth the complexity.
-- When a new doc kind grows lifecycle verbs (e.g., the planned `entity` and `property` Doc-Kinds from the meta-spec's [entity-and-property-definitions](https://github.com/synchestra-io/specscore/blob/main/spec/ideas/entity-and-property-definitions.md) Idea), does it inherit this contract directly, or does the contract abstract a shared "index sync rule" parameter? Today every supported doc kind uses a `*-index-row-sync` rule, so direct inheritance works.
+- When a new doc kind grows lifecycle verbs (e.g., the planned `entity` and `property` Doc-Kinds from the meta-spec's [entity-and-property-definitions](https://github.com/specscore/specscore/blob/main/spec/ideas/entity-and-property-definitions.md) Idea), does it inherit this contract directly, or does the contract abstract a shared "index sync rule" parameter? Today every supported doc kind uses a `*-index-row-sync` rule, so direct inheritance works.
 - Batch transitions (`specscore idea approve <slug-1> <slug-2> ...`) are out of MVP. If they land later, are they atomic-per-slug or all-or-nothing? This affects whether [REQ: rollback-on-lint-failure](#req-rollback-on-lint-failure) extends partial-batch rollback or only single-slug.
 
 ---

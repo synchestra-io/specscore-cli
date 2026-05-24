@@ -6,7 +6,7 @@
 
 ## Context
 
-Today the `synchestra-io/specscore` repository carries two concerns:
+Today the `specscore/specscore` repository carries two concerns:
 
 1. The **SpecScore format and documentation** — `spec/`, `docs/`, `blog/`, `examples/`, the `specscore.md` website (`public/`, `tools/site-generator/`, `firebase.json`), and a single project-def `specscore-spec-repo.yaml`.
 2. The **reference CLI implementation** — `cmd/specscore/`, `internal/cli/`, `pkg/`, `go.mod`/`go.sum`, `.goreleaser.yml`, the Go CI and release workflows, and (recently added) the CLI's own spec at `spec/features/cli/`.
@@ -96,7 +96,7 @@ A backup of the tag list is taken before deletion to permit rollback.
 
 ## Final-state architecture
 
-### `synchestra-io/specscore`
+### `specscore/specscore`
 
 **Purpose:** Canonical SpecScore format and documentation.
 **License:** CC-BY-4.0.
@@ -120,7 +120,7 @@ specscore/
 
 No `.go` files, no `go.mod`, no Go release pipeline.
 
-### `synchestra-io/specscore-cli`
+### `specscore/specscore-cli`
 
 **Purpose:** Reference CLI implementation.
 **License:** Apache-2.0.
@@ -130,7 +130,7 @@ specscore-cli/
 ├── cmd/specscore/main.go
 ├── internal/cli/               # Cobra commands
 ├── pkg/{exitcode,feature,gitremote,idea,lint,projectdef,sourceref,task}/
-├── go.mod                      # module github.com/synchestra-io/specscore-cli
+├── go.mod                      # module github.com/specscore/specscore-cli
 ├── go.sum
 ├── .goreleaser.yml             # ldflags updated to new module path
 ├── spec/features/cli/          # The CLI's own contract (per D1)
@@ -176,15 +176,15 @@ Full git history; existing `v0.x` tags carried over.
 
 ### Module rename
 
-`github.com/synchestra-io/specscore` → `github.com/synchestra-io/specscore-cli`
+`github.com/specscore/specscore` → `github.com/specscore/specscore-cli`
 
 Affects:
 
 | What | Change |
 |---|---|
-| `go.mod` `module` directive | `github.com/synchestra-io/specscore-cli` |
+| `go.mod` `module` directive | `github.com/specscore/specscore-cli` |
 | Internal imports across `internal/cli/*.go` and `pkg/**/*.go` | Find/replace |
-| `.goreleaser.yml` ldflags `-X` paths | `github.com/synchestra-io/specscore-cli/internal/cli.{version,commit,date}` |
+| `.goreleaser.yml` ldflags `-X` paths | `github.com/specscore/specscore-cli/internal/cli.{version,commit,date}` |
 
 Binary name remains `specscore`. Users see no change.
 
@@ -256,7 +256,7 @@ The `specscore` site build fetches `install.sh` from `specscore-cli` at build ti
 ```js
 // In tools/site-generator/build.js (or a pre-build step)
 const SPECSCORE_CLI_REF = process.env.SPECSCORE_CLI_REF || 'main';
-const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPECSCORE_CLI_REF}/scripts/install.sh`;
+const url = `https://raw.githubusercontent.com/specscore/specscore-cli/${SPECSCORE_CLI_REF}/scripts/install.sh`;
 // fetch → write to public/get-cli → fail build on fetch error
 ```
 
@@ -268,17 +268,17 @@ const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPE
 
 **Actions:**
 
-1. Create `synchestra-io/specscore-cli` GitHub repo (empty, public, no init files).
+1. Create `specscore/specscore-cli` GitHub repo (empty, public, no init files).
 2. In a temp clone of `specscore`, run `git filter-repo` keeping:
    - `cmd/`, `internal/`, `pkg/`, `go.mod`, `go.sum`, `.goreleaser.yml`
    - `spec/features/cli/`
    - `.github/workflows/go-ci.yml`, `.github/workflows/release.yml`
    - `tools/site-generator/get-cli.sh` → renamed to `scripts/install.sh`
-3. Rewrite Go module path (`github.com/synchestra-io/specscore` → `github.com/synchestra-io/specscore-cli`) in `go.mod` and all `.go` files.
+3. Rewrite Go module path (`github.com/specscore/specscore` → `github.com/specscore/specscore-cli`) in `go.mod` and all `.go` files.
 4. Update `.goreleaser.yml` ldflags `-X` paths.
 5. Add `LICENSE` (Apache-2.0, content unchanged from current `specscore/LICENSE`).
 6. Add `README.md` (CLI-focused, links back to `specscore`).
-7. Push to `synchestra-io/specscore-cli` including all preserved tags.
+7. Push to `specscore/specscore-cli` including all preserved tags.
 
 **Verification gate:**
 
@@ -298,7 +298,7 @@ const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPE
 
 **Verification gate:**
 
-- Release exists at `https://github.com/synchestra-io/specscore-cli/releases/tag/<v-next>`.
+- Release exists at `https://github.com/specscore/specscore-cli/releases/tag/<v-next>`.
 - Artifacts present for all platform/arch combinations.
 - Manual install test: `curl -fsSL .../install.sh | SPECSCORE_VERSION=<v-next> sh` produces a working binary; `specscore --version` prints `<v-next>`.
 
@@ -330,7 +330,7 @@ const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPE
 5. Update `docs/ecosystem.md` and any other docs referencing the CLI by repo path or Go import path.
 6. Update `tools/site-generator/build.js` to fetch `install.sh` from `specscore-cli` at build time.
 7. Update the cross-references in `spec/features/source-references/README.md` and `_tests/*.md` that mention `spec/features/cli` (broken link → either remove or repoint to `specscore-cli`).
-8. Sweep for any remaining `synchestra-io/specscore` references in `.github/`, `docs/`, `blog/`, `README.md` that should now be `synchestra-io/specscore-cli`.
+8. Sweep for any remaining `specscore/specscore` references in `.github/`, `docs/`, `blog/`, `README.md` that should now be `specscore/specscore-cli`.
 
 **Verification gate:**
 
@@ -349,7 +349,7 @@ const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPE
 1. Take a backup: `git for-each-ref --format='%(refname) %(objectname)' refs/tags > /tmp/specscore-tags-backup.txt`.
 2. Delete locally: `git tag | grep '^v' | xargs git tag -d`.
 3. Delete remotely: `git push origin --delete <each tag>` (batched).
-4. Add a one-paragraph note to `specscore/README.md` (e.g., "v0.x tags moved to [`specscore-cli`](https://github.com/synchestra-io/specscore-cli/tags) on YYYY-MM-DD").
+4. Add a one-paragraph note to `specscore/README.md` (e.g., "v0.x tags moved to [`specscore-cli`](https://github.com/specscore/specscore-cli/tags) on YYYY-MM-DD").
 
 **Verification gate:**
 
@@ -369,6 +369,6 @@ const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${SPE
 **Out of scope (explicitly):**
 
 - Pre-commit hook setup in either repo.
-- `synchestra-io/specscore-ai-plugin` — **do not create a new repo**. This already exists as `synchestra-io/ai-plugin-specscore` (local checkout at `../ai-plugin-specscore/`) and will be renamed in separate work.
+- `specscore/specscore-ai-plugin` — **do not create a new repo**. This already exists as `specscore/ai-plugin-specscore` (local checkout at `../ai-plugin-specscore/`) and will be renamed in separate work.
 - Renaming or restructuring `pkg/` packages.
 - Reusable GitHub Action wrapper (`setup-specscore`) — defer until external consumers ask for it.

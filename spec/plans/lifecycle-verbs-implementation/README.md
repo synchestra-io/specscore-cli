@@ -32,7 +32,7 @@ The Feature READMEs are the authoritative contracts. Every requirement (`REQ:`) 
 - `specscore spec lint --project <tmp-test-repo>` returns `0 violations found` after every happy-path AC, and reports the documented error code (`1`/`2`/`3`/`4`/`10`) for every error AC.
 - The build (`go build ./...`) and the full test suite (`go test ./...`) pass on the implementer's branch before merging.
 - Existing CLI features (`idea new`, `feature new`, `feature info`, `feature deps`, `feature refs`, `feature tree`, `feature list`, `spec lint`, etc.) are unchanged in behavior. No regression.
-- Out of scope for this plan: the [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) skill references (deferred per the source Idea); the `feature-index-row-sync` row-sync contract definition in the meta-spec (already added to [features-index](https://github.com/synchestra-io/specscore/blob/main/spec/features/features-index/README.md) in a sibling commit).
+- Out of scope for this plan: the [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) skill references (deferred per the source Idea); the `feature-index-row-sync` row-sync contract definition in the meta-spec (already added to [features-index](https://github.com/specscore/specscore/blob/main/spec/features/features-index/README.md) in a sibling commit).
 
 ## Dependency graph
 
@@ -148,11 +148,11 @@ The package enforces the [lifecycle-transitions#req:not-idempotent](../../featur
 
 ### 2. Implement `feature-index-row-sync` lint rule
 
-Create `pkg/lint/feature_index.go` implementing the `feature-index-row-sync` rule per the [features-index#req:index-row-tracks-feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) contract in the meta-spec. The rule's shape mirrors `pkg/lint/idea_index.go`'s `idea-index-row-sync` rule but operates on Features:
+Create `pkg/lint/feature_index.go` implementing the `feature-index-row-sync` rule per the [features-index#req:index-row-tracks-feature](https://github.com/specscore/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) contract in the meta-spec. The rule's shape mirrors `pkg/lint/idea_index.go`'s `idea-index-row-sync` rule but operates on Features:
 
 - **What it checks:** For every top-level row in `spec/features/README.md`, the `Status` cell MUST match the corresponding feature's `**Status:**` value at `spec/features/<feature_id>/README.md`. Drift is an error-severity violation.
 - **What `--fix` does:** Rewrites the drifted `Status` cell in the index row to match the feature README. `Feature` link and `Description` cells are NOT rewritten (hand-maintained per the meta-spec contract).
-- **Scope:** Top-level features only (sub-features are not in the features-index per [features-index#req:top-level-only](https://github.com/synchestra-io/specscore/blob/main/spec/features/features-index/README.md#req-top-level-only)).
+- **Scope:** Top-level features only (sub-features are not in the features-index per [features-index#req:top-level-only](https://github.com/specscore/specscore/blob/main/spec/features/features-index/README.md#req-top-level-only)).
 
 Register the rule with the lint registry so it participates in the default `spec lint` run and the `--fix` autofix path.
 
@@ -265,7 +265,7 @@ For the implementer driving this plan:
 
 **Window A (parallel — single message, two Agent tool calls):**
 - Agent A: Task 1 (`pkg/lifecycle/`). Prompt hands over: the lifecycle-transitions Feature README, the legal-transition matrix from this plan's Task 1, and the suggested API sketch. Tell the agent to test exhaustively and not invent flags or behaviors beyond what the Meta REQs declare.
-- Agent B: Task 2 (`feature-index-row-sync` lint rule). Prompt hands over: `pkg/lint/idea_index.go` as the canonical pattern, the meta-spec [features-index#req:index-row-tracks-feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) REQ, and the registration call site to identify by reading.
+- Agent B: Task 2 (`feature-index-row-sync` lint rule). Prompt hands over: `pkg/lint/idea_index.go` as the canonical pattern, the meta-spec [features-index#req:index-row-tracks-feature](https://github.com/specscore/specscore/blob/main/spec/features/features-index/README.md#req-index-row-tracks-feature) REQ, and the registration call site to identify by reading.
 
 Wait for both to return success. If either fails, fix and re-dispatch only the failing agent.
 

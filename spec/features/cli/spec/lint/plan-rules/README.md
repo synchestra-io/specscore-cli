@@ -9,7 +9,7 @@
 
 ## Summary
 
-Adds four lint rules (`P-001`–`P-004`) and the underlying single-file Plan parser to `specscore spec lint`, implementing the contract reserved by the SpecStudio `plan` Feature (`spec/features/skills/plan/README.md` in the [`specstudio-skills`](https://github.com/synchestra-io/specstudio-skills) repo). The rules and parser unblock the in-development `specstudio:implement` skill, which depends on machine-checkable validation of `**Mode:**`, `**Status:**`, and `**Depends-On:**` task fields on single-file Plans at `spec/plans/<slug>.md`.
+Adds four lint rules (`P-001`–`P-004`) and the underlying single-file Plan parser to `specscore spec lint`, implementing the contract reserved by the SpecStudio `plan` Feature (`spec/features/skills/plan/README.md` in the [`specstudio-skills`](https://github.com/specscore/specstudio-skills) repo). The rules and parser unblock the in-development `specstudio:implement` skill, which depends on machine-checkable validation of `**Mode:**`, `**Status:**`, and `**Depends-On:**` task fields on single-file Plans at `spec/plans/<slug>.md`.
 
 ## Problem
 
@@ -289,8 +289,8 @@ Violations from `P-001`–`P-004` MUST use the existing `lint.Violation` struct 
 |---|---|
 | [Spec Lint](../README.md) | These rules register into the same rule registry and execute under the default rule suite. `--rules` / `--ignore` filtering applies per the parent Feature's contract. |
 | [Feature](../../../feature/README.md) | `P-001` and `P-002` read each source Feature's `## Acceptance Criteria` section to enumerate ACs and validate references. The AC heading grammar (`### AC: <ac-slug>`) is owned by the Feature schema, not this Feature. |
-| [SpecStudio `plan` Feature](https://github.com/synchestra-io/specstudio-skills/blob/main/spec/features/skills/plan/README.md) | Locks the upstream contract for `P-001`–`P-004`, the `**Mode:**` / `**Status:**` / `**Depends-On:**` task fields, and the placeholder body token. Any change to that contract MUST land in the upstream Feature first; this CLI Feature is the downstream implementation. |
-| [SpecStudio `implement` Idea](https://github.com/synchestra-io/specstudio-skills/blob/main/spec/ideas/specstudio-implement-skill.md) | Hard-blocks on these rules and parser extensions. `specstudio:implement` cannot ship until this Feature ships. |
+| [SpecStudio `plan` Feature](https://github.com/specscore/specstudio-skills/blob/main/spec/features/skills/plan/README.md) | Locks the upstream contract for `P-001`–`P-004`, the `**Mode:**` / `**Status:**` / `**Depends-On:**` task fields, and the placeholder body token. Any change to that contract MUST land in the upstream Feature first; this CLI Feature is the downstream implementation. |
+| [SpecStudio `implement` Idea](https://github.com/specscore/specstudio-skills/blob/main/spec/ideas/specstudio-implement-skill.md) | Hard-blocks on these rules and parser extensions. `specstudio:implement` cannot ship until this Feature ships. |
 
 ## Open Questions
 

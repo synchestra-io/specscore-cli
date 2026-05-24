@@ -32,7 +32,7 @@ Before any mutation, verify clean git working trees in source (the artifact path
 
 **Verifies:** cli/idea/relocate#ac:destination-collision, cli/idea/relocate#ac:in-file-rewrite-org-rename, cli/idea/relocate#ac:in-file-rewrite-this-repo
 
-If the destination path in the target repo already has a file at the same relative location → exit 1 (Conflict), no mutations. Otherwise: copy the artifact to the target (creating parent dirs), apply substitution rules in-place on the copied file — rewrite every `synchestra-io/<repo>` to `specscore/<repo>`, and rewrite word-bounded "this repo" (case-insensitive, in body prose only — NOT inside fenced code blocks, inline code spans, or table cells) to the target's `project.repo` value. Delete the artifact from the source path.
+If the destination path in the target repo already has a file at the same relative location → exit 1 (Conflict), no mutations. Otherwise: copy the artifact to the target (creating parent dirs), apply substitution rules in-place on the copied file — rewrite every `specscore/<repo>` to `specscore/<repo>`, and rewrite word-bounded "this repo" (case-insensitive, in body prose only — NOT inside fenced code blocks, inline code spans, or table cells) to the target's `project.repo` value. Delete the artifact from the source path.
 
 ### Task 4: Cross-repo link cleanup
 
@@ -64,7 +64,7 @@ Single integration test exercising both happy paths against a temp workspace fix
 
 - Should each task in this Plan be implemented behind an experimental flag in the CLI verb (e.g., `--experimental` gating sibling-scan, or a build-tag gating the whole subcommand) so the verb can ship behind a flag per the source Idea's cross-repo sequencing strategy? Recommended position: yes — register the subcommand but emit a "experimental" notice in `--help` and on first invocation; promote to GA in a follow-on plan after `specstudio-skills` ships its consumer skill. Resolve at implementation time.
 - What test-fixture infrastructure exists in the repo for "create N temp git repos, each with `specscore.yaml`"? If none, Task 1 needs to first author a tiny test helper (~50 lines) before any pre-flight or cross-repo AC can be exercised. Resolve in Task 1.
-- The cross-repo link-rewrite logic in Task 4 needs to know each affected repo's `project.org` value (from its `specscore.yaml`) to compose full GitHub URLs. Multiple repos with stale/different `org` values (e.g., `synchestra-io` vs `specscore`) will produce mixed URLs in the same cleanup pass — by design, since each repo's truth is its own yaml. Worth noting in the implementation but not a Plan-level decision.
+- The cross-repo link-rewrite logic in Task 4 needs to know each affected repo's `project.org` value (from its `specscore.yaml`) to compose full GitHub URLs. Multiple repos with stale/different `org` values (e.g., `specscore` vs `specscore`) will produce mixed URLs in the same cleanup pass — by design, since each repo's truth is its own yaml. Worth noting in the implementation but not a Plan-level decision.
 
 ---
 *This document follows the https://specscore.md/plan-specification*

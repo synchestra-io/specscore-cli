@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea?op=request-change) |
 >
-> **AI skill:** [GitHub](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/idea/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
+> **AI skill:** [GitHub](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) · [local](../../../../../ai-plugin-specscore/skills/idea/SKILL.md) — if this command's CLI signature or behavior changes, update the linked skill to keep agents in sync.
 
 **Status:** Stable
 
@@ -32,7 +32,7 @@ Creates a lint-clean Idea skeleton with every required section, HTML-comment pro
 
 ### relocate
 
-Moves an Idea or sidekick-seed artifact from the current project to a different SpecScore-managed repo. Auto-resolves slug to `spec/ideas/<slug>.md` first, then `spec/ideas/seeds/<slug>.md`. Pre-flight clean-tree check across source, target, and every sibling SpecScore repo whose docs reference the artifact. Copies the file (with `synchestra-io/*` → `specscore/*` and "this repo" rewrites), updates markdown-link references to the new location across all affected repos, auto-commits per repo by default (`--no-commit` flag stages without committing). Stop-on-first-commit-failure semantics; cross-repo rollback is the user's responsibility.
+Moves an Idea or sidekick-seed artifact from the current project to a different SpecScore-managed repo. Auto-resolves slug to `spec/ideas/<slug>.md` first, then `spec/ideas/seeds/<slug>.md`. Pre-flight clean-tree check across source, target, and every sibling SpecScore repo whose docs reference the artifact. Copies the file (with `specscore/*` → `specscore/*` and "this repo" rewrites), updates markdown-link references to the new location across all affected repos, auto-commits per repo by default (`--no-commit` flag stages without committing). Stop-on-first-commit-failure semantics; cross-repo rollback is the user's responsibility.
 
 ## Behavior
 
@@ -59,7 +59,7 @@ A file produced by any `specscore idea` mutation command MUST satisfy every lint
 | [idea](../../idea/README.md) | Defines the required shape of an Idea. `idea new` produces instances. |
 | [feature/new](../feature/new/README.md) | Sibling scaffolder for features. Lives in the `feature` group because features are queried there too. |
 | [CLI](../README.md) | Inherits shared exit-code contract, `--project`, `--format`. |
-| [`idea/` skill](https://github.com/synchestra-io/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) (ai-plugin-specscore) | Agent-side wrapper for `idea new`. Treats this feature spec as the authoritative contract. |
+| [`idea/` skill](https://github.com/specscore/ai-plugin-specscore/blob/main/skills/idea/SKILL.md) (ai-plugin-specscore) | Agent-side wrapper for `idea new`. Treats this feature spec as the authoritative contract. |
 
 ## Open Questions
 

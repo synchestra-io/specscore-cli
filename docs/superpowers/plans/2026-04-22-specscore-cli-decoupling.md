@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Split the SpecScore reference CLI out of `synchestra-io/specscore` into a new public Apache-2.0 repo `synchestra-io/specscore-cli`, leaving `synchestra-io/specscore` as a CC-BY-4.0 documentation/format repo with dogfood CI that lints itself using the released CLI binary.
+**Goal:** Split the SpecScore reference CLI out of `specscore/specscore` into a new public Apache-2.0 repo `specscore/specscore-cli`, leaving `specscore/specscore` as a CC-BY-4.0 documentation/format repo with dogfood CI that lints itself using the released CLI binary.
 
 **Architecture:** Five-phase migration with verification gates between phases. Phase 1 uses `git filter-repo` to clone the CLI's history into a new repo with the module path rewritten. Phase 2 cuts the first `specscore-cli` release. Phase 3 turns on dogfood CI in `specscore` *before* deleting the source. Phase 4 deletes the CLI from `specscore`, relicenses, rewrites docs, and switches the installer to fetch-at-build. Phase 5 cleans up old tags.
 
@@ -38,17 +38,17 @@ Re-verify: `git filter-repo --version` prints a version string.
 Run:
 ```bash
 gh auth status
-gh api user/orgs --jq '.[].login' | grep synchestra-io
+gh api user/orgs --jq '.[].login' | grep specscore
 ```
 
-Expected: authenticated; `synchestra-io` listed in your orgs (or you have admin via membership).
+Expected: authenticated; `specscore` listed in your orgs (or you have admin via membership).
 
 - [ ] **P2: Use a worktree for `specscore`-side changes**
 
-All Phase 3, 4, 5 work in `synchestra-io/specscore` should happen in a dedicated worktree to isolate from any other in-flight work:
+All Phase 3, 4, 5 work in `specscore/specscore` should happen in a dedicated worktree to isolate from any other in-flight work:
 
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git worktree add ../specscore.worktrees/cli-decoupling -b feat/cli-decoupling
 cd ../specscore.worktrees/cli-decoupling
 ```
@@ -59,7 +59,7 @@ Phase 1 work happens in a *separate* temp directory (a fresh clone, not a worktr
 
 ## File Structure
 
-### New repo: `synchestra-io/specscore-cli`
+### New repo: `specscore/specscore-cli`
 
 After Phase 1, the repo contains (paths relative to repo root):
 
@@ -84,7 +84,7 @@ specscore-cli/
 │   ├── sourceref/
 │   ├── task/
 │   └── README.md
-├── go.mod                             # module github.com/synchestra-io/specscore-cli
+├── go.mod                             # module github.com/specscore/specscore-cli
 ├── go.sum
 ├── .goreleaser.yml                    # ldflags rewritten to new module path
 ├── spec/features/cli/                 # CLI's own spec (carried)
@@ -98,7 +98,7 @@ specscore-cli/
 └── .gitignore                         # NEW (Phase 1) — Go-focused
 ```
 
-### Existing repo: `synchestra-io/specscore` after Phase 4
+### Existing repo: `specscore/specscore` after Phase 4
 
 Files **deleted**:
 - `cmd/`, `internal/`, `pkg/`
@@ -134,19 +134,19 @@ Files **modified**:
 
 Run:
 ```bash
-gh repo create synchestra-io/specscore-cli \
+gh repo create specscore/specscore-cli \
   --public \
   --description "Reference CLI for SpecScore — lint, query, and scaffold SpecScore specifications." \
   --homepage "https://specscore.md"
 ```
 
-Expected: repo URL printed, e.g. `https://github.com/synchestra-io/specscore-cli`.
+Expected: repo URL printed, e.g. `https://github.com/specscore/specscore-cli`.
 
 - [ ] **Step 2: Verify repo is empty**
 
 Run:
 ```bash
-gh api repos/synchestra-io/specscore-cli --jq '{name, size, default_branch}'
+gh api repos/specscore/specscore-cli --jq '{name, size, default_branch}'
 ```
 
 Expected: `size: 0`, no default branch yet (fresh repo).
@@ -161,7 +161,7 @@ Run:
 ```bash
 cd /tmp
 rm -rf specscore-cli-migration
-git clone https://github.com/synchestra-io/specscore.git specscore-cli-migration
+git clone https://github.com/specscore/specscore.git specscore-cli-migration
 cd specscore-cli-migration
 ```
 
@@ -233,7 +233,7 @@ Expected: same `v0.x` tags as in source repo; `spec/features/cli/README.md` log 
 
 Run:
 ```bash
-go mod edit -module github.com/synchestra-io/specscore-cli
+go mod edit -module github.com/specscore/specscore-cli
 ```
 
 - [ ] **Step 2: Verify**
@@ -245,7 +245,7 @@ head -3 go.mod
 
 Expected:
 ```
-module github.com/synchestra-io/specscore-cli
+module github.com/specscore/specscore-cli
 
 go 1.26.1
 ```
@@ -259,7 +259,7 @@ go 1.26.1
 Run (BSD/macOS sed-compatible form):
 ```bash
 find . -name '*.go' -type f -exec sed -i.bak \
-  's|github.com/synchestra-io/specscore|github.com/synchestra-io/specscore-cli|g' {} +
+  's|github.com/specscore/specscore|github.com/specscore/specscore-cli|g' {} +
 find . -name '*.go.bak' -type f -delete
 ```
 
@@ -267,20 +267,20 @@ find . -name '*.go.bak' -type f -delete
 
 Run:
 ```bash
-grep -rn 'github.com/synchestra-io/specscore"' --include='*.go' .
-grep -rn 'github.com/synchestra-io/specscore/' --include='*.go' . | grep -v 'specscore-cli'
+grep -rn 'github.com/specscore/specscore"' --include='*.go' .
+grep -rn 'github.com/specscore/specscore/' --include='*.go' . | grep -v 'specscore-cli'
 ```
 
-Expected: both commands print nothing (no remaining bare `synchestra-io/specscore` references in Go code).
+Expected: both commands print nothing (no remaining bare `specscore/specscore` references in Go code).
 
 - [ ] **Step 3: Verify imports in a sample file**
 
 Run:
 ```bash
-grep -n 'synchestra-io' pkg/lint/idea.go
+grep -n 'specscore' pkg/lint/idea.go
 ```
 
-Expected: line 9 shows `"github.com/synchestra-io/specscore-cli/pkg/idea"`.
+Expected: line 9 shows `"github.com/specscore/specscore-cli/pkg/idea"`.
 
 ### Task 1.6: Update `.goreleaser.yml` ldflags
 
@@ -291,7 +291,7 @@ Expected: line 9 shows `"github.com/synchestra-io/specscore-cli/pkg/idea"`.
 Run:
 ```bash
 sed -i.bak \
-  's|github.com/synchestra-io/specscore/internal|github.com/synchestra-io/specscore-cli/internal|g' \
+  's|github.com/specscore/specscore/internal|github.com/specscore/specscore-cli/internal|g' \
   .goreleaser.yml
 rm .goreleaser.yml.bak
 ```
@@ -300,10 +300,10 @@ rm .goreleaser.yml.bak
 
 Run:
 ```bash
-grep -n 'github.com/synchestra-io' .goreleaser.yml
+grep -n 'github.com/specscore' .goreleaser.yml
 ```
 
-Expected: 3 lines, all containing `github.com/synchestra-io/specscore-cli/internal/cli.{version,commit,date}`.
+Expected: 3 lines, all containing `github.com/specscore/specscore-cli/internal/cli.{version,commit,date}`.
 
 ### Task 1.7: Update spec doc references in `spec/features/cli/`
 
@@ -316,7 +316,7 @@ The CLI's own spec contains references to the old module path and Synchestra Hub
 Run:
 ```bash
 find spec/features/cli -name '*.md' -type f -exec sed -i.bak \
-  's|id=specscore@synchestra-io@github.com|id=specscore-cli@synchestra-io@github.com|g' {} +
+  's|id=specscore@specscore@github.com|id=specscore-cli@specscore@github.com|g' {} +
 find spec/features/cli -name '*.md.bak' -type f -delete
 ```
 
@@ -325,7 +325,7 @@ find spec/features/cli -name '*.md.bak' -type f -delete
 Run:
 ```bash
 find spec/features/cli -name '*.md' -type f -exec sed -i.bak \
-  's|github.com/synchestra-io/specscore/internal|github.com/synchestra-io/specscore-cli/internal|g' {} +
+  's|github.com/specscore/specscore/internal|github.com/specscore/specscore-cli/internal|g' {} +
 find spec/features/cli -name '*.md.bak' -type f -delete
 ```
 
@@ -333,8 +333,8 @@ find spec/features/cli -name '*.md.bak' -type f -delete
 
 Run:
 ```bash
-grep -rn 'id=specscore@synchestra-io' spec/features/cli/
-grep -rn 'github.com/synchestra-io/specscore/internal' spec/features/cli/
+grep -rn 'id=specscore@specscore' spec/features/cli/
+grep -rn 'github.com/specscore/specscore/internal' spec/features/cli/
 ```
 
 Expected: both print nothing.
@@ -354,7 +354,7 @@ Expected: line 3 shows the rewritten Hub URL.
 
 Run:
 ```bash
-cp /Users/alexandertrakhimenok/projects/synchestra-io/specscore/LICENSE LICENSE
+cp /Users/alexandertrakhimenok/projects/specscore/specscore/LICENSE LICENSE
 ```
 
 - [ ] **Step 2: Verify**
@@ -407,7 +407,7 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Related
 
-- [synchestra-io/specscore](https://github.com/synchestra-io/specscore) — the SpecScore format and documentation
+- [specscore/specscore](https://github.com/specscore/specscore) — the SpecScore format and documentation
 ````
 
 - [ ] **Step 2: Verify**
@@ -551,7 +551,7 @@ Initial bootstrap commit on top of filter-repo'd history. Adds:
 - CLI-focused README pointing back to specscore for the format
 - Go-focused .gitignore
 - Dogfood workflow that builds the CLI from source and lints its own spec
-- go.mod/go.sum updated for new module path: github.com/synchestra-io/specscore-cli
+- go.mod/go.sum updated for new module path: github.com/specscore/specscore-cli
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -563,7 +563,7 @@ EOF
 Run:
 ```bash
 git remote remove origin 2>/dev/null || true
-git remote add origin https://github.com/synchestra-io/specscore-cli.git
+git remote add origin https://github.com/specscore/specscore-cli.git
 git push -u origin main
 git push origin --tags
 ```
@@ -574,8 +574,8 @@ Expected: push completes; tags pushed.
 
 Run:
 ```bash
-gh api repos/synchestra-io/specscore-cli --jq '{default_branch, size}'
-gh api repos/synchestra-io/specscore-cli/tags --jq '.[].name'
+gh api repos/specscore/specscore-cli --jq '{default_branch, size}'
+gh api repos/specscore/specscore-cli/tags --jq '.[].name'
 ```
 
 Expected: `default_branch: main`; tags include the existing `v0.x` series.
@@ -588,8 +588,8 @@ Expected: `default_branch: main`; tags include the existing `v0.x` series.
 
 Run:
 ```bash
-gh run list --repo synchestra-io/specscore-cli --limit 5
-gh run watch --repo synchestra-io/specscore-cli
+gh run list --repo specscore/specscore-cli --limit 5
+gh run watch --repo specscore/specscore-cli
 ```
 
 Expected: the most recent workflow run completes successfully (Go CI + dogfood lint).
@@ -598,7 +598,7 @@ Expected: the most recent workflow run completes successfully (Go CI + dogfood l
 
 Investigate via:
 ```bash
-gh run view --repo synchestra-io/specscore-cli --log-failed
+gh run view --repo specscore/specscore-cli --log-failed
 ```
 
 Common issue: `spec lint` fails because of stale cross-references missed in Task 1.7 — fix in a follow-up commit, push, re-run.
@@ -626,7 +626,7 @@ Expected: prints the next version, e.g. `v0.6.0` (depends on current tag and con
 Run:
 ```bash
 gh workflow run release.yml \
-  --repo synchestra-io/specscore-cli \
+  --repo specscore/specscore-cli \
   --ref main \
   -f release_tag=auto
 ```
@@ -635,7 +635,7 @@ gh workflow run release.yml \
 
 Run:
 ```bash
-gh run watch --repo synchestra-io/specscore-cli
+gh run watch --repo specscore/specscore-cli
 ```
 
 Expected: workflow completes successfully; new release created.
@@ -648,8 +648,8 @@ Expected: workflow completes successfully; new release created.
 
 Run:
 ```bash
-gh release list --repo synchestra-io/specscore-cli
-gh release view --repo synchestra-io/specscore-cli
+gh release list --repo specscore/specscore-cli
+gh release view --repo specscore/specscore-cli
 ```
 
 Expected: shows the new release tag and asset list.
@@ -674,7 +674,7 @@ If anything is missing, re-check `.goreleaser.yml` `goos`/`goarch` matrix — mu
 
 Run:
 ```bash
-NEW_TAG=$(gh release view --repo synchestra-io/specscore-cli --json tagName --jq .tagName)
+NEW_TAG=$(gh release view --repo specscore/specscore-cli --json tagName --jq .tagName)
 echo "Released tag: $NEW_TAG"
 ```
 
@@ -684,7 +684,7 @@ Run (using the script from the new repo since the public URL still serves the ol
 ```bash
 mkdir -p /tmp/install-test
 cd /tmp/install-test
-curl -fsSL "https://raw.githubusercontent.com/synchestra-io/specscore-cli/main/scripts/install.sh" | \
+curl -fsSL "https://raw.githubusercontent.com/specscore/specscore-cli/main/scripts/install.sh" | \
   SPECSCORE_VERSION="$NEW_TAG" SPECSCORE_INSTALL_DIR="$PWD" sh
 ```
 
@@ -710,7 +710,7 @@ Record `$NEW_TAG` — Phase 3 pins `SPECSCORE_VERSION` to it.
 ## Phase 3: Turn on dogfood CI in `specscore` (CLI source still present)
 
 All Phase 3 work happens in the worktree created in P2:
-`/Users/alexandertrakhimenok/projects/synchestra-io/specscore.worktrees/cli-decoupling`
+`/Users/alexandertrakhimenok/projects/specscore/specscore.worktrees/cli-decoupling`
 
 ### Task 3.1: Add dogfood workflow
 
@@ -813,7 +813,7 @@ gh pr create --title "ci: add dogfood lint workflow using released specscore CLI
 ## Summary
 
 - Adds .github/workflows/dogfood.yml that installs the pinned specscore binary and runs spec lint on this repo
-- Pin: SPECSCORE_VERSION=<v0.x.y> (the first specscore-cli release, see https://github.com/synchestra-io/specscore-cli/releases)
+- Pin: SPECSCORE_VERSION=<v0.x.y> (the first specscore-cli release, see https://github.com/specscore/specscore-cli/releases)
 - This is Phase 3 of the CLI decoupling per docs/superpowers/specs/2026-04-22-specscore-cli-decoupling-design.md
 
 ## Test plan
@@ -865,7 +865,7 @@ gh pr merge --squash --delete-branch
 
 Run:
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git worktree remove ../specscore.worktrees/cli-decoupling
 git pull origin main
 ```
@@ -884,7 +884,7 @@ Re-create the worktree for the next batch of changes.
 
 Run:
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git worktree add ../specscore.worktrees/cli-removal -b feat/cli-removal
 cd ../specscore.worktrees/cli-removal
 ```
@@ -1016,7 +1016,7 @@ cat README.md | head -100
 
 Replace the entire `README.md` content. The new file should:
 - Lead with what SpecScore *is* (the format)
-- Have a prominent **Reference implementation** section linking to `synchestra-io/specscore-cli` with the install one-liner
+- Have a prominent **Reference implementation** section linking to `specscore/specscore-cli` with the install one-liner
 - Link to `https://specscore.md` for full docs
 - Update the license badge to CC-BY-4.0
 - Remove any Go install / `go install` / `cmd/specscore` references
@@ -1040,13 +1040,13 @@ SpecScore is a markdown-first format for writing software specifications that hu
 
 ## Reference implementation
 
-The reference CLI for working with SpecScore repositories is [`specscore-cli`](https://github.com/synchestra-io/specscore-cli):
+The reference CLI for working with SpecScore repositories is [`specscore-cli`](https://github.com/specscore/specscore-cli):
 
 ```bash
 curl -fsSL https://specscore.md/get-cli | sh
 ```
 
-It validates spec trees, queries features, manages task boards, and scaffolds new artifacts. Source: <https://github.com/synchestra-io/specscore-cli>.
+It validates spec trees, queries features, manages task boards, and scaffolds new artifacts. Source: <https://github.com/specscore/specscore-cli>.
 
 ## Repository contents
 
@@ -1059,7 +1059,7 @@ It validates spec trees, queries features, manages task boards, and scaffolds ne
 
 The contents of this repository are licensed under [CC BY 4.0](LICENSE).
 
-The reference CLI [`specscore-cli`](https://github.com/synchestra-io/specscore-cli) is licensed separately under Apache-2.0.
+The reference CLI [`specscore-cli`](https://github.com/specscore/specscore-cli) is licensed separately under Apache-2.0.
 ````
 
 (Adapt to match the existing README's actual voice/structure — preserve sections like project structure, contributing pointers, etc., minus anything CLI-specific.)
@@ -1075,14 +1075,14 @@ git add README.md
 
 **Files:** Modify `docs/installation.md`
 
-The existing doc references `synchestra-io/specscore` releases. Update to reference `synchestra-io/specscore-cli`.
+The existing doc references `specscore/specscore` releases. Update to reference `specscore/specscore-cli`.
 
 - [ ] **Step 1: Update the GitHub release URL reference**
 
 Run:
 ```bash
 sed -i.bak \
-  's|github.com/synchestra-io/specscore/releases|github.com/synchestra-io/specscore-cli/releases|g' \
+  's|github.com/specscore/specscore/releases|github.com/specscore/specscore-cli/releases|g' \
   docs/installation.md
 rm docs/installation.md.bak
 ```
@@ -1091,7 +1091,7 @@ rm docs/installation.md.bak
 
 Run:
 ```bash
-grep -n 'synchestra-io/specscore' docs/installation.md
+grep -n 'specscore/specscore' docs/installation.md
 ```
 
 Expected: any remaining matches reference `specscore-cli` (no bare `specscore`). If bare matches remain that should *stay* as `specscore` (e.g., the format spec link), confirm those are intentional.
@@ -1111,7 +1111,7 @@ git add docs/installation.md
 
 Run:
 ```bash
-grep -rn 'github.com/synchestra-io/specscore' docs/ blog/ \
+grep -rn 'github.com/specscore/specscore' docs/ blog/ \
   --include='*.md' | grep -v 'specscore-cli'
 ```
 
@@ -1119,7 +1119,7 @@ grep -rn 'github.com/synchestra-io/specscore' docs/ blog/ \
 
 For each line:
 - If it refers to *the CLI repo* (e.g., release URL, source link, install instruction, Go import path) → rewrite to `specscore-cli`
-- If it refers to *this spec repo itself* (e.g., "this repository is at github.com/synchestra-io/specscore") → leave as-is
+- If it refers to *this spec repo itself* (e.g., "this repository is at github.com/specscore/specscore") → leave as-is
 
 - [ ] **Step 3: Apply targeted edits**
 
@@ -1129,7 +1129,7 @@ Use `Edit` (or `sed` on individual files) for each match identified in Step 2.
 
 Run:
 ```bash
-grep -rn 'github.com/synchestra-io/specscore' docs/ blog/ \
+grep -rn 'github.com/specscore/specscore' docs/ blog/ \
   --include='*.md' | grep -v 'specscore-cli'
 ```
 
@@ -1171,10 +1171,10 @@ Replace the existing `cp` block with:
 
 ```js
 // CLI installer script — served at /get-cli
-// Source of truth: synchestra-io/specscore-cli/scripts/install.sh
+// Source of truth: specscore/specscore-cli/scripts/install.sh
 {
   const cliRef = process.env.SPECSCORE_CLI_REF || 'main';
-  const url = `https://raw.githubusercontent.com/synchestra-io/specscore-cli/${cliRef}/scripts/install.sh`;
+  const url = `https://raw.githubusercontent.com/specscore/specscore-cli/${cliRef}/scripts/install.sh`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch install.sh from ${url}: ${res.status} ${res.statusText}`);
@@ -1236,7 +1236,7 @@ grep -rn 'spec/features/cli' spec/ --include='*.md'
 - [ ] **Step 2: For each match, decide:**
 
 - If it's a path-style example used to *illustrate* source-references (not a real link), leave the path text as-is — it's documentation showing what a path *looks like*, not a hyperlink.
-- If it's a hyperlink that resolves at render time, repoint to `https://github.com/synchestra-io/specscore-cli/tree/main/spec/features/cli` or remove the link.
+- If it's a hyperlink that resolves at render time, repoint to `https://github.com/specscore/specscore-cli/tree/main/spec/features/cli` or remove the link.
 
 - [ ] **Step 3: Apply edits**
 
@@ -1249,7 +1249,7 @@ Run:
 git add spec/features/source-references/
 ```
 
-### Task 4.12: Final sweep for stale `synchestra-io/specscore` references
+### Task 4.12: Final sweep for stale `specscore/specscore` references
 
 **Files:** Possibly modify `.github/`, `tools/`, `examples/`, root files
 
@@ -1257,7 +1257,7 @@ git add spec/features/source-references/
 
 Run:
 ```bash
-grep -rln 'github.com/synchestra-io/specscore' . \
+grep -rln 'github.com/specscore/specscore' . \
   --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' \
   --include='*.js' --include='*.html' \
   --exclude-dir=node_modules --exclude-dir=.git \
@@ -1333,10 +1333,10 @@ Expected: large deletion (cmd/, internal/, pkg/, spec/features/cli/, .goreleaser
 Run:
 ```bash
 git commit -m "$(cat <<'EOF'
-feat!: extract CLI to synchestra-io/specscore-cli
+feat!: extract CLI to specscore/specscore-cli
 
 BREAKING CHANGE: The specscore CLI source code has been moved to
-https://github.com/synchestra-io/specscore-cli. This repository now
+https://github.com/specscore/specscore-cli. This repository now
 contains only the SpecScore format specification, documentation,
 website, and example consumer projects.
 
@@ -1366,10 +1366,10 @@ EOF
 Run:
 ```bash
 git push -u origin feat/cli-removal
-gh pr create --title "feat!: extract CLI to synchestra-io/specscore-cli" --body "$(cat <<'EOF'
+gh pr create --title "feat!: extract CLI to specscore/specscore-cli" --body "$(cat <<'EOF'
 ## Summary
 
-- Removes all CLI Go code and build infrastructure (now lives in [synchestra-io/specscore-cli](https://github.com/synchestra-io/specscore-cli))
+- Removes all CLI Go code and build infrastructure (now lives in [specscore/specscore-cli](https://github.com/specscore/specscore-cli))
 - Removes spec/features/cli/ (moved with full history to specscore-cli)
 - Relicenses from Apache-2.0 to CC-BY-4.0 (this repo is now pure documentation)
 - Rewrites README.md to focus on the SpecScore format with prominent links to the reference CLI
@@ -1446,7 +1446,7 @@ Expected: install succeeds; `--version` prints the latest released semver.
 
 Run:
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git worktree remove ../specscore.worktrees/cli-removal
 git pull origin main
 ```
@@ -1461,7 +1461,7 @@ git pull origin main
 
 - [ ] **Step 1: Snapshot current tags with their commit SHAs**
 
-Run (from `/Users/alexandertrakhimenok/projects/synchestra-io/specscore`):
+Run (from `/Users/alexandertrakhimenok/projects/specscore/specscore`):
 ```bash
 git fetch --tags
 git for-each-ref --format='%(refname) %(objectname)' refs/tags > /tmp/specscore-tags-backup.txt
@@ -1536,7 +1536,7 @@ Expected: `0 remote v-tags remain`.
 
 Run:
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git worktree add ../specscore.worktrees/tag-note -b chore/tag-cleanup-note
 cd ../specscore.worktrees/tag-note
 ```
@@ -1548,7 +1548,7 @@ Append to `README.md` (or insert near the bottom under a new `## History` headin
 ```markdown
 ## History
 
-The reference CLI `specscore` was extracted from this repository on <DATE>; its source code, releases, and `v0.x` release tags now live at [`synchestra-io/specscore-cli`](https://github.com/synchestra-io/specscore-cli). This repository's `v*` tags were removed at the same time, since they tagged CLI releases that no longer reside here. Engineering history (commits) for the extracted code is preserved in `specscore-cli` via `git filter-repo`.
+The reference CLI `specscore` was extracted from this repository on <DATE>; its source code, releases, and `v0.x` release tags now live at [`specscore/specscore-cli`](https://github.com/specscore/specscore-cli). This repository's `v*` tags were removed at the same time, since they tagged CLI releases that no longer reside here. Engineering history (commits) for the extracted code is preserved in `specscore-cli` via `git filter-repo`.
 ```
 
 Use `Edit` to add this section. Place it after the existing top-level sections.
@@ -1562,7 +1562,7 @@ git commit -m "$(cat <<'EOF'
 docs: add migration note for v0.x tag removal
 
 The v0.x tags previously on this repo tagged CLI releases that have
-been moved to synchestra-io/specscore-cli. The tags were removed from
+been moved to specscore/specscore-cli. The tags were removed from
 this repo on <DATE>. Engineering history is preserved in specscore-cli.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
@@ -1588,7 +1588,7 @@ gh pr merge --squash --delete-branch
 
 Run:
 ```bash
-cd /Users/alexandertrakhimenok/projects/synchestra-io/specscore
+cd /Users/alexandertrakhimenok/projects/specscore/specscore
 git pull origin main
 find . -name '*.go' -not -path './.git/*' -not -path './node_modules/*' | wc -l
 git ls-remote --tags origin | grep -c 'refs/tags/v' || echo "0 v-tags"
@@ -1600,8 +1600,8 @@ Expected: `0` go files, `0 v-tags`.
 
 Run:
 ```bash
-gh run list --repo synchestra-io/specscore-cli --limit 5
-gh release list --repo synchestra-io/specscore-cli --limit 3
+gh run list --repo specscore/specscore-cli --limit 5
+gh release list --repo specscore/specscore-cli --limit 3
 ```
 
 Expected: recent runs green; releases present.
@@ -1634,15 +1634,15 @@ git worktree remove ../specscore.worktrees/tag-note
 Before declaring this plan complete, the implementer should confirm:
 
 - [ ] All 5 phases' verification gates passed
-- [ ] `synchestra-io/specscore`: 0 `.go` files, 0 `v*` tags, CC-BY-4.0 LICENSE
-- [ ] `synchestra-io/specscore-cli`: builds, tests pass, dogfood CI green, has `v0.x` tag history
+- [ ] `specscore/specscore`: 0 `.go` files, 0 `v*` tags, CC-BY-4.0 LICENSE
+- [ ] `specscore/specscore-cli`: builds, tests pass, dogfood CI green, has `v0.x` tag history
 - [ ] Public install URL `https://specscore.md/get-cli` installs working CLI
 - [ ] README in `specscore` prominently links to `specscore-cli`
 - [ ] Tag backup file (`/tmp/specscore-tags-backup.txt`) preserved off-machine until confidence is high
 
 ## Rollback notes
 
-- **Phase 1-2 only completed:** delete `synchestra-io/specscore-cli` repo via `gh repo delete`. `specscore` is untouched.
+- **Phase 1-2 only completed:** delete `specscore/specscore-cli` repo via `gh repo delete`. `specscore` is untouched.
 - **Phase 3 completed:** revert the dogfood-workflow PR; `specscore` returns to pre-Phase-3 state.
 - **Phase 4 completed:** revert the Phase 4 PR; `specscore` returns to pre-Phase-4 state. The `specscore-cli` repo remains independent.
 - **Phase 5 completed (tags deleted):** re-push tags from `/tmp/specscore-tags-backup.txt`:
@@ -1655,6 +1655,6 @@ Before declaring this plan complete, the implementer should confirm:
 ## Out of scope
 
 - Pre-commit hooks in either repo
-- Renaming `synchestra-io/ai-plugin-specscore` → `synchestra-io/specscore-ai-plugin` (separate work; **do not create a new repo**)
+- Renaming `specscore/ai-plugin-specscore` → `specscore/specscore-ai-plugin` (separate work; **do not create a new repo**)
 - Reusable `setup-specscore` GitHub Action (defer until external consumers ask)
 - `pkg/` package restructuring or stable-API promises

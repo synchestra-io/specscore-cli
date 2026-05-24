@@ -19,13 +19,13 @@ powershell -c "irm https://specscore.md/install/get-cli.ps1 | iex"
 ### macOS — Homebrew
 
 ```bash
-brew install synchestra-io/tap/specscore
+brew install specscore/tap/specscore
 ```
 
 ### Windows — Scoop / WinGet
 
 ```powershell
-scoop bucket add synchestra-io https://github.com/synchestra-io/scoop-bucket
+scoop bucket add specscore https://github.com/specscore/scoop-bucket
 scoop install specscore
 # or
 winget install Synchestra.SpecScore
@@ -48,11 +48,11 @@ Full command reference: see [`spec/features/cli/`](spec/features/cli/).
 
 ## AI skills
 
-If you drive `specscore` from inside Claude Code (or any agent host that loads Claude Code plugins), install the [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) plugin. It ships agent skills that wrap each CLI resource group — they teach the agent *when* to call which command, *which* flags to pass, and *how* to interpret exit codes, all grounded in the feature specs in this repo.
+If you drive `specscore` from inside Claude Code (or any agent host that loads Claude Code plugins), install the [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) plugin. It ships agent skills that wrap each CLI resource group — they teach the agent *when* to call which command, *which* flags to pass, and *how* to interpret exit codes, all grounded in the feature specs in this repo.
 
 ```
-/plugin marketplace add synchestra-io/ai-marketplace
-/plugin install specscore@synchestra-io
+/plugin marketplace add specscore/ai-marketplace
+/plugin install specscore@specscore
 ```
 
 Then bootstrap the CLI itself with `/specscore:install`, or install manually with the one-liner above.
@@ -63,5 +63,5 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Related
 
-- [synchestra-io/specscore](https://github.com/synchestra-io/specscore) — the SpecScore format and documentation
-- [synchestra-io/ai-plugin-specscore](https://github.com/synchestra-io/ai-plugin-specscore) — agent skills that wrap this CLI
+- [specscore/specscore](https://github.com/specscore/specscore) — the SpecScore format and documentation
+- [specscore/ai-plugin-specscore](https://github.com/specscore/ai-plugin-specscore) — agent skills that wrap this CLI
