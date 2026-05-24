@@ -1,6 +1,6 @@
 # pkg
 
-Public library API packages importable by other tools (synchestra, rehearse, etc.).
+Public library API packages importable by other tools (rehearse, etc.).
 
 ## Children
 

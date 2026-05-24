@@ -40,7 +40,7 @@ Scaffolds Idea artifacts at `spec/ideas/<slug>.md` and hosts lifecycle verbs (`i
 
 ### lifecycle-transitions
 
-Not a command group — has no CLI surface of its own. Defines the shared cross-cutting contract every `specscore` verb that mutates an artifact's `Status` field satisfies: atomicity, rollback, output format, exit-code mapping, slug-positional argument, no coordination, and the architectural positioning vs Synchestra. Verb features (e.g., `cli/idea/approve`) reference this feature instead of restating these rules.
+Not a command group — has no CLI surface of its own. Defines the shared cross-cutting contract every `specscore` verb that mutates an artifact's `Status` field satisfies: atomicity, rollback, output format, exit-code mapping, slug-positional argument, no coordination, and the scope boundary against coordination/concurrency concerns. Verb features (e.g., `cli/idea/approve`) reference this feature instead of restating these rules.
 
 ### spec
 
@@ -73,7 +73,7 @@ Every action MUST be an explicit subcommand verb (`list`, `info`, `new`, `deps`,
 
 #### REQ: prefer-new-over-create
 
-Commands that create new artifacts MUST use the verb `new`, never `create`. This matches `gh issue new`, `gh pr new`, and synchestra's conventions.
+Commands that create new artifacts MUST use the verb `new`, never `create`. This matches the convention used by `gh issue new`, `gh pr new`, and similar resource-oriented CLIs.
 
 ### Shared exit-code contract
 

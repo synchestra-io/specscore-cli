@@ -7,7 +7,7 @@
 
 ## Summary
 
-This is **not a command group** — it has no CLI surface of its own. It is the shared cross-cutting contract every `specscore` verb that mutates the `Status` field of a SpecScore artifact MUST satisfy: atomicity, rollback, output format, exit-code mapping, and the architectural positioning vs Synchestra. Verb features (e.g., [`cli/idea/approve`](../idea/approve/README.md), planned `cli/idea/archive`, `cli/feature/approve`, etc.) reference this feature instead of restating these rules.
+This is **not a command group** — it has no CLI surface of its own. It is the shared cross-cutting contract every `specscore` verb that mutates the `Status` field of a SpecScore artifact MUST satisfy: atomicity, rollback, output format, exit-code mapping, and the scope boundary against coordination/concurrency concerns. Verb features (e.g., [`cli/idea/approve`](../idea/approve/README.md), planned `cli/idea/archive`, `cli/feature/approve`, etc.) reference this feature instead of restating these rules.
 
 ## Problem
 
@@ -25,17 +25,17 @@ This contract applies to every verb under `specscore <kind> <verb>` whose effect
 
 A verb that mutates fields other than `Status` (e.g., a future `owner-change` verb) is OUT of scope for this contract. Owner mutation is a field overwrite, not a state-machine transition, and is governed by its own (future) feature spec.
 
-### Architectural positioning vs Synchestra
+### Architectural positioning and scope
 
-`specscore` is the local-file mutation primitive. [Synchestra](https://github.com/specscore/synchestra) layers concurrency, sync policies, claim/release semantics, and multi-agent coordination on top — today only for the `task` doc kind. For doc kinds where local-file mutation IS the value (Idea, Feature) — transitions are deliberate, single-actor, contention-free — `specscore` is the canonical surface.
+`specscore` is a local-file mutation primitive. It does not provide concurrency control, sync policies, claim/release semantics, or multi-agent coordination. For doc kinds where local-file mutation IS the value (Idea, Feature) — transitions are deliberate, single-actor, contention-free — `specscore` is the canonical surface. For doc kinds whose lifecycle requires coordination (the `task` doc kind in particular), an external workflow orchestrator is the appropriate surface; lifecycle verbs governed by this contract MUST NOT target those kinds.
 
 #### REQ: no-coordination
 
-Lifecycle verbs MUST NOT acquire locks (advisory or mandatory), push to remote git, consult a sync policy, or assume any cross-process coordination. Concurrent modification of the target file by another process is undefined behavior. Callers needing coordinated workflows over the spec graph use a Synchestra-equivalent verb when one exists.
+Lifecycle verbs MUST NOT acquire locks (advisory or mandatory), push to remote git, consult a sync policy, or assume any cross-process coordination. Concurrent modification of the target file by another process is undefined behavior. Callers needing coordinated workflows over the spec graph use an external workflow orchestrator.
 
 #### REQ: scope-no-task-lifecycle
 
-Lifecycle verbs governed by this contract MUST NOT target the `task` doc kind. Task lifecycle is Synchestra's domain (see [`synchestra task`](https://github.com/specscore/synchestra/tree/main/spec/features/cli/task) for the canonical surface). Whether `specscore` should later mirror a thin `task status` primitive for standalone-OSS users is a separate Idea per the source Idea's Not Doing list.
+Lifecycle verbs governed by this contract MUST NOT target the `task` doc kind. The `task` kind's lifecycle requires concurrency and claim/release semantics outside this contract's scope; it is owned by external workflow orchestrators. Whether `specscore` should later mirror a thin `task status` primitive for standalone-OSS users is a separate Idea per the source Idea's Not Doing list.
 
 ### State-machine semantics
 
@@ -111,8 +111,7 @@ A lifecycle verb MUST map errors to the codes above per their declared meanings.
 | Source Idea: [lifecycle-verbs-for-idea-and-feature](../../../ideas/lifecycle-verbs-for-idea-and-feature.md) | This feature realizes the shared-infrastructure half of the source Idea. Per-verb features realize the kind-specific halves. |
 | [`cli/idea/change-status`](../idea/change-status/README.md) | Verb implementing this contract for the Idea kind. Encodes the Idea legal-transition matrix (`Draft → Approved`; `{Draft, Under Review, Approved, Implementing, Specified} → Archived`) and extends the Meta with a `--to=archived` file-relocation side effect. |
 | [`cli/feature/change-status`](../feature/change-status/README.md) | Verb implementing this contract for the Feature kind. Encodes the Feature legal-transition matrix (`Draft → Under Review`, `{Draft, Under Review} → Approved`, `Approved → Implementing`, `Implementing → Stable`, `Stable → Deprecated`) and declares its dependency on the `feature-index-row-sync` lint rule. |
-| Synchestra `task` commands | Out-of-scope counterpart. Synchestra's task lifecycle owns concurrency, sync policy, and claim/release. `specscore` lifecycle verbs do not touch the task doc kind (see [REQ: scope-no-task-lifecycle](#req-scope-no-task-lifecycle)). |
-| `ai-plugin-specscore` skill wrappers _(planned, downstream)_ | When the plugin grows references for any lifecycle verb, each reference MUST include a Synchestra-presence pre-flight: if both `specscore` and a corresponding Synchestra command are installed on the user's machine, the skill SHOULD prefer the Synchestra command for that doc kind. Today no Synchestra equivalent exists for Idea or Feature lifecycle; `specscore` is the canonical path. |
+| `ai-plugin-specscore` skill wrappers _(planned, downstream)_ | When the plugin grows references for any lifecycle verb, each reference invokes `specscore <kind> change-status` directly. The plugin treats `specscore` as the canonical surface for Idea and Feature lifecycle. |
 
 ## Open Questions
 

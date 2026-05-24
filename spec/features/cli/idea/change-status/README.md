@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/idea/change-status?op=request-change) |
 >
-> **AI skill:** _planned_ — a `skills/idea/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
+> **AI skill:** _planned_ — a `skills/idea/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill invokes `specscore idea change-status` directly per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
 
 **Status:** Approved
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature
@@ -38,7 +38,7 @@ Only the transitions in the table below are accepted. Any other `(from, to)` pai
 | `Implementing` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
 | `Specified` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
 
-`Specified` and `Implementing` as TARGETS are NOT in the matrix — those transitions are Synchestra-managed (`Specified` fires when a Feature declares `source_idea`) or plan-tool-driven (`Implementing` is set externally by plan/task tooling), not user-facing in `change-status`.
+`Specified` and `Implementing` as TARGETS are NOT in the matrix — those transitions are managed externally by lint tooling (`Specified` fires when a Feature declares `source_idea`, via the `idea-sync-lint-strict` rule) or plan-tool-driven (`Implementing` is set externally by plan/task tooling), not user-facing in `change-status`.
 
 #### REQ: legal-transition-matrix
 
@@ -185,7 +185,7 @@ Given a transition that exercises the archive path and a corrupted `spec/ideas/a
 ## Open Questions
 
 - Should `change-status` accept `--reason "<text>"` to capture the rationale (especially valuable when archiving)? Deferred per the source Idea.
-- When the Idea status enumeration grows beyond `Draft`/`Approved`/`Archived` to first-class `Specified`/`Implementing` values (today they're managed externally by Synchestra and plan tools), is the legal-transition matrix updated? Lock down at the time the new statuses become user-facing.
+- When the Idea status enumeration grows beyond `Draft`/`Approved`/`Archived` to first-class `Specified`/`Implementing` values (today they're managed externally by lint and plan tools), is the legal-transition matrix updated? Lock down at the time the new statuses become user-facing.
 - Should `change-status --help` render the legal-transition matrix as a table? Lean: yes. Validation of the "discoverability via `--help`" assumption depends on it.
 
 ---

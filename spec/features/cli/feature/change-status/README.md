@@ -2,7 +2,7 @@
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/feature/change-status?op=request-change) |
 >
-> **AI skill:** _planned_ — a `skills/feature/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill MUST include a Synchestra-presence pre-flight per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
+> **AI skill:** _planned_ — a `skills/feature/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill invokes `specscore feature change-status` directly per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
 
 **Status:** Approved
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature
