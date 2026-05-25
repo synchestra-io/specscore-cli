@@ -62,7 +62,7 @@ func runSpecLint(cmd *cobra.Command, args []string) error {
 		}
 		startDir = abs
 	} else {
-		cwd, err := os.Getwd()
+		cwd, err := osGetwdFn()
 		if err != nil {
 			return exitcode.UnexpectedErrorf("cannot determine working directory: %v", err)
 		}

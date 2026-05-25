@@ -3257,3 +3257,77 @@ func TestUpdateFeatureIndex_IndexSuffixSlug(t *testing.T) {
 		t.Error("slug ending in -index should get Kind=Index")
 	}
 }
+
+// =============================================================================
+// transitive.go — walkTransitive resolver returns error (line 33)
+// =============================================================================
+
+func TestWalkTransitive_ResolverError(t *testing.T) {
+	featDir := t.TempDir()
+	errorResolver := func(dir, id string) ([]string, error) {
+		return nil, fmt.Errorf("injected resolver error")
+	}
+	visited := map[string]bool{"start": true}
+	nodes := walkTransitive(featDir, "start", visited, errorResolver)
+	if len(nodes) != 0 {
+		t.Errorf("expected nil/empty nodes when resolver errors, got %d", len(nodes))
+	}
+}
+
+// =============================================================================
+// tree.go — BuildEnrichedTree orphan child (parent not in nodeMap, line 33)
+// =============================================================================
+
+func TestBuildEnrichedTree_OrphanChild(t *testing.T) {
+	// "cli/task" is in the list but "cli" is not — so cli/task is an orphan
+	// and should become a root.
+	featDir := setupTestFeatures(t, map[string]string{
+		"cli/task": "# Feature: Task\n\n**Status:** Draft\n",
+		"alpha":    "# Feature: Alpha\n\n**Status:** Draft\n",
+	})
+
+	// Pass ids where parent "cli" is missing
+	tree := BuildEnrichedTree(featDir, []string{"cli/task", "alpha"}, []string{"status"}, "")
+
+	// Both cli/task (orphan) and alpha should be roots
+	if len(tree) != 2 {
+		t.Fatalf("expected 2 roots (orphan + alpha), got %d", len(tree))
+	}
+}
+
+// =============================================================================
+// newfeature.go — New: WriteFile error (readme write fails) (line 107-109)
+// =============================================================================
+
+func TestNew_WriteFileError_ReadOnlyFeatureDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
+	featDir := t.TempDir()
+	// Pre-create the feature dir and make it read-only so that WriteFile(README.md) fails.
+	featureDir := filepath.Join(featDir, "test-feat")
+	if err := os.MkdirAll(featureDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(featureDir, 0o555); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(featureDir, 0o755) })
+
+	// Remove the dir so New() can create it via MkdirAll (but the parent is writable).
+	// Then make the parent read-only instead so MkdirAll fails.
+	_ = os.Chmod(featureDir, 0o755)
+	_ = os.RemoveAll(featureDir)
+
+	// Recreate so MkdirAll in New() won't need to create it — the dir already exists
+	// but is read-only so WriteFile inside it fails.
+	if err := os.MkdirAll(featureDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(featureDir, 0o755) })
+
+	_, err := New(featDir, NewOptions{Title: "Test Feat", Slug: "test-feat"})
+	if err == nil {
+		t.Fatal("expected error for WriteFile failure in read-only dir")
+	}
+}

@@ -324,7 +324,7 @@ func resolveSpecRoot(projectFlag string) (string, error) {
 		}
 		startDir = abs
 	} else {
-		cwd, err := os.Getwd()
+		cwd, err := osGetwdFn()
 		if err != nil {
 			return "", exitcode.UnexpectedErrorf("cannot determine working directory: %v", err)
 		}

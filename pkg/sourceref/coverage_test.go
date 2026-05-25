@@ -557,3 +557,42 @@ func TestFormatOutput_AllFilteredReturnsEmpty(t *testing.T) {
 		t.Errorf("filtered ref should not appear in output: %q", output)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// FormatOutput — single-file mode with typeFilter that excludes all refs
+// This covers the `if len(output) == 0 { return "" }` branch when singleFile=true
+// and the typeFilter removes all references.
+// ---------------------------------------------------------------------------
+
+func TestFormatOutput_SingleFileModeAllFiltered(t *testing.T) {
+	result := &ScanResult{
+		FileRefs: map[string][]*Reference{
+			"file.go": {
+				{ResolvedPath: "spec/features/x", Type: "feature"},
+			},
+		},
+	}
+	// typeFilter "plan" matches nothing in single-file mode
+	output := FormatOutput(result, true, "plan")
+	if output != "" {
+		t.Errorf("expected empty output when all refs filtered in single-file mode, got %q", output)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanLine — ParseReference returns error (covers sourceref.go:191-193)
+// A URL with too few segments: ExtractReference returns the URL, but
+// parseExpandedURL fails with "too few path segments".
+// ---------------------------------------------------------------------------
+
+func TestScanLine_ParseReferenceError(t *testing.T) {
+	// specscore.io URL with only 3 path segments (need 4+): github.com/org/repo
+	// This means DetectReference matches, ExtractReference returns the URL,
+	// but ParseReference fails (too few segments).
+	line := "// https://specscore.io/github.com/org/repo"
+	ref := ScanLine(line)
+	// ScanLine should return nil because ParseReference fails.
+	if ref != nil {
+		t.Errorf("expected nil for invalid URL reference, got %+v", ref)
+	}
+}

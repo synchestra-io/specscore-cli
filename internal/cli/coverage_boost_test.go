@@ -6307,10 +6307,109 @@ func TestInit_StatErrorNonENOENT(t *testing.T) {
 // writeMissingIndex error test already declared above (TestInit_WriteMissingIndexError).
 
 // ===========================================================================
-// task.go — resolveTasksDir: os.Getwd() error (line 38-40) — untestable
-// task.go — resolveFeaturesDir: os.Getwd() error (line 50-52) — untestable
-// These require stubbing os.Getwd which isn't done in this codebase.
+// task.go — resolveTasksDir: osGetwdFn error path
 // ===========================================================================
+
+func TestResolveTasksDir_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "", fmt.Errorf("injected getwd error") }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	// No --project flag forces the osGetwdFn path.
+	_, _, err := runTask(t, "list")
+	if err == nil {
+		t.Fatal("expected error from injected getwd failure")
+	}
+	if !strings.Contains(err.Error(), "working directory") {
+		t.Errorf("expected 'working directory' in error, got: %v", err)
+	}
+}
+
+// ===========================================================================
+// feature.go — resolveFeaturesDir: osGetwdFn error path
+// ===========================================================================
+
+func TestResolveFeaturesDir_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "", fmt.Errorf("injected getwd error") }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	// No --project flag forces the osGetwdFn path.
+	_, _, err := runFeature(t, "list")
+	if err == nil {
+		t.Fatal("expected error from injected getwd failure")
+	}
+	if !strings.Contains(err.Error(), "working directory") {
+		t.Errorf("expected 'working directory' in error, got: %v", err)
+	}
+}
+
+// ===========================================================================
+// spec.go — runSpecLint: osGetwdFn error path
+// ===========================================================================
+
+func TestRunSpecLint_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "", fmt.Errorf("injected getwd error") }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	cmd := specLintCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from injected getwd failure")
+	}
+	if !strings.Contains(err.Error(), "working directory") {
+		t.Errorf("expected 'working directory' in error, got: %v", err)
+	}
+}
+
+// ===========================================================================
+// event.go — runEventEmit: osGetwdFn error path
+// ===========================================================================
+
+func TestRunEventEmit_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "", fmt.Errorf("injected getwd error") }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	// All required flags must be present so the function reaches osGetwdFn().
+	_, _, err := runEvent(t, "emit",
+		"--name=test.event",
+		"--actor-kind=user", "--actor-id=alice",
+		"--artifact-type=idea", "--artifact-id=foo",
+		"--artifact-path=spec/ideas/foo.md",
+		"--payload-json", `{"k":"v"}`,
+	)
+	if err == nil {
+		t.Fatal("expected error from injected getwd failure")
+	}
+	if !strings.Contains(err.Error(), "getwd") {
+		t.Errorf("expected 'getwd' in error, got: %v", err)
+	}
+}
+
+// ===========================================================================
+// idea.go — resolveSpecRoot: osGetwdFn error path
+// ===========================================================================
+
+func TestResolveSpecRoot_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "", fmt.Errorf("injected getwd error") }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	// No --project flag forces the osGetwdFn path.
+	_, _, err := runIdea(t, "list")
+	if err == nil {
+		t.Fatal("expected error from injected getwd failure")
+	}
+	if !strings.Contains(err.Error(), "working directory") {
+		t.Errorf("expected 'working directory' in error, got: %v", err)
+	}
+}
 
 // ===========================================================================
 // task.go — taskNew writeFile error (line 306-308)

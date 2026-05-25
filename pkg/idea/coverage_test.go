@@ -1116,6 +1116,40 @@ func TestChangeStatus_ArchiveRenameError(t *testing.T) {
 	}
 }
 
+// =============================================================================
+// transitions.go — osStatFn returning non-ENOENT error (line 229-232)
+//
+// osStatFn is used at the archive-collision check (only when To=Archived).
+// Stub it to return a non-ENOENT error for the archived path so the
+// `else if !os.IsNotExist(err)` branch fires.
+// =============================================================================
+
+func TestChangeStatus_OsStatFnNonEnoentError(t *testing.T) {
+	root := stageIdeaTree(t, "stat-inject", "Draft")
+
+	old := osStatFn
+	osStatFn = func(path string) (os.FileInfo, error) {
+		// The archived path ends with "archived/stat-inject.md".
+		// Return a non-ENOENT error so the collision-check else branch fires.
+		if strings.HasSuffix(path, "archived/stat-inject.md") {
+			return nil, os.ErrPermission
+		}
+		return os.Stat(path)
+	}
+	t.Cleanup(func() { osStatFn = old })
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "stat-inject",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for non-ENOENT stat failure on archived path")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+}
+
 func TestSplitCSVSlugs_EdgeCases(t *testing.T) {
 	tests := []struct {
 		input string

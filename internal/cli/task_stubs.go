@@ -7,4 +7,5 @@ import "os"
 var (
 	osReadFileFn  = os.ReadFile
 	osWriteFileFn = os.WriteFile
+	osGetwdFn     = os.Getwd
 )

@@ -270,7 +270,7 @@ func runEventEmit(cmd *cobra.Command, _ []string) error {
 
 	// Discover the project root. Same heuristic the rest of the CLI uses
 	// (`findRepoConfigRoot` in spec.go); missing root → exit 3 (NotFound).
-	startDir, err := os.Getwd()
+	startDir, err := osGetwdFn()
 	if err != nil {
 		return exitcode.UnexpectedErrorf("getwd: %v", err)
 	}

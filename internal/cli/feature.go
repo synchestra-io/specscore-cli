@@ -46,7 +46,7 @@ func resolveFeaturesDir(projectFlag string) (string, error) {
 		}
 		startDir = abs
 	} else {
-		cwd, err := os.Getwd()
+		cwd, err := osGetwdFn()
 		if err != nil {
 			return "", exitcode.UnexpectedErrorf("cannot determine working directory: %v", err)
 		}
@@ -803,9 +803,6 @@ func buildFeatureChangeStatusMatrix() string {
 	fmt.Fprintf(&b, "  %-*s --\n", fromWidth, "-----")
 	for _, f := range froms {
 		targets := lifecycle.LegalTargets(lifecycle.KindFeature, f)
-		if len(targets) == 0 {
-			continue
-		}
 		names := make([]string, len(targets))
 		for i, t := range targets {
 			names[i] = string(t)

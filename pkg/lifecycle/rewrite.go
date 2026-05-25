@@ -92,10 +92,6 @@ func Rewrite(artifactPath string, newStatus Status) (string, error) {
 	originalLine := lines[idx]
 	body, terminator := splitTerminator(originalLine)
 	m := statusLineRe.FindStringSubmatch(body)
-	if m == nil {
-		// Shouldn't happen because findStatusLineIndex matched, but be defensive.
-		return "", ErrStatusLineNotFound
-	}
 	indent := m[1]
 	trailing := m[3]
 	newBody := fmt.Sprintf("%s**Status:** %s%s", indent, string(newStatus), trailing)

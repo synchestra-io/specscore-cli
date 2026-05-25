@@ -34,7 +34,7 @@ func resolveTasksDir(projectFlag string) (string, error) {
 		}
 		startDir = abs
 	} else {
-		cwd, err := os.Getwd()
+		cwd, err := osGetwdFn()
 		if err != nil {
 			return "", exitcode.UnexpectedErrorf("cannot determine working directory: %v", err)
 		}
@@ -128,12 +128,11 @@ func runTaskList(cmd *cobra.Command, _ []string) error {
 		return enc.Close()
 	case "json":
 		return newJSONEnc(w).Encode(rows)
-	case "md":
+	default:
 		filtered := &task.BoardView{Rows: rows}
 		_, err := w.Write(task.RenderBoard(filtered))
 		return err
 	}
-	return nil
 }
 
 // --- task info ---
@@ -226,10 +225,9 @@ func runTaskInfo(cmd *cobra.Command, _ []string) error {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
-	case "json":
+	default:
 		return newJSONEnc(w).Encode(out)
 	}
-	return nil
 }
 
 // --- task new ---
@@ -347,8 +345,7 @@ func runTaskNew(cmd *cobra.Command, _ []string) error {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
-	case "json":
+	default:
 		return newJSONEnc(w).Encode(out)
 	}
-	return nil
 }
