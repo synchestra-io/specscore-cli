@@ -6612,3 +6612,48 @@ func TestFindRepoConfigRoot_FilepathAbsError(t *testing.T) {
 	// Either abs error or not-found error is acceptable; we just want no panic.
 	_ = err
 }
+
+// ---------------------------------------------------------------------------
+// stdinIsTTY: os.Stdin.Stat error path
+// ---------------------------------------------------------------------------
+
+func TestStdinIsTTY_StatError(t *testing.T) {
+	orig := stdinStatFn
+	stdinStatFn = func() (os.FileInfo, error) { return nil, fmt.Errorf("injected stat error") }
+	t.Cleanup(func() { stdinStatFn = orig })
+
+	got := stdinIsTTY()
+	if got {
+		t.Error("stdinIsTTY should return false when Stat errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// mutateState: ReadState and WriteState error paths
+// ---------------------------------------------------------------------------
+
+func TestMutateState_ReadStateError(t *testing.T) {
+	orig := telemetryReadStateFn
+	telemetryReadStateFn = func() (telemetry.StateReadResult, error) {
+		return telemetry.StateReadResult{}, fmt.Errorf("injected read error")
+	}
+	t.Cleanup(func() { telemetryReadStateFn = orig })
+
+	err := mutateState(io.Discard, "", false, true)
+	if err == nil {
+		t.Fatal("expected error from ReadState stub, got nil")
+	}
+}
+
+func TestMutateState_WriteStateError(t *testing.T) {
+	orig := telemetryWriteStateFn
+	telemetryWriteStateFn = func(_ telemetry.State) error {
+		return fmt.Errorf("injected write error")
+	}
+	t.Cleanup(func() { telemetryWriteStateFn = orig })
+
+	err := mutateState(io.Discard, "", false, true)
+	if err == nil {
+		t.Fatal("expected error from WriteState stub, got nil")
+	}
+}

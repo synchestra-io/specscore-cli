@@ -81,18 +81,12 @@ func UpdateCrossRepoLinks(allRepos []TargetRepo, targetRepo TargetRepo, slug str
 				lineModified := false
 				newLine := linkRe.ReplaceAllStringFunc(line, func(match string) string {
 					submatches := linkRe.FindStringSubmatch(match)
-					if len(submatches) < 3 {
-						return match
-					}
 					displayText := submatches[1]
 
 					var newURL string
 					if repo.Path == targetRepo.Path {
 						refDir := filepath.Dir(path)
-						relPath, err := filepath.Rel(refDir, targetFileAbs)
-						if err != nil {
-							return match
-						}
+						relPath, _ := filepath.Rel(refDir, targetFileAbs)
 						newURL = filepath.ToSlash(relPath)
 					} else {
 						newURL = fmt.Sprintf("https://github.com/%s/%s/blob/main/%s",

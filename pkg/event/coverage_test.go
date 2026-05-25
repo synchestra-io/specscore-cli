@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -170,5 +172,31 @@ func TestJsonlWriterDeliverMarshalError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "marshal event") {
 		t.Errorf("error = %q, want to contain 'marshal event'", err.Error())
+	}
+}
+
+// errWriter is a writeCloser whose Write always fails (for injection).
+type errWriter struct{}
+
+func (errWriter) Write([]byte) (int, error) { return 0, fmt.Errorf("injected write error") }
+func (errWriter) Close() error              { return nil }
+
+// TestJsonlWriterDeliverWriteError covers the f.Write error path by stubbing
+// osOpenFileFn to return a fake writer that succeeds on open but fails on Write.
+func TestJsonlWriterDeliverWriteError(t *testing.T) {
+	orig := osOpenFileFn
+	osOpenFileFn = func(_ string, _ int, _ os.FileMode) (writeCloser, error) {
+		return errWriter{}, nil
+	}
+	t.Cleanup(func() { osOpenFileFn = orig })
+
+	root := t.TempDir()
+	w := NewJsonlWriter("events.jsonl", root)
+	err := w.Deliver(context.Background(), sampleEvent("test"))
+	if err == nil {
+		t.Fatal("expected error from errWriter, got nil")
+	}
+	if !strings.Contains(err.Error(), "append jsonl line") {
+		t.Errorf("error = %q, want to contain 'append jsonl line'", err.Error())
 	}
 }

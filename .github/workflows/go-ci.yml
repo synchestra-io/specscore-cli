@@ -57,4 +57,11 @@ jobs:
         run: go build ./...
 
       - name: go test
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -coverprofile=cover.out -covermode=atomic
+
+      - name: coverage gate (≥99%)
+        run: |
+          set -eu
+          PCT=$(go tool cover -func=cover.out | awk '/^total:/ {gsub(/%/,""); print $NF}')
+          echo "Total coverage: ${PCT}%"
+          awk "BEGIN { if (${PCT}+0 < 99) { print \"Coverage ${PCT}% is below 99% threshold\"; exit 1 } }"

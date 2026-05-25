@@ -4,9 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
+
+// writeCloser is the minimal interface needed from os.OpenFile for Deliver.
+type writeCloser interface {
+	io.Writer
+	io.Closer
+}
+
+// osOpenFileFn is a testable indirection for os.OpenFile. Returns writeCloser
+// so tests can inject a fake writer that errors on Write.
+var osOpenFileFn = func(name string, flag int, perm os.FileMode) (writeCloser, error) {
+	return os.OpenFile(name, flag, perm)
+}
 
 // JsonlWriter is a Subscriber that appends each delivered Event as a single
 // JSON line to a file. It is the default subscriber synthesized by the
@@ -48,7 +61,7 @@ func (w *JsonlWriter) Deliver(_ context.Context, e Event) error {
 		return fmt.Errorf("create parent dir %s: %w", dir, err)
 	}
 
-	f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := osOpenFileFn(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open jsonl file %s: %w", w.path, err)
 	}

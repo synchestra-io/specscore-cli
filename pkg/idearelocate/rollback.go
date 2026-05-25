@@ -59,11 +59,7 @@ func ExecutePreCommitPhase(
 	// error worth surfacing — but ApplyMutation will also try to read,
 	// so we let it report.
 	sourceBody, _ := os.ReadFile(source.Path)
-	sourceRel, err := filepath.Rel(sourceRepoRoot, source.Path)
-	if err != nil {
-		return MutationResult{}, nil, exitcode.UnexpectedErrorf(
-			"computing source repo-relative path: %v", err)
-	}
+	sourceRel, _ := filepath.Rel(sourceRepoRoot, source.Path)
 	expectedDestPath := filepath.Join(target.Path, sourceRel)
 
 	var actions []string
@@ -85,13 +81,7 @@ func ExecutePreCommitPhase(
 	// Step B: cross-repo link cleanup. UpdateCrossRepoLinks may have
 	// returned partial results before an error; we revert whatever it
 	// reports as Updated.
-	targetRel, err := filepath.Rel(target.Path, mutation.DestinationPath)
-	if err != nil {
-		actions = appendCheckoutsForResults(actions, nil) // no link work yet
-		actions = appendIfPartialDest(actions, mutation.DestinationPath)
-		actions = appendIfSourceMissing(actions, source.Path, sourceBody)
-		return mutation, nil, ioRollbackError("computing artifact target-relative path", err, actions)
-	}
+	targetRel, _ := filepath.Rel(target.Path, mutation.DestinationPath)
 	linkResults, linkErr := updateCrossRepoLinksFn(scanRepos, target, slug, targetRel)
 	if linkErr != nil {
 		actions = appendCheckoutsForResults(actions, linkResults)

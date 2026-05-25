@@ -173,8 +173,11 @@ func validatePayloadJSON(payload json.RawMessage, inputMode string) error {
 //
 // Per the os package docs: a TTY has ModeCharDevice set; a pipe has
 // ModeNamedPipe set (or neither flag, but never ModeCharDevice).
+// stdinStatFn is a testable indirection for os.Stdin.Stat.
+var stdinStatFn = func() (os.FileInfo, error) { return os.Stdin.Stat() }
+
 func stdinIsTTY() bool {
-	stat, err := os.Stdin.Stat()
+	stat, err := stdinStatFn()
 	if err != nil {
 		return false
 	}

@@ -163,8 +163,14 @@ func writeStatus(w io.Writer, single telemetry.ChannelName, hasArg bool) error {
 // mutateState writes the persistent-state file with the requested change.
 // When hasArg is false: global enable/disable. With hasArg: per-channel
 // override.
+// telemetryReadStateFn and telemetryWriteStateFn are testable indirections.
+var (
+	telemetryReadStateFn  = telemetry.ReadState
+	telemetryWriteStateFn = telemetry.WriteState
+)
+
 func mutateState(w io.Writer, single telemetry.ChannelName, hasArg bool, enable bool) error {
-	current, err := telemetry.ReadState()
+	current, err := telemetryReadStateFn()
 	if err != nil {
 		return err
 	}
@@ -180,7 +186,7 @@ func mutateState(w io.Writer, single telemetry.ChannelName, hasArg bool, enable 
 	} else {
 		next.Enabled = &enable
 	}
-	if writeErr := telemetry.WriteState(next); writeErr != nil {
+	if writeErr := telemetryWriteStateFn(next); writeErr != nil {
 		return writeErr
 	}
 	_, _ = fmt.Fprintf(w, "telemetry: %s %s\n", target, verb)
