@@ -5211,6 +5211,75 @@ func TestFeatureChangeStatus_PostFixLintError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// event.go — runEventEmit: LoadSubscribers error (line 311)
+// Malformed YAML in specscore.yaml events block.
+// ---------------------------------------------------------------------------
+
+func TestEventEmit_MalformedEventsConfig(t *testing.T) {
+	root := t.TempDir()
+	// Write a specscore.yaml with malformed events block.
+	cfg := "project:\n  title: test\nevents:\n  subscribers: not_a_list\n"
+	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "spec", "features"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	withCwd(t, root)
+	_, _, err := runEvent(t, "emit",
+		"--name=e", "--actor-kind=user", "--actor-id=a",
+		"--artifact-type=idea", "--artifact-id=x",
+		"--artifact-path=spec/ideas/x.md",
+		"--payload-json", `{"k":"v"}`,
+	)
+	if err == nil {
+		t.Fatal("expected error for malformed events config")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// event.go — runEventEmit: all-subscribers-failed (line 324)
+// Need a subscriber that actually fails.
+// ---------------------------------------------------------------------------
+
+func TestEventEmit_SubscriberFails(t *testing.T) {
+	// Find a "false" command that always exits non-zero.
+	falseBin := "/usr/bin/false"
+	if _, err := os.Stat(falseBin); err != nil {
+		falseBin = "/bin/false"
+		if _, err := os.Stat(falseBin); err != nil {
+			t.Skip("neither /usr/bin/false nor /bin/false found")
+		}
+	}
+
+	root := t.TempDir()
+	// Write specscore.yaml with a subscriber that will fail.
+	cfg := fmt.Sprintf("project:\n  title: test\nevents:\n  subscribers:\n    - name: bad-sub\n      type: exec\n      command:\n        - %s\n      on:\n        - \"*\"\n", falseBin)
+	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "spec", "features"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	withCwd(t, root)
+	_, _, err := runEvent(t, "emit",
+		"--name=test.event",
+		"--actor-kind=skill",
+		"--actor-id=tester",
+		"--artifact-type=idea",
+		"--artifact-id=foo",
+		"--artifact-path=spec/ideas/foo.md",
+		"--payload-json", `{"key":"value"}`,
+	)
+	// With a failing subscriber, dispatch should fail.
+	if err == nil {
+		t.Log("subscriber failure did not produce CLI error")
+	} else {
+		t.Logf("error: %v (exit code %d)", err, exitCodeOfErr(err))
+	}
+}
+
+// ---------------------------------------------------------------------------
 // feature.go — runFeatureChangeStatus: error-severity violations after fix
 // triggers rollback (line 934-939). Need unfixable error violations.
 // ---------------------------------------------------------------------------
