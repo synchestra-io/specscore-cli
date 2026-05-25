@@ -106,7 +106,10 @@ func TestExecChildReadsPartialThenExits(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestExecChildWithEnvVars(t *testing.T) {
-	sub := NewExec([]string{"sh", "-c", "exit 0"}, map[string]string{"FOO": "bar"}, 2*time.Second)
+	// Use "cat" so the child reads all stdin before exiting 0.
+	// "sh -c 'exit 0'" exits immediately, which races with the stdin write
+	// on Linux (pipe buffer is drained only on macOS before the child exits).
+	sub := NewExec([]string{"cat"}, map[string]string{"FOO": "bar"}, 2*time.Second)
 	err := sub.Deliver(context.Background(), execSampleEvent(t))
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
