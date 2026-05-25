@@ -325,6 +325,65 @@ func TestChangeStatus_FeatureNotFound(t *testing.T) {
 	}
 }
 
+// AC: no-status-line — a feature README without a **Status:** line should
+// fail with an Unexpected error (line 96).
+func TestChangeStatus_NoStatusLine(t *testing.T) {
+	root := t.TempDir()
+	featDir := filepath.Join(root, "spec", "features")
+	authDir := filepath.Join(featDir, "auth")
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Write a README without a **Status:** line.
+	body := "# Feature: Auth\n\n## Summary\n\nNo status here.\n"
+	if err := os.WriteFile(filepath.Join(authDir, "README.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := ChangeStatus(featDir, "auth", "approved")
+	if err == nil {
+		t.Fatal("expected error for missing status line")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// Rewrite error (line 100-102) — read-only directory prevents atomic write.
+func TestChangeStatus_RewriteError(t *testing.T) {
+	root := t.TempDir()
+	featDir := filepath.Join(root, "spec", "features")
+	authDir := filepath.Join(featDir, "auth")
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "# Feature: Auth\n\n**Status:** Draft\n\n## Summary\n\nPlaceholder.\n"
+	if err := os.WriteFile(filepath.Join(authDir, "README.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make the directory read-only so the atomic-write (temp file + rename) fails.
+	if err := os.Chmod(authDir, 0o555); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(authDir, 0o755) })
+
+	_, err := ChangeStatus(featDir, "auth", "approved")
+	if err == nil {
+		t.Fatal("expected error for read-only directory (rewrite failure)")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// joinStatuses with empty slice returns "".
+func TestJoinStatuses_Empty(t *testing.T) {
+	got := joinStatuses(nil)
+	if got != "" {
+		t.Errorf("joinStatuses(nil) = %q, want empty", got)
+	}
+}
+
 // Restore closure round-trips correctly: after a successful rewrite,
 // calling Restore returns the file to its pre-rewrite content.
 // Verifies the contract the CLI handler relies on for

@@ -40,33 +40,33 @@ type SectionInfo struct {
 func GetInfo(featuresDir, featureID string) (*Info, error) {
 	readmePath := ReadmePath(featuresDir, featureID)
 
-	status, err := ParseFeatureStatus(readmePath)
+	status, err := parseFeatureStatusFn(readmePath)
 	if err != nil {
 		return nil, fmt.Errorf("reading feature status: %w", err)
 	}
 
-	deps, err := ParseDependencies(readmePath)
+	deps, err := parseDependenciesFn(readmePath)
 	if err != nil {
 		return nil, fmt.Errorf("reading dependencies: %w", err)
 	}
 
-	refs, err := FindFeatureRefs(featuresDir, featureID)
+	refs, err := findFeatureRefsFn(featuresDir, featureID)
 	if err != nil {
 		return nil, fmt.Errorf("finding references: %w", err)
 	}
 
-	children, err := DiscoverChildFeatures(featuresDir, featureID, readmePath)
+	children, err := discoverChildFeaturesFn(featuresDir, featureID, readmePath)
 	if err != nil {
 		return nil, fmt.Errorf("discovering children: %w", err)
 	}
 
 	specRoot := filepath.Dir(featuresDir) // spec/features/ -> spec/
-	plans, err := FindLinkedPlans(filepath.Dir(specRoot), featureID)
+	plans, err := findLinkedPlansFn(filepath.Dir(specRoot), featureID)
 	if err != nil {
 		return nil, fmt.Errorf("finding linked plans: %w", err)
 	}
 
-	sections, err := ParseSections(readmePath)
+	sections, err := parseSectionsFn(readmePath)
 	if err != nil {
 		return nil, fmt.Errorf("parsing sections: %w", err)
 	}

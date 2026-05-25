@@ -934,6 +934,188 @@ func TestParse_FileNotFound(t *testing.T) {
 // parse.go — splitCSVSlugs edge cases
 // =============================================================================
 
+// =============================================================================
+// transitions.go — stat error (not IsNotExist) on active path (line 131)
+// =============================================================================
+
+func TestChangeStatus_StatErrorOnActivePath(t *testing.T) {
+	root := stageIdeaTree(t, "stat-err", "Draft")
+	// Make the idea file unreadable so os.Stat returns a permission error.
+	ideaPath := filepath.Join(root, "spec", "ideas", "stat-err.md")
+	if err := os.Chmod(ideaPath, 0o000); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(ideaPath, 0o644) })
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "stat-err",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: noopLint,
+	})
+	// On some OS this may be NotFound or Unexpected depending on stat behavior.
+	if err == nil {
+		t.Fatal("expected error for unreadable idea file")
+	}
+}
+
+// =============================================================================
+// transitions.go — lifecycle.Rewrite error (line 158)
+// =============================================================================
+
+func TestChangeStatus_RewriteError(t *testing.T) {
+	root := t.TempDir()
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Write an idea with a Status line. Make the DIRECTORY read-only so
+	// the atomic-write pattern (create temp file + rename) in lifecycle.Rewrite fails.
+	content := "# Idea: Rewrite Error\n\n**Status:** Draft\n**Date:** 2026-01-01\n**Owner:** tester\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We test.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n"
+	ideaPath := filepath.Join(ideasDir, "rewrite-err.md")
+	if err := os.WriteFile(ideaPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make the directory read-only after writing the file so the atomic
+	// write (which creates a temp file in the same dir) fails.
+	if err := os.Chmod(ideasDir, 0o555); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(ideasDir, 0o755) })
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "rewrite-err",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for read-only directory (atomic write fails)")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+}
+
+// =============================================================================
+// transitions.go — archive: MkdirAll error (lines 182-186)
+// =============================================================================
+
+func TestChangeStatus_ArchiveMkdirError(t *testing.T) {
+	root := t.TempDir()
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body, err := Scaffold(ScaffoldOptions{Slug: "mkdir-err", Status: "Approved"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ideasDir, "mkdir-err.md"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Block the archived dir creation by placing a file where the dir should be.
+	if err := os.WriteFile(filepath.Join(ideasDir, "archived"), []byte("file"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "mkdir-err",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for mkdir failure")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+
+	// Active file should be rolled back to Approved.
+	b, _ := os.ReadFile(filepath.Join(ideasDir, "mkdir-err.md"))
+	if !strings.Contains(string(b), "**Status:** Approved") {
+		t.Errorf("expected rollback to Approved, got:\n%s", b)
+	}
+}
+
+// =============================================================================
+// transitions.go — archive: WriteFile error for archived README (lines 197-201)
+// =============================================================================
+
+func TestChangeStatus_ArchiveWriteReadmeError(t *testing.T) {
+	root := t.TempDir()
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	archivedDir := filepath.Join(ideasDir, "archived")
+	if err := os.MkdirAll(archivedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body, err := Scaffold(ScaffoldOptions{Slug: "readme-err", Status: "Approved"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ideasDir, "readme-err.md"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make archived dir read-only so WriteFile for README.md fails.
+	if err := os.Chmod(archivedDir, 0o555); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(archivedDir, 0o755) })
+
+	_, err = ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "readme-err",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for write README failure")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+}
+
+// =============================================================================
+// transitions.go — archive: Rename error (lines 231-235)
+// =============================================================================
+
+func TestChangeStatus_ArchiveRenameError(t *testing.T) {
+	root := t.TempDir()
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	archivedDir := filepath.Join(ideasDir, "archived")
+	if err := os.MkdirAll(archivedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Write an archived README so the WriteFile path is skipped.
+	if err := os.WriteFile(filepath.Join(archivedDir, "README.md"), []byte("# Archived\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body, err := Scaffold(ScaffoldOptions{Slug: "rename-err", Status: "Approved"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ideasDir, "rename-err.md"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make archived dir read-only so Rename fails (cannot create file in it).
+	if err := os.Chmod(archivedDir, 0o555); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(archivedDir, 0o755) })
+
+	_, err = ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "rename-err",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for rename failure")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+
+	// Active file should still exist (rolled back).
+	if _, serr := os.Stat(filepath.Join(ideasDir, "rename-err.md")); serr != nil {
+		t.Errorf("active file should still exist after rollback: %v", serr)
+	}
+}
+
 func TestSplitCSVSlugs_EdgeCases(t *testing.T) {
 	tests := []struct {
 		input string

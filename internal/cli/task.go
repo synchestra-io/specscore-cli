@@ -86,7 +86,7 @@ func runTaskList(cmd *cobra.Command, _ []string) error {
 	}
 
 	boardPath := filepath.Join(tasksDir, "README.md")
-	data, err := os.ReadFile(boardPath)
+	data, err := osReadFileFn(boardPath)
 	if err != nil {
 		return exitcode.NotFoundErrorf("reading board: %v", err)
 	}
@@ -183,7 +183,7 @@ func runTaskInfo(cmd *cobra.Command, _ []string) error {
 
 	// Read the task file.
 	taskFilePath := filepath.Join(tasksDir, taskFlag, "README.md")
-	data, err := os.ReadFile(taskFilePath)
+	data, err := osReadFileFn(taskFilePath)
 	if err != nil {
 		return exitcode.NotFoundErrorf("task not found: %s", taskFlag)
 	}
@@ -196,7 +196,7 @@ func runTaskInfo(cmd *cobra.Command, _ []string) error {
 	// Read status from board.
 	status := string(task.StatusPlanning) // default
 	boardPath := filepath.Join(tasksDir, "README.md")
-	boardData, err := os.ReadFile(boardPath)
+	boardData, err := osReadFileFn(boardPath)
 	if err == nil {
 		bv, parseErr := task.ParseBoard(boardData)
 		if parseErr == nil {
@@ -309,7 +309,7 @@ func runTaskNew(cmd *cobra.Command, _ []string) error {
 
 	// Update board: read, append row, write back.
 	boardPath := filepath.Join(tasksDir, "README.md")
-	boardData, err := os.ReadFile(boardPath)
+	boardData, err := osReadFileFn(boardPath)
 	if err != nil {
 		return exitcode.NotFoundErrorf("reading board: %v", err)
 	}

@@ -893,7 +893,7 @@ func runFeatureChangeStatus(cmd *cobra.Command, args []string) error {
 	// elsewhere in the tree included.
 	specRoot := filepath.Dir(featuresDir) // spec/features → spec/
 
-	if _, fixErr := lint.Lint(lint.Options{SpecRoot: specRoot, Fix: true}); fixErr != nil {
+	if _, fixErr := lintLintFn(lint.Options{SpecRoot: specRoot, Fix: true}); fixErr != nil {
 		// Lint --fix itself errored; roll back so the on-disk state
 		// matches its pre-invocation snapshot, then map to exit-10.
 		if rbErr := result.Restore(); rbErr != nil {
@@ -905,7 +905,7 @@ func runFeatureChangeStatus(cmd *cobra.Command, args []string) error {
 		return exitcode.UnexpectedErrorf("lint --fix failed: %v (rolled back)", fixErr)
 	}
 
-	violations, lintErr := lint.Lint(lint.Options{SpecRoot: specRoot})
+	violations, lintErr := lintLintFn(lint.Options{SpecRoot: specRoot})
 	if lintErr != nil {
 		if rbErr := result.Restore(); rbErr != nil {
 			return exitcode.UnexpectedErrorf(

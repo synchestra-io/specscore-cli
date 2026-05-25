@@ -129,10 +129,10 @@ func runIdeaChangeStatus(cmd *cobra.Command, args []string) error {
 // path failed.
 func lintPostMutationHook(specSub string) idea.PostMutationHook {
 	return func() error {
-		if _, err := lint.Lint(lint.Options{SpecRoot: specSub, Fix: true}); err != nil {
+		if _, err := lintLintFn(lint.Options{SpecRoot: specSub, Fix: true}); err != nil {
 			return exitcode.UnexpectedErrorf("running lint --fix: %v", err)
 		}
-		violations, err := lint.Lint(lint.Options{SpecRoot: specSub})
+		violations, err := lintLintFn(lint.Options{SpecRoot: specSub})
 		if err != nil {
 			return exitcode.UnexpectedErrorf("running lint: %v", err)
 		}
@@ -255,12 +255,12 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 	// Run lint in --fix mode to update the active index, then re-run
 	// without fix to surface any remaining errors touching this file.
 	specSub := filepath.Join(specRoot, "spec")
-	if _, err := lint.Lint(lint.Options{SpecRoot: specSub, Fix: true}); err != nil {
+	if _, err := lintLintFn(lint.Options{SpecRoot: specSub, Fix: true}); err != nil {
 		// Remove the partial file so re-runs don't trip over conflict.
 		_ = os.Remove(target)
 		return exitcode.UnexpectedErrorf("running lint fix: %v", err)
 	}
-	violations, err := lint.Lint(lint.Options{SpecRoot: specSub})
+	violations, err := lintLintFn(lint.Options{SpecRoot: specSub})
 	if err != nil {
 		return exitcode.UnexpectedErrorf("running lint: %v", err)
 	}
