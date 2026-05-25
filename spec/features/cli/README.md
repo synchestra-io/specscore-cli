@@ -21,6 +21,7 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 | [code/](code/README.md) | Source-code → SpecScore relationship queries |
 | [feature/](feature/README.md) | Feature tree queries and scaffolding |
 | [idea/](idea/README.md) | Idea artifact scaffolding and lifecycle |
+| [issue/](issue/README.md) | Issue artifact scaffolding, lifecycle, and listing |
 | [lifecycle-transitions/](lifecycle-transitions/README.md) | _Not a command group._ Shared contract every status-mutating verb satisfies (atomicity, rollback, output format, exit-code mapping). |
 | [spec/](spec/README.md) | Specification-tree validation and search |
 | [task/](task/README.md) | Task board management |
@@ -37,6 +38,10 @@ Queries the feature tree: list every feature, inspect a feature's metadata and s
 ### idea
 
 Scaffolds Idea artifacts at `spec/ideas/<slug>.md` and hosts lifecycle verbs (`idea new`, `idea list`, `idea change-status`). `idea new` emits a lint-clean Idea skeleton with HTML-comment prompts for every required section; with `--type=change-request --targets=<feature-slug>` it scaffolds a Proposal at `spec/features/<target>/proposals/<slug>.md`. `idea list` enumerates Ideas (excluding archived by default; use `--include-archived` to include them). Lifecycle verbs follow the [lifecycle-transitions](lifecycle-transitions/README.md) shared contract.
+
+### issue
+
+Manages Issue artifacts — reported observations of broken behavior. `issue new` scaffolds a lint-clean Issue skeleton at `spec/issues/<slug>.md` or Feature-scoped at `spec/features/<feature>/issues/<slug>.md`. `issue change-status` transitions an issue through its lifecycle (`open → investigating → resolved|rejected`) with severity and rejection-reason gating. `issue list` aggregates issues from both locations with status, severity, and Feature filters. Lifecycle verbs follow the [lifecycle-transitions](lifecycle-transitions/README.md) shared contract.
 
 ### proposal
 
