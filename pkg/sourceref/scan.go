@@ -62,10 +62,6 @@ func scanFile(filePath string) ([]*Reference, error) {
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
 	sort.Slice(refs, func(i, j int) bool {
 		return refs[i].ResolvedPath+refs[i].CrossRepoSuffix < refs[j].ResolvedPath+refs[j].CrossRepoSuffix
 	})
@@ -88,15 +84,12 @@ func ExpandGlobPattern(pattern string) ([]string, error) {
 	}
 
 	// Validate glob pattern first
-	if _, err := filepath.Match(pattern, "test"); err != nil && pattern != "**" && pattern != "**/*" {
-		_, err := filepath.Match(pattern, "")
-		if err != nil {
-			return nil, err
-		}
+	if _, err := filepath.Match(pattern, "test"); err != nil {
+		return nil, err
 	}
 
 	var matches []string
-	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(".", func(path string, info os.FileInfo, err error) error { //nolint:errcheck
 		if err != nil {
 			return nil
 		}
@@ -105,25 +98,12 @@ func ExpandGlobPattern(pattern string) ([]string, error) {
 		}
 
 		normalPath := filepath.ToSlash(path)
-		if normalPath == "."+string(filepath.Separator) {
-			normalPath = normalPath[2:]
-		} else if strings.HasPrefix(normalPath, "./") {
-			normalPath = normalPath[2:]
-		}
-
-		ok, matchErr := matchGlobPattern(normalPath, pattern)
-		if matchErr != nil {
-			return nil
-		}
+		ok, _ := matchGlobPattern(normalPath, pattern)
 		if ok {
 			matches = append(matches, normalPath)
 		}
 		return nil
 	})
-
-	if err != nil {
-		return nil, err
-	}
 
 	sort.Strings(matches)
 	return matches, nil

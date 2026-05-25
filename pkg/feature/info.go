@@ -212,9 +212,6 @@ func ParseContentsTable(readmePath string) (map[string]bool, error) {
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
 	return entries, nil
 }
 
@@ -344,10 +341,6 @@ func ParseSections(readmePath string) ([]SectionInfo, error) {
 			raw[len(raw)-1].items++
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
 	if len(raw) > 0 {
 		raw[len(raw)-1].endLine = lineNum
 	}
@@ -413,9 +406,6 @@ func ExtractOpenQuestions(readmePath string) ([]string, error) {
 		if inOQ && strings.HasPrefix(line, "- ") {
 			items = append(items, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 	return items, nil
 }

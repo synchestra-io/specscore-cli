@@ -129,7 +129,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 func resolveProjectRootForInit(projectFlag string) (string, error) {
 	var path string
 	if projectFlag != "" {
-		abs, err := filepath.Abs(projectFlag)
+		abs, err := filepathAbsFn(projectFlag)
 		if err != nil {
 			return "", exitcode.InvalidArgsErrorf("resolving --project path: %v", err)
 		}

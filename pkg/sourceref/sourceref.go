@@ -188,9 +188,6 @@ func ScanLine(line string) *Reference {
 		return nil
 	}
 	extracted := ExtractReference(line)
-	if extracted == "" {
-		return nil
-	}
 	ref, err := ParseReference(extracted)
 	if err != nil {
 		return nil

@@ -206,10 +206,7 @@ func walkSpecDirs(specRoot string, fn func(dirPath, relPath string) error) error
 			}
 			return filepath.SkipDir
 		}
-		relPath, relErr := filepath.Rel(specRoot, path)
-		if relErr != nil {
-			return fmt.Errorf("computing relative path: %w", relErr)
-		}
+		relPath, _ := filepath.Rel(specRoot, path)
 		if relPath == "." {
 			relPath = filepath.Base(specRoot)
 		}

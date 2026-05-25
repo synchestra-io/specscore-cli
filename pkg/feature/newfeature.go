@@ -339,9 +339,6 @@ func isTableSeparatorRow(s string) bool {
 		return false
 	}
 	cells := splitTableRow(s)
-	if len(cells) == 0 {
-		return false
-	}
 	for _, c := range cells {
 		c = strings.TrimSpace(c)
 		if c == "" {

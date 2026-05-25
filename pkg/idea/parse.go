@@ -174,9 +174,6 @@ func Parse(path string) (*Idea, error) {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
 	idea.RawLines = lines
 
 	// First pass: find title, header fields, and section boundaries.

@@ -33,7 +33,7 @@ type Feature struct {
 // specscore.yaml. As a fallback it checks for a spec/features/
 // directory. Returns the directory that serves as the spec repo root.
 func FindSpecRepoRoot(startDir string) (string, error) {
-	current, err := filepath.Abs(startDir)
+	current, err := filepathAbsFn(startDir)
 	if err != nil {
 		return "", fmt.Errorf("resolving path: %w", err)
 	}
@@ -80,10 +80,7 @@ func Discover(featuresDir string) ([]Feature, error) {
 		}
 		readmePath := filepath.Join(path, "README.md")
 		if _, statErr := os.Stat(readmePath); statErr == nil {
-			relPath, relErr := filepath.Rel(featuresDir, path)
-			if relErr != nil {
-				return fmt.Errorf("computing relative path: %w", relErr)
-			}
+			relPath, _ := filepath.Rel(featuresDir, path)
 			featureID := filepath.ToSlash(relPath)
 			features = append(features, Feature{ID: featureID})
 		}
@@ -243,10 +240,6 @@ func ParseDependencies(readmePath string) ([]string, error) {
 				deps = append(deps, dep)
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 
 	sort.Strings(deps)

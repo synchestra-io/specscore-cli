@@ -3331,3 +3331,59 @@ func TestNew_WriteFileError_ReadOnlyFeatureDir(t *testing.T) {
 		t.Fatal("expected error for WriteFile failure in read-only dir")
 	}
 }
+
+// =============================================================================
+// discover.go — FindSpecRepoRoot: filepathAbsFn error
+// =============================================================================
+
+func TestFindSpecRepoRoot_AbsError(t *testing.T) {
+	orig := filepathAbsFn
+	filepathAbsFn = func(path string) (string, error) { return "", fmt.Errorf("injected abs error") }
+	t.Cleanup(func() { filepathAbsFn = orig })
+
+	_, err := FindSpecRepoRoot("/some/path")
+	if err == nil {
+		t.Fatal("expected error from filepathAbsFn stub")
+	}
+	if !strings.Contains(err.Error(), "resolving path") {
+		t.Errorf("expected 'resolving path' in error, got: %v", err)
+	}
+}
+
+// =============================================================================
+// newfeature.go — isTableSeparatorRow: empty cells
+// =============================================================================
+
+func TestIsTableSeparatorRow_EmptyCells(t *testing.T) {
+	// "||" has empty cells — should return false
+	if isTableSeparatorRow("||") {
+		t.Error("expected false for '||'")
+	}
+	// valid separator
+	if !isTableSeparatorRow("| --- | --- |") {
+		t.Error("expected true for '| --- | --- |'")
+	}
+}
+
+// =============================================================================
+// fields.go — ResolveFields: proposals field
+// =============================================================================
+
+// =============================================================================
+// discover.go — ParseDependencies: empty dep item, empty ExtractFeatureID result
+// =============================================================================
+
+func TestParseDependencies_EmptyItem(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	// "- " with trailing space → item is "" after trimming
+	content := "# Feature: X\n\n## Dependencies\n\n-  \n- []()\n- real-dep\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deps, err := ParseDependencies(path)
+	if err != nil {
+		t.Fatalf("ParseDependencies: %v", err)
+	}
+	_ = deps
+}

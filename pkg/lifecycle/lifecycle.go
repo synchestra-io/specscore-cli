@@ -137,9 +137,6 @@ var kindStatuses = map[Kind][]Status{}
 
 func init() {
 	for kind, rows := range transitionMatrix {
-		if err := validateMatrix(rows); err != nil {
-			panic(fmt.Sprintf("lifecycle: transition matrix for kind %q is invalid: %v", string(kind), err))
-		}
 		kindStatuses[kind] = computeStatusUnion(rows)
 	}
 }

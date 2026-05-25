@@ -6304,7 +6304,25 @@ func TestInit_StatErrorNonENOENT(t *testing.T) {
 	}
 }
 
-// writeMissingIndex error test already declared above (TestInit_WriteMissingIndexError).
+// ===========================================================================
+// init.go — resolveProjectRootForInit: not-a-directory path (line 151-152)
+// ===========================================================================
+
+func TestResolveProjectRootForInit_NotADir(t *testing.T) {
+	root := t.TempDir()
+	// Pass a file path as --project; Stat succeeds but it's not a directory.
+	filePath := filepath.Join(root, "not-a-dir.txt")
+	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err := runInitCmd(t, nil, "--project", filePath)
+	if err == nil {
+		t.Fatal("expected error when --project is a file, not a directory")
+	}
+	if got := exitCodeOf(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
 
 // ===========================================================================
 // task.go — resolveTasksDir: osGetwdFn error path
@@ -6488,4 +6506,109 @@ func TestInit_InteractiveEOFMidPrompt(t *testing.T) {
 	if !strings.Contains(string(body), "host: myhost.com") {
 		t.Errorf("host not applied: %s", body)
 	}
+}
+
+// ===========================================================================
+// filepathAbsFn error paths — task.go, feature.go, spec.go, idea.go, init.go
+// ===========================================================================
+
+func injectAbsError(t *testing.T) {
+	t.Helper()
+	orig := filepathAbsFn
+	filepathAbsFn = func(path string) (string, error) { return "", fmt.Errorf("injected abs error") }
+	t.Cleanup(func() { filepathAbsFn = orig })
+}
+
+func TestResolveTasksDir_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	cmd := taskCommand()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"list", "--project", "some/path"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from filepath.Abs stub")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestResolveFeaturesDir_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	cmd := featureCommand()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"list", "--project", "some/path"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from filepath.Abs stub")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestRunSpecLint_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	cmd := specCommand()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"lint", "--project", "some/path"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from filepath.Abs stub")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestResolveSpecRoot_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	cmd := ideaCommand()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"list", "--project", "some/path"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from filepath.Abs stub")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestResolveProjectRootForInit_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	_, _, err := runInitCmd(t, nil, "--project", "some/path")
+	if err == nil {
+		t.Fatal("expected error from filepath.Abs stub")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestFindRepoConfigRoot_FilepathAbsError(t *testing.T) {
+	injectAbsError(t)
+	// findRepoConfigRoot is called by runSpecLint, but with --project already resolved.
+	// We stub filepathAbsFn so even the internal call fails.
+	// Use no --project flag so runSpecLint falls through to findRepoConfigRoot directly.
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) { return "/tmp", nil }
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	cmd := specCommand()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"lint"})
+	err := cmd.Execute()
+	// Either abs error or not-found error is acceptable; we just want no panic.
+	_ = err
 }

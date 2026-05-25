@@ -40,7 +40,7 @@ func featureCommand() *cobra.Command {
 func resolveFeaturesDir(projectFlag string) (string, error) {
 	var startDir string
 	if projectFlag != "" {
-		abs, err := filepath.Abs(projectFlag)
+		abs, err := filepathAbsFn(projectFlag)
 		if err != nil {
 			return "", exitcode.InvalidArgsErrorf("resolving --project path: %v", err)
 		}

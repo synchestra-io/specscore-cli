@@ -56,7 +56,7 @@ func runSpecLint(cmd *cobra.Command, args []string) error {
 
 	var startDir string
 	if projectFlag != "" {
-		abs, err := filepath.Abs(projectFlag)
+		abs, err := filepathAbsFn(projectFlag)
 		if err != nil {
 			return exitcode.InvalidArgsErrorf("resolving --project path: %v", err)
 		}
@@ -249,7 +249,7 @@ func lintPlural(n int) string {
 // error carries exit code 3 (NotFound) and tells the caller to run
 // `specscore init`.
 func findRepoConfigRoot(startDir string) (string, error) {
-	current, err := filepath.Abs(startDir)
+	current, err := filepathAbsFn(startDir)
 	if err != nil {
 		return "", exitcode.UnexpectedErrorf("resolving path: %v", err)
 	}
