@@ -1071,3 +1071,1604 @@ func TestPrintTree_WithFocus(t *testing.T) {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+// =============================================================================
+// newfeature.go — New() edge cases (68.9% coverage)
+// =============================================================================
+
+func TestNew_CustomSlug(t *testing.T) {
+	featDir := t.TempDir()
+	result, err := New(featDir, NewOptions{
+		Title: "My Feature",
+		Slug:  "custom-slug",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FeatureID != "custom-slug" {
+		t.Errorf("FeatureID = %q, want %q", result.FeatureID, "custom-slug")
+	}
+}
+
+func TestNew_DependsOnNonexistent(t *testing.T) {
+	featDir := t.TempDir()
+	_, err := New(featDir, NewOptions{
+		Title:     "Test",
+		DependsOn: []string{"nonexistent"},
+	})
+	if err == nil {
+		t.Fatal("expected error for nonexistent dependency")
+	}
+}
+
+func TestNew_DependsOnExisting(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"dep-a": "# Feature: Dep A\n\n**Status:** Stable\n\n## Open Questions\n\nNone.\n",
+	})
+
+	result, err := New(featDir, NewOptions{
+		Title:     "Dependent Feature",
+		DependsOn: []string{"dep-a"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Verify the README has the dependency
+	data, _ := os.ReadFile(result.ReadmePath)
+	if !strings.Contains(string(data), "dep-a") {
+		t.Error("README should contain dependency reference")
+	}
+}
+
+func TestNew_FeatureAlreadyExists(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"existing": "# Feature: Existing\n",
+	})
+	_, err := New(featDir, NewOptions{Title: "Existing"})
+	if err == nil {
+		t.Fatal("expected error for already-existing feature")
+	}
+}
+
+func TestNew_SlashSlug(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"parent": "# Feature: Parent\n\n**Status:** Draft\n\n## Summary\n\nParent.\n",
+	})
+
+	result, err := New(featDir, NewOptions{
+		Title: "Child Feature",
+		Slug:  "parent/child-feature",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FeatureID != "parent/child-feature" {
+		t.Errorf("FeatureID = %q, want %q", result.FeatureID, "parent/child-feature")
+	}
+}
+
+func TestNew_ParentNotFound(t *testing.T) {
+	featDir := t.TempDir()
+	_, err := New(featDir, NewOptions{
+		Title:  "Child",
+		Parent: "nonexistent-parent",
+	})
+	if err == nil {
+		t.Fatal("expected error for nonexistent parent")
+	}
+}
+
+func TestNew_WithIndex(t *testing.T) {
+	featDir := t.TempDir()
+	// Create a features index
+	indexPath := filepath.Join(featDir, "README.md")
+	if err := os.WriteFile(indexPath, []byte("# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := New(featDir, NewOptions{
+		Title:       "Auth",
+		Description: "Authentication system",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Index should be updated
+	found := false
+	for _, f := range result.ChangedFiles {
+		if strings.HasSuffix(f, "README.md") && !strings.Contains(f, "auth") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected features index to be in ChangedFiles")
+	}
+
+	// Verify the index was actually modified
+	data, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(data), "auth") {
+		t.Error("features index should contain the new feature")
+	}
+}
+
+func TestNew_DefaultStatusIsDraft(t *testing.T) {
+	featDir := t.TempDir()
+	result, err := New(featDir, NewOptions{Title: "Draft Feature"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Info.Status != "Draft" {
+		t.Errorf("default status = %q, want %q", result.Info.Status, "Draft")
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateParentContents (68.1% coverage)
+// =============================================================================
+
+func TestUpdateParentContents_NoSummarySection(t *testing.T) {
+	dir := t.TempDir()
+	readmePath := filepath.Join(dir, "README.md")
+	// No ## Summary and no ## Contents — should insert at the top
+	content := "# Feature: Minimal\n\nSome content.\n"
+	if err := os.WriteFile(readmePath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateParentContents(readmePath, "child", "Desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+
+	got, _ := os.ReadFile(readmePath)
+	if !strings.Contains(string(got), "## Contents") {
+		t.Error("expected Contents section")
+	}
+}
+
+// =============================================================================
+// newfeature.go — findLastTableRow (86.7% coverage)
+// =============================================================================
+
+func TestFindLastTableRow(t *testing.T) {
+	tests := []struct {
+		name       string
+		lines      []string
+		headerLine int
+		want       int
+	}{
+		{
+			"table with rows",
+			[]string{"# Title", "| H | H |", "|---|---|", "| a | b |", "| c | d |", "", "text"},
+			1, 4,
+		},
+		{
+			"no table rows",
+			[]string{"# Title", "no table"},
+			-1, -1,
+		},
+		{
+			"table ends at heading",
+			[]string{"| H | H |", "|---|---|", "| a | b |", "## Next Section"},
+			0, 2,
+		},
+		{
+			"table ends at empty line",
+			[]string{"| H | H |", "|---|---|", "| a | b |", "", "other"},
+			0, 2,
+		},
+		{
+			"header-only table",
+			[]string{"| H | H |", "|---|---|", "", "other"},
+			0, 1,
+		},
+		{
+			"no header, fallback scan",
+			[]string{"text", "| a | b |", "text"},
+			-1, 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := findLastTableRow(tt.lines, tt.headerLine)
+			if got != tt.want {
+				t.Errorf("findLastTableRow() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// newfeature.go — findIndexTableHeader
+// =============================================================================
+
+func TestFindIndexTableHeader(t *testing.T) {
+	tests := []struct {
+		name    string
+		lines   []string
+		wantH   int
+		wantNil bool
+	}{
+		{
+			"valid header",
+			[]string{"# Title", "| Feature | Status |", "|---|---|", "| a | b |"},
+			1, false,
+		},
+		{
+			"no header",
+			[]string{"# Title", "some text", "more text"},
+			-1, true,
+		},
+		{
+			"pipe line without separator",
+			[]string{"| not a table |", "no separator here"},
+			-1, true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			headers, idx := findIndexTableHeader(tt.lines)
+			if tt.wantNil {
+				if headers != nil {
+					t.Errorf("expected nil headers, got %v", headers)
+				}
+				if idx != -1 {
+					t.Errorf("expected idx=-1, got %d", idx)
+				}
+			} else {
+				if headers == nil {
+					t.Error("expected non-nil headers")
+				}
+				if idx != tt.wantH {
+					t.Errorf("header idx = %d, want %d", idx, tt.wantH)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateFeatureIndex (83.9% coverage)
+// =============================================================================
+
+func TestUpdateFeatureIndex_NoIndexFile(t *testing.T) {
+	changed, err := UpdateFeatureIndex("/nonexistent/README.md", "test", "Draft", "Desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Error("expected changed=false when index doesn't exist")
+	}
+}
+
+func TestUpdateFeatureIndex_NoTableInIndex(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte("# Features\n\nNo table yet.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "auth", "Draft", "Auth feature")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "[auth](auth/README.md)") {
+		t.Error("expected auth row in index")
+	}
+}
+
+func TestUpdateFeatureIndex_EmptyDescriptionAndStatus(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(indexPath, []byte("# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "test", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "Draft") {
+		t.Error("empty status should default to Draft")
+	}
+	if !strings.Contains(string(got), "TODO: Add description.") {
+		t.Error("empty description should use TODO placeholder")
+	}
+}
+
+// =============================================================================
+// info.go — GetInfo with many sections (76.2% coverage)
+// =============================================================================
+
+func TestGetInfo_WithChildren(t *testing.T) {
+	parentReadme := `# Feature: Parent
+
+**Status:** Stable
+
+## Summary
+
+Parent with many children.
+
+## Contents
+
+| Child | Description |
+|---|---|
+| [child-a](child-a/README.md) | First child |
+| [child-b](child-b/README.md) | Second child |
+
+## Dependencies
+
+## Open Questions
+
+- How to handle scaling?
+- What about performance?
+`
+	_, featDir := setupSpecRepo(t, map[string]string{
+		"parent":         parentReadme,
+		"parent/child-a": "# Feature: Child A\n\n**Status:** Draft\n\n## Open Questions\n\nNone.\n",
+		"parent/child-b": "# Feature: Child B\n\n**Status:** Approved\n\n## Open Questions\n\nNone.\n",
+	}, nil)
+
+	info, err := GetInfo(featDir, "parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(info.Children) != 2 {
+		t.Errorf("expected 2 children, got %d", len(info.Children))
+	}
+	if len(info.Sections) < 4 {
+		t.Errorf("expected >= 4 sections, got %d", len(info.Sections))
+	}
+}
+
+// =============================================================================
+// info.go — ParseSections with h3 subsections (85% coverage)
+// =============================================================================
+
+// =============================================================================
+// info.go — FindLinkedPlans with nested plans
+// =============================================================================
+
+func TestFindLinkedPlans_NestedPlan(t *testing.T) {
+	planReadme := `# Plan: Deep Plan
+
+**Features:**
+- [Auth](../../features/auth/README.md)
+
+## Tasks
+
+- Task 1
+`
+	root, _ := setupSpecRepo(t, map[string]string{
+		"auth": "# Auth\n**Status:** Approved\n",
+	}, map[string]string{
+		"deep-plan": planReadme,
+	})
+
+	plans, err := FindLinkedPlans(root, "auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plans) != 1 || plans[0] != "deep-plan" {
+		t.Errorf("plans = %v, want [deep-plan]", plans)
+	}
+}
+
+// =============================================================================
+// info.go — FindFeatureRefs error path
+// =============================================================================
+
+func TestFindFeatureRefs_EmptyFeatDir(t *testing.T) {
+	featDir := t.TempDir()
+	refs, err := FindFeatureRefs(featDir, "nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 0 {
+		t.Errorf("expected 0 refs for empty dir, got %v", refs)
+	}
+}
+
+// =============================================================================
+// info.go — DiscoverChildFeatures with no children
+// =============================================================================
+
+func TestDiscoverChildFeatures_NoChildren(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"standalone": "# Feature: Standalone\n\n**Status:** Draft\n",
+	})
+
+	readmePath := ReadmePath(featDir, "standalone")
+	children, err := DiscoverChildFeatures(featDir, "standalone", readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(children) != 0 {
+		t.Errorf("expected 0 children, got %d", len(children))
+	}
+}
+
+// =============================================================================
+// discover.go — FindSpecRepoRoot
+// =============================================================================
+
+func TestFindSpecRepoRoot_WithSpecscoredYAML(t *testing.T) {
+	root := t.TempDir()
+	// Create specscore.yaml
+	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte("# config"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subdir := filepath.Join(root, "sub", "dir")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	found, err := FindSpecRepoRoot(subdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found != root {
+		t.Errorf("found = %q, want %q", found, root)
+	}
+}
+
+// =============================================================================
+// discover.go — ExtractFeatureID (80% coverage)
+// =============================================================================
+
+func TestExtractFeatureID_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"markdown link", "[Auth](auth/README.md)", "auth"},
+		{"nested link", "[Sub](auth/sub/README.md)", "auth/sub"},
+		{"bare id", "auth", "auth"},
+		{"bare id with em-dash", "auth — desc", "auth"},
+		{"bare id with hyphen-sep", "auth - desc", "auth"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractFeatureID(tt.input)
+			if got != tt.want {
+				t.Errorf("ExtractFeatureID(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// transitions.go — joinStatuses (87.5% coverage)
+// =============================================================================
+
+func TestChangeStatus_DraftTarget(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"test": "# Feature: Test\n\n**Status:** Draft\n",
+	})
+
+	_, err := ChangeStatus(featDir, "test", "draft")
+	if err == nil {
+		t.Fatal("expected error for Draft target")
+	}
+	if !strings.Contains(err.Error(), "Draft") {
+		t.Errorf("error should mention Draft: %v", err)
+	}
+}
+
+// =============================================================================
+// info.go — ParseContentsTable with link variations
+// =============================================================================
+
+func TestParseContentsTable_LinkVariations(t *testing.T) {
+	content := `# Feature: Parent
+
+## Contents
+
+| Child | Description |
+|---|---|
+| [billing](billing/README.md) | Billing |
+| [payments](./payments/README.md) | Payments |
+
+## Open Questions
+
+None.
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := ParseContentsTable(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !entries["billing"] {
+		t.Error("expected billing in contents")
+	}
+	if !entries["payments"] {
+		t.Error("expected payments in contents (with ./ prefix)")
+	}
+}
+
+// =============================================================================
+// newfeature.go — indexRowCellFor
+// =============================================================================
+
+func TestIndexRowCellFor(t *testing.T) {
+	tests := []struct {
+		header string
+		want   string
+	}{
+		{"feature", "[test](test/README.md)"},
+		{"name", "[test](test/README.md)"},
+		{"child", "[test](test/README.md)"},
+		{"status", "Draft"},
+		{"description", "Test desc"},
+		{"desc", "Test desc"},
+		{"kind", "—"},
+		{"unknown", "—"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.header, func(t *testing.T) {
+			got := indexRowCellFor(tt.header, "test", "Draft", "Test desc", t.TempDir())
+			if got != tt.want {
+				t.Errorf("indexRowCellFor(%q) = %q, want %q", tt.header, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIndexRowCellFor_KindIndex(t *testing.T) {
+	got := indexRowCellFor("kind", "feature-index", "Draft", "Desc", t.TempDir())
+	if got != "Index" {
+		t.Errorf("kind for -index slug = %q, want %q", got, "Index")
+	}
+}
+
+func TestIndexRowCellFor_URLColumn(t *testing.T) {
+	featDir := t.TempDir()
+	// Create a feature with adherence footer
+	featureDir := filepath.Join(featDir, "auth")
+	if err := os.MkdirAll(featureDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "# Feature: Auth\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(filepath.Join(featureDir, "README.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := indexRowCellFor("url", "auth", "Draft", "Desc", featDir)
+	if got != "https://specscore.md/feature-specification" {
+		t.Errorf("url = %q, want adherence footer URL", got)
+	}
+}
+
+func TestIndexRowCellFor_URLColumnNoFooter(t *testing.T) {
+	got := indexRowCellFor("url", "auth", "Draft", "Desc", t.TempDir())
+	if got != "—" {
+		t.Errorf("url without footer = %q, want %q", got, "—")
+	}
+}
+
+// =============================================================================
+// newfeature.go — New
+// =============================================================================
+
+func TestNew_BasicTopLevel(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	// Create a features index
+	if err := os.WriteFile(filepath.Join(featDir, "README.md"),
+		[]byte("# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := New(featDir, NewOptions{
+		Title:       "Auth Module",
+		Status:      "Draft",
+		Description: "Authentication module",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FeatureID != "auth-module" {
+		t.Errorf("FeatureID = %q, want %q", result.FeatureID, "auth-module")
+	}
+	if _, err := os.Stat(result.ReadmePath); err != nil {
+		t.Errorf("README not created: %v", err)
+	}
+}
+
+func TestNew_WithParent(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"parent": "# Feature: Parent\n\n**Status:** Stable\n\n## Summary\n\nParent feature.\n",
+	})
+
+	result, err := New(featDir, NewOptions{
+		Title:       "Child Feature",
+		Parent:      "parent",
+		Status:      "Draft",
+		Description: "A child feature",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FeatureID != "parent/child-feature" {
+		t.Errorf("FeatureID = %q, want %q", result.FeatureID, "parent/child-feature")
+	}
+	// Parent README should have been updated
+	if len(result.ChangedFiles) < 2 {
+		t.Errorf("expected at least 2 changed files, got %d", len(result.ChangedFiles))
+	}
+}
+
+func TestNew_WithSlashInSlug(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"cli": "# Feature: CLI\n\n**Status:** Stable\n\n## Summary\n\nCLI feature.\n",
+	})
+
+	result, err := New(featDir, NewOptions{
+		Title: "Task",
+		Slug:  "cli/task",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FeatureID != "cli/task" {
+		t.Errorf("FeatureID = %q, want %q", result.FeatureID, "cli/task")
+	}
+}
+
+func TestNew_EmptyTitle(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{})
+	if err == nil {
+		t.Error("expected error for empty title")
+	}
+}
+
+func TestNew_InvalidStatus(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{
+		Title:  "Test",
+		Status: "Invalid",
+	})
+	if err == nil {
+		t.Error("expected error for invalid status")
+	}
+}
+
+func TestNew_InvalidSlug(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{
+		Title: "Test",
+		Slug:  "INVALID_SLUG",
+	})
+	if err == nil {
+		t.Error("expected error for invalid slug")
+	}
+}
+
+func TestNew_ParentWithSlashSlug(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{
+		Title:  "Test",
+		Slug:   "cli/task",
+		Parent: "cli",
+	})
+	if err == nil {
+		t.Error("expected error for both Parent and slash-in-slug")
+	}
+}
+
+func TestNew_NonexistentDependency(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{
+		Title:     "Test",
+		DependsOn: []string{"nonexistent"},
+	})
+	if err == nil {
+		t.Error("expected error for nonexistent dependency")
+	}
+}
+
+func TestNew_NonexistentParent(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{})
+	_, err := New(featDir, NewOptions{
+		Title:  "Test",
+		Parent: "nonexistent",
+	})
+	if err == nil {
+		t.Error("expected error for nonexistent parent")
+	}
+}
+
+func TestNew_AlreadyExists(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"existing": "# Feature: Existing\n\n**Status:** Draft\n",
+	})
+	_, err := New(featDir, NewOptions{
+		Title: "Existing",
+		Slug:  "existing",
+	})
+	if err == nil {
+		t.Error("expected error for already existing feature")
+	}
+}
+
+func TestNew_WithDependencies(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"dep-a": "# Feature: Dep A\n\n**Status:** Stable\n",
+	})
+	if err := os.WriteFile(filepath.Join(featDir, "README.md"),
+		[]byte("# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := New(featDir, NewOptions{
+		Title:     "Test",
+		DependsOn: []string{"dep-a"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Info.Deps) != 1 || result.Info.Deps[0] != "dep-a" {
+		t.Errorf("Info.Deps = %v, want [dep-a]", result.Info.Deps)
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateParentContents
+// =============================================================================
+
+func TestUpdateParentContents_NoContentsSection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte("# Feature: Parent\n\n## Summary\n\nA parent.\n\n## Open Questions\n\nNone.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateParentContents(path, "child-a", "A child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.Contains(string(got), "## Contents") {
+		t.Error("expected ## Contents section to be created")
+	}
+	if !strings.Contains(string(got), "[child-a]") {
+		t.Error("expected child-a row")
+	}
+}
+
+func TestUpdateParentContents_ExistingContentsSection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := "# Feature: Parent\n\n## Summary\n\nA parent.\n\n## Contents\n\n| Child | Description |\n|---|---|\n| [old](old/README.md) | Old child |\n\n## Open Questions\n\nNone.\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateParentContents(path, "new-child", "New child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.Contains(string(got), "[new-child]") {
+		t.Error("expected new-child row added")
+	}
+	if !strings.Contains(string(got), "[old]") {
+		t.Error("existing old row should be preserved")
+	}
+}
+
+func TestUpdateParentContents_EmptyDescription(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte("# Feature: Parent\n\n## Summary\n\nA parent.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateParentContents(path, "child-a", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.Contains(string(got), "TODO: Add description.") {
+		t.Error("expected default description placeholder")
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateFeatureIndex
+// =============================================================================
+
+func TestUpdateFeatureIndex_NoExistingIndex(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	// File doesn't exist — should return false with no error
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "Draft", "Test desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Error("expected changed=false when index file doesn't exist")
+	}
+}
+
+func TestUpdateFeatureIndex_WithExistingTable(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [old](old/README.md) | Stable | Command | Old feature |\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "Draft", "Test desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "new-feat") {
+		t.Error("expected new-feat row")
+	}
+}
+
+func TestUpdateFeatureIndex_EmptyDescription(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "Draft", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "TODO: Add description.") {
+		t.Error("expected default description placeholder")
+	}
+}
+
+func TestUpdateFeatureIndex_NoTable(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\nNo table here.\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "Draft", "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "new-feat") {
+		t.Error("expected new-feat row appended")
+	}
+}
+
+// =============================================================================
+// newfeature.go — isTableSeparatorRow
+// =============================================================================
+
+func TestIsTableSeparatorRow(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"|---|---|", true},
+		{"| --- | --- |", true},
+		{"| :--- | ---: |", true},
+		{"| :---: | :---: |", true},
+		{"not a table", false},
+		{"| text | text |", false},
+		{"|", false},
+		{"||", false},
+		{"| |", false},
+		{"| --- |", true},
+	}
+	for _, tt := range tests {
+		got := isTableSeparatorRow(tt.input)
+		if got != tt.want {
+			t.Errorf("isTableSeparatorRow(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+// =============================================================================
+// newfeature.go — findIndexTableHeader
+// =============================================================================
+
+func TestFindIndexTableHeader_NoHeader(t *testing.T) {
+	lines := []string{"# Title", "", "No table here."}
+	headers, idx := findIndexTableHeader(lines)
+	if headers != nil {
+		t.Errorf("expected nil headers, got %v", headers)
+	}
+	if idx != -1 {
+		t.Errorf("expected idx=-1, got %d", idx)
+	}
+}
+
+func TestFindIndexTableHeader_ValidHeader(t *testing.T) {
+	lines := []string{
+		"# Title",
+		"",
+		"| Feature | Status |",
+		"|---|---|",
+		"| [a](a/README.md) | Draft |",
+	}
+	headers, idx := findIndexTableHeader(lines)
+	if headers == nil {
+		t.Fatal("expected non-nil headers")
+	}
+	if idx != 2 {
+		t.Errorf("expected idx=2, got %d", idx)
+	}
+	if len(headers) != 2 {
+		t.Errorf("expected 2 headers, got %d", len(headers))
+	}
+}
+
+// =============================================================================
+// newfeature.go — findLastTableRow
+// =============================================================================
+
+func TestFindLastTableRow_WithHeaderLine(t *testing.T) {
+	lines := []string{
+		"# Title",
+		"",
+		"| Feature | Status |",
+		"|---|---|",
+		"| [a](a/README.md) | Draft |",
+		"",
+		"## Next Section",
+	}
+	got := findLastTableRow(lines, 2)
+	if got != 4 {
+		t.Errorf("findLastTableRow = %d, want 4", got)
+	}
+}
+
+func TestFindLastTableRow_NoHeader(t *testing.T) {
+	lines := []string{"no table"}
+	got := findLastTableRow(lines, -1)
+	if got != -1 {
+		t.Errorf("findLastTableRow = %d, want -1", got)
+	}
+}
+
+func TestFindLastTableRow_TableEndedBySection(t *testing.T) {
+	lines := []string{
+		"| Header |",
+		"|---|",
+		"| Data |",
+		"## Next Section",
+	}
+	got := findLastTableRow(lines, 0)
+	if got != 2 {
+		t.Errorf("findLastTableRow = %d, want 2", got)
+	}
+}
+
+// =============================================================================
+// newfeature.go — readAdherenceFooterURL
+// =============================================================================
+
+func TestReadAdherenceFooterURL(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := "# Feature\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := readAdherenceFooterURL(path)
+	if got != "https://specscore.md/feature-specification" {
+		t.Errorf("got %q, want URL", got)
+	}
+}
+
+func TestReadAdherenceFooterURL_NoFooter(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte("# Feature\n\nNo footer.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := readAdherenceFooterURL(path)
+	if got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestReadAdherenceFooterURL_NonexistentFile(t *testing.T) {
+	got := readAdherenceFooterURL("/nonexistent/file.md")
+	if got != "" {
+		t.Errorf("expected empty for nonexistent file, got %q", got)
+	}
+}
+
+func TestReadAdherenceFooterURL_NoClosingAsterisk(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := "# Feature\n\n*This document follows the https://specscore.md/feature-specification\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := readAdherenceFooterURL(path)
+	if got != "" {
+		t.Errorf("expected empty for missing closing asterisk, got %q", got)
+	}
+}
+
+func TestReadAdherenceFooterURL_NonHTTPURL(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := "# Feature\n\n*This document follows the ftp://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := readAdherenceFooterURL(path)
+	if got != "" {
+		t.Errorf("expected empty for non-http URL, got %q", got)
+	}
+}
+
+// =============================================================================
+// discover.go — FindSpecRepoRoot
+// =============================================================================
+
+func TestFindSpecRepoRoot_WithSpecscoreYaml(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "specscore.yaml"), []byte("project:\n  title: Test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subdir := filepath.Join(root, "deep", "nested")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindSpecRepoRoot(subdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != root {
+		t.Errorf("got %q, want %q", got, root)
+	}
+}
+
+func TestFindSpecRepoRoot_WithSpecFeatures(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "spec", "features"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindSpecRepoRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != root {
+		t.Errorf("got %q, want %q", got, root)
+	}
+}
+
+func TestFindSpecRepoRoot_NotFound(t *testing.T) {
+	dir := t.TempDir()
+	_, err := FindSpecRepoRoot(dir)
+	if err == nil {
+		t.Error("expected error when no specscore.yaml or spec/features/ found")
+	}
+}
+
+// =============================================================================
+// info.go — ParseFeatureStatus edge cases
+// =============================================================================
+
+func TestParseFeatureStatus_NoStatusLine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(path, []byte("# Feature: Test\n\n## Summary\n\nNo status line.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	status, err := ParseFeatureStatus(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != "Unknown" {
+		t.Errorf("got %q, want %q", status, "Unknown")
+	}
+}
+
+func TestParseFeatureStatus_NonexistentFile(t *testing.T) {
+	_, err := ParseFeatureStatus("/nonexistent/README.md")
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+}
+
+// =============================================================================
+// info.go — ParseSections edge cases
+// =============================================================================
+
+func TestParseSections_WithH3(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := `# Feature: Test
+
+## Summary
+
+A feature.
+
+### Sub-section
+
+Details.
+
+- Item 1
+- Item 2
+
+## Open Questions
+
+None.
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sections, err := ParseSections(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sections) < 2 {
+		t.Fatalf("expected at least 2 sections, got %d", len(sections))
+	}
+	// Summary section should have a sub-section
+	if len(sections[0].Children) != 1 {
+		t.Errorf("Summary should have 1 child section, got %d", len(sections[0].Children))
+	}
+	if sections[0].Children[0].Title != "Sub-section" {
+		t.Errorf("child title = %q, want %q", sections[0].Children[0].Title, "Sub-section")
+	}
+	if sections[0].Children[0].Items != 2 {
+		t.Errorf("child items = %d, want 2", sections[0].Children[0].Items)
+	}
+}
+
+func TestParseSections_NonexistentFile(t *testing.T) {
+	_, err := ParseSections("/nonexistent/README.md")
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+}
+
+// =============================================================================
+// info.go — FindLinkedPlans with nested plan directories
+// =============================================================================
+
+func TestFindLinkedPlans_NestedPlanDirs(t *testing.T) {
+	planNested := `# Plan: Nested Auth Plan
+
+**Features:**
+- [Auth](../../features/auth/README.md)
+
+## Tasks
+
+- Task 1
+`
+	root, _ := setupSpecRepo(t, map[string]string{
+		"auth": "# Auth\n**Status:** Approved\n",
+	}, map[string]string{
+		"nested-plan": planNested,
+	})
+	// Also create a nested subdirectory under the plan (should be walked)
+	nestedDir := filepath.Join(root, "spec", "plans", "nested-plan", "tasks", "task-1")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nestedDir, "README.md"), []byte("# Task 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plans, err := FindLinkedPlans(root, "auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plans) != 1 || plans[0] != "nested-plan" {
+		t.Errorf("plans = %v, want [nested-plan]", plans)
+	}
+}
+
+// =============================================================================
+// discover.go — ExtractFeatureID edge cases
+// =============================================================================
+
+func TestExtractFeatureID_BrokenLink(t *testing.T) {
+	// Missing closing bracket
+	got := ExtractFeatureID("[broken(link)")
+	if got != "[broken(link)" {
+		t.Errorf("got %q", got)
+	}
+
+	// Missing closing paren
+	got = ExtractFeatureID("[name](path")
+	if got != "[name](path" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// =============================================================================
+// discover.go — Discover error path
+// =============================================================================
+
+func TestDiscover_NonexistentDir(t *testing.T) {
+	_, err := Discover("/nonexistent/dir")
+	if err == nil {
+		t.Error("expected error for nonexistent dir")
+	}
+}
+
+// =============================================================================
+// info.go — FindFeatureRefs error path
+// =============================================================================
+
+func TestFindFeatureRefs_DiscoverError(t *testing.T) {
+	_, err := FindFeatureRefs("/nonexistent/dir", "auth")
+	if err == nil {
+		t.Error("expected error for nonexistent features dir")
+	}
+}
+
+func TestFindLinkedPlans_WalkError2(t *testing.T) {
+	root, _ := setupSpecRepo(t, map[string]string{
+		"auth": "# Auth\n**Status:** Approved\n",
+	}, map[string]string{
+		"plan-a": "# Plan\n**Features:**\n- [Auth](../../features/auth/README.md)\n",
+	})
+	unreadable := filepath.Join(root, "spec", "plans", "unreadable-plan")
+	if err := os.MkdirAll(unreadable, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(unreadable, 0o000); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	defer func() { _ = os.Chmod(unreadable, 0o755) }()
+
+	_, err := FindLinkedPlans(root, "auth")
+	if err == nil {
+		t.Error("expected error for unreadable plan dir")
+	}
+}
+
+func TestDiscoverChildFeatures_NonexistentFeatureDir2(t *testing.T) {
+	featDir := t.TempDir()
+	_, err := DiscoverChildFeatures(featDir, "nonexistent", filepath.Join(featDir, "nonexistent", "README.md"))
+	if err == nil {
+		t.Error("expected error for nonexistent feature dir")
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateFeatureIndex with URL column
+// =============================================================================
+
+func TestUpdateFeatureIndex_URLColumn(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\n| Feature | Status | Kind | URL | Description |\n|---|---|---|---|---|\n| [old](old/README.md) | Stable | Command | https://specscore.md/feature-specification | Old |\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Create the feature dir with an adherence footer
+	featDir := filepath.Join(dir, "new-feat")
+	if err := os.MkdirAll(featDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(featDir, "README.md"),
+		[]byte("# Feature\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "Draft", "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	s := string(got)
+	if !strings.Contains(s, "new-feat") {
+		t.Error("missing new-feat row")
+	}
+}
+
+// =============================================================================
+// fields.go — ParseFieldNames edge case: empty segments
+// =============================================================================
+
+func TestParseFieldNames_EmptySegments(t *testing.T) {
+	fields, err := ParseFieldNames("status,,deps")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 2 {
+		t.Errorf("expected 2 fields, got %v", fields)
+	}
+}
+
+// =============================================================================
+// discover.go — ExtractFeatureID and FeatureIDFromRelativePath
+// =============================================================================
+
+func TestExtractFeatureID_BareIDWithEmDash(t *testing.T) {
+	got := ExtractFeatureID("auth-module — main auth")
+	if got != "auth-module" {
+		t.Errorf("got %q, want %q", got, "auth-module")
+	}
+}
+
+func TestExtractFeatureID_BareIDWithHyphenSeparator(t *testing.T) {
+	got := ExtractFeatureID("billing-module - payment processing")
+	if got != "billing-module" {
+		t.Errorf("got %q, want %q", got, "billing-module")
+	}
+}
+
+// =============================================================================
+// discover.go — BuildTree with orphan child (parent not in list)
+// =============================================================================
+
+func TestBuildTree_OrphanChild(t *testing.T) {
+	// "cli/task" without "cli" — the child becomes a root
+	ids := []string{"cli/task", "alpha"}
+	roots := BuildTree(ids)
+	if len(roots) != 2 {
+		t.Fatalf("expected 2 roots (orphan child + alpha), got %d", len(roots))
+	}
+}
+
+// =============================================================================
+// info.go — DiscoverChildFeatures with child dir that has no README
+// =============================================================================
+
+func TestDiscoverChildFeatures_ChildWithoutReadme(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"parent": "# Feature: Parent\n\n**Status:** Draft\n",
+	})
+	// Create a child dir without README.md
+	childDir := filepath.Join(featDir, "parent", "empty-child")
+	if err := os.MkdirAll(childDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	readmePath := ReadmePath(featDir, "parent")
+	children, err := DiscoverChildFeatures(featDir, "parent", readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// empty-child should not appear since it has no README
+	for _, c := range children {
+		if strings.Contains(c.Path, "empty-child") {
+			t.Errorf("empty-child should be excluded, but found: %v", c)
+		}
+	}
+}
+
+// =============================================================================
+// fields.go — ResolveFields with proposals field
+// =============================================================================
+
+// =============================================================================
+// discover.go — ParseDependencies with empty bullet item
+// =============================================================================
+
+func TestParseDependencies_EmptyBulletItem(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "README.md")
+	content := "# Feature: Test\n\n## Dependencies\n\n- auth\n- \n- billing\n\n## Open Questions\n\nNone.\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	deps, err := ParseDependencies(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Empty bullet should be skipped
+	if len(deps) != 2 {
+		t.Errorf("expected 2 deps (skipping empty), got %d: %v", len(deps), deps)
+	}
+}
+
+// =============================================================================
+// info.go — FindFeatureRefs when a feature's README is unreadable
+// =============================================================================
+
+func TestFindFeatureRefs_UnreadableFeature(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"auth": "# Auth\n\n**Status:** Approved\n\n## Dependencies\n\n## Open Questions\n\nNone.\n",
+		"bad":  "# Bad\n\n**Status:** Draft\n\n## Dependencies\n\n- auth\n\n## Open Questions\n\nNone.\n",
+	})
+	// Make bad's README unreadable so dependency parsing errors
+	badReadme := filepath.Join(featDir, "bad", "README.md")
+	if err := os.Chmod(badReadme, 0o000); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	defer func() { _ = os.Chmod(badReadme, 0o644) }()
+
+	// Should not error — just skip the bad feature
+	refs, err := FindFeatureRefs(featDir, "auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// bad feature's deps can't be read, so no refs for auth
+	if len(refs) != 0 {
+		t.Errorf("expected 0 refs (bad feature unreadable), got %v", refs)
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateParentContents error (nonexistent file)
+// =============================================================================
+
+func TestUpdateParentContents_NonexistentFile(t *testing.T) {
+	_, err := UpdateParentContents("/nonexistent/file.md", "child", "desc")
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+}
+
+// =============================================================================
+// newfeature.go — UpdateFeatureIndex empty status
+// =============================================================================
+
+func TestUpdateFeatureIndex_EmptyStatus(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\n| Feature | Status |\n|---|---|\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "new-feat", "", "desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	// Empty status should default to "Draft"
+	if !strings.Contains(string(got), "Draft") {
+		t.Error("expected Draft for empty status")
+	}
+}
+
+// =============================================================================
+// info.go — DiscoverChildFeatures when readme is unreadable
+// =============================================================================
+
+func TestDiscoverChildFeatures_UnreadableReadme(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"parent":       "# Feature: Parent\n\n**Status:** Draft\n",
+		"parent/child": "# Feature: Child\n\n**Status:** Draft\n",
+	})
+	// Make the parent README unreadable
+	parentReadme := filepath.Join(featDir, "parent", "README.md")
+	if err := os.Chmod(parentReadme, 0o000); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	defer func() { _ = os.Chmod(parentReadme, 0o644) }()
+
+	_, err := DiscoverChildFeatures(featDir, "parent", parentReadme)
+	if err == nil {
+		t.Error("expected error for unreadable readme")
+	}
+}
+
+func TestResolveFields_ProposalsField(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"test-feat": "# Feature: Test\n\n**Status:** Draft\n\n## Open Questions\n\nNone.\n",
+	})
+
+	ef, err := ResolveFields(featDir, "test-feat", []string{"proposals"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ef.Path != "test-feat" {
+		t.Errorf("Path = %q, want %q", ef.Path, "test-feat")
+	}
+}
+
+// =============================================================================
+// info.go — FindLinkedPlans edge cases
+// =============================================================================
+
+func TestFindLinkedPlans_PlansRootReadmeAndNonReadme(t *testing.T) {
+	root, _ := setupSpecRepo(t, map[string]string{
+		"auth": "# Auth\n**Status:** Approved\n",
+	}, nil)
+	// Create a plans root README and a non-README file
+	plansDir := filepath.Join(root, "spec", "plans")
+	if err := os.MkdirAll(plansDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "README.md"), []byte("# Plans Index\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(plansDir, "notes.txt"), []byte("some notes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plans, err := FindLinkedPlans(root, "auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Neither the root README nor notes.txt should produce a plan
+	if len(plans) != 0 {
+		t.Errorf("expected 0 plans, got %v", plans)
+	}
+}
+
+func TestUpdateFeatureIndex_IndexSuffixSlug(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "README.md")
+	content := "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n"
+	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdateFeatureIndex(indexPath, "my-index", "Draft", "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Error("expected changed=true")
+	}
+	got, _ := os.ReadFile(indexPath)
+	if !strings.Contains(string(got), "| Index |") {
+		t.Error("slug ending in -index should get Kind=Index")
+	}
+}
