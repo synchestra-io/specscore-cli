@@ -552,7 +552,7 @@ func TestIndexEntries_FixKeepsRowWithMixedLinks(t *testing.T) {
 func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
 		// Feature references the Idea via Source Ideas. Status is Stable so
-		// the derivation expects Idea.Status == "Specified".
+		// the derivation expects Idea.Status == "Implemented".
 		"features/auth/README.md": "# Feature: Auth\n\n" +
 			"**Status:** Stable\n" +
 			"**Source Ideas:** auth-overhaul\n\n" +
@@ -561,7 +561,7 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 			"---\n*This document follows the https://specscore.md/feature-specification*\n",
 
 		// Idea is stuck at Approved/—. Expected to be auto-derived to
-		// Specified / auth.
+		// Implemented / auth.
 		"ideas/auth-overhaul.md": "# Idea: Auth Overhaul\n\n" +
 			"**Status:** Approved\n" +
 			"**Date:** 2026-05-18\n" +
@@ -582,7 +582,7 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 			"## Open Questions\n\nNone at this time.\n\n" +
 			"---\n*This document follows the https://specscore.md/idea-specification*\n",
 
-		// Index row is also stale (Approved/—). Must end up Specified/auth
+		// Index row is also stale (Approved/—). Must end up Implemented/auth
 		// after a SINGLE --fix pass.
 		"ideas/README.md": "# Ideas\n\n## Index\n\n" +
 			"| Idea | Status | Date | Owner | Promotes To |\n" +
@@ -601,14 +601,14 @@ func TestIdeaSync_SinglePassUpdatesIdeasIndex(t *testing.T) {
 	ideaAfter1, _ := os.ReadFile(filepath.Join(root, "ideas", "auth-overhaul.md"))
 	indexAfter1, _ := os.ReadFile(filepath.Join(root, "ideas", "README.md"))
 
-	if !strings.Contains(string(ideaAfter1), "**Status:** Specified") {
-		t.Errorf("pass 1: Idea Status not derived to Specified:\n%s", ideaAfter1)
+	if !strings.Contains(string(ideaAfter1), "**Status:** Implemented") {
+		t.Errorf("pass 1: Idea Status not derived to Implemented:\n%s", ideaAfter1)
 	}
 	if !strings.Contains(string(ideaAfter1), "**Promotes To:** auth") {
 		t.Errorf("pass 1: Idea Promotes To not derived to auth:\n%s", ideaAfter1)
 	}
-	if !strings.Contains(string(indexAfter1), "| Specified |") {
-		t.Errorf("pass 1: ideas index row not synced to Specified (single-pass idempotency violated):\n%s", indexAfter1)
+	if !strings.Contains(string(indexAfter1), "| Implemented |") {
+		t.Errorf("pass 1: ideas index row not synced to Implemented (single-pass idempotency violated):\n%s", indexAfter1)
 	}
 	if !strings.Contains(string(indexAfter1), "| auth |") {
 		t.Errorf("pass 1: ideas index row not synced to auth in Promotes To column:\n%s", indexAfter1)

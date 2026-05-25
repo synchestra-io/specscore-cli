@@ -507,3 +507,180 @@ func TestIdeaNew_ScaffoldExported(t *testing.T) {
 		t.Errorf("unexpected title: %s", body)
 	}
 }
+
+// =====================================================================
+// idea new --type=change-request tests
+// =====================================================================
+
+// setupSpecRootWithFeature stages a spec tree that includes a feature
+// directory at spec/features/<featureSlug>/ with a minimal README.md.
+func setupSpecRootWithFeature(t *testing.T, featureSlug string) string {
+	t.Helper()
+	root := setupSpecRoot(t)
+	featDir := filepath.Join(root, "spec", "features", featureSlug)
+	if err := os.MkdirAll(featDir, 0o755); err != nil {
+		t.Fatalf("mkdir feature: %v", err)
+	}
+	// Write a minimal feature README so the directory is non-empty.
+	readme := "# Feature: " + featureSlug + "\n\n**Status:** Approved\n"
+	if err := os.WriteFile(filepath.Join(featDir, "README.md"), []byte(readme), 0o644); err != nil {
+		t.Fatalf("write feature README: %v", err)
+	}
+	// Write a features index so lint passes.
+	featuresReadme := "# Features\n\n## Index\n\n| Feature | Status |\n|---------|--------|\n\n_No features yet._\n\n## Open Questions\n\nNone at this time.\n"
+	if err := os.WriteFile(
+		filepath.Join(root, "spec", "features", "README.md"),
+		[]byte(featuresReadme), 0o644); err != nil {
+		t.Fatalf("write features README: %v", err)
+	}
+	return root
+}
+
+// Test that --type=change-request --targets=<feature> creates a proposal
+// at the correct path with the Proposal title prefix.
+func TestIdeaNew_ChangeRequestCreatesProposal(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "auth")
+	withCwd(t, root)
+
+	stdout, _, err := runIdea(t, "new", "add-mfa",
+		"--type", "change-request",
+		"--targets", "auth",
+		"--title", "Add MFA Support",
+	)
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+
+	expectedPath := filepath.Join(root, "spec", "features", "auth", "proposals", "add-mfa.md")
+	if !strings.Contains(stdout, expectedPath) {
+		t.Errorf("stdout %q does not contain expected path %q", stdout, expectedPath)
+	}
+	if _, err := os.Stat(expectedPath); err != nil {
+		t.Fatalf("proposal file not created at %s: %v", expectedPath, err)
+	}
+	body, _ := os.ReadFile(expectedPath)
+	s := string(body)
+	for _, want := range []string{
+		"# Proposal: Add MFA Support",
+		"**Type:** change-request",
+		"**Targets:** auth",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q in generated body:\n%s", want, s)
+		}
+	}
+	// Must NOT contain "# Idea:".
+	if strings.Contains(s, "# Idea:") {
+		t.Errorf("proposal should not use Idea prefix:\n%s", s)
+	}
+}
+
+// Test that --type without --targets fails.
+func TestIdeaNew_ChangeRequestRequiresTargets(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "orphan", "--type", "change-request")
+	if err == nil {
+		t.Fatal("expected error when --type=change-request without --targets")
+	}
+	if !strings.Contains(err.Error(), "--targets") {
+		t.Errorf("error should mention --targets: %v", err)
+	}
+}
+
+// Test that --targets without --type=change-request fails.
+func TestIdeaNew_TargetsRequiresChangeRequest(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "bad", "--targets", "auth")
+	if err == nil {
+		t.Fatal("expected error when --targets without --type=change-request")
+	}
+	if !strings.Contains(err.Error(), "change-request") {
+		t.Errorf("error should mention change-request: %v", err)
+	}
+}
+
+// Test error when the target feature directory does not exist.
+func TestIdeaNew_ChangeRequestTargetNotFound(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "fix-it",
+		"--type", "change-request",
+		"--targets", "nonexistent-feature",
+	)
+	if err == nil {
+		t.Fatal("expected error for nonexistent feature directory")
+	}
+	type exitCoder interface{ ExitCode() int }
+	var ec exitCoder
+	if !errors.As(err, &ec) {
+		t.Fatalf("error does not carry ExitCode: %v", err)
+	}
+	if got := ec.ExitCode(); got != 3 {
+		t.Errorf("exit code = %d; want 3 (NotFound)", got)
+	}
+}
+
+// Test that --phase is pre-populated in the header.
+func TestIdeaNew_PhaseFlag(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "billing")
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "add-invoices",
+		"--type", "change-request",
+		"--targets", "billing",
+		"--phase", "discovery",
+	)
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "spec", "features", "billing", "proposals", "add-invoices.md"))
+	if !strings.Contains(string(body), "**Phase:** discovery") {
+		t.Errorf("phase not found in body:\n%s", body)
+	}
+}
+
+// Test that idea new without --type still creates at spec/ideas/.
+func TestIdeaNew_DefaultTypeCreatesAtIdeasDir(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "vanilla")
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	path := filepath.Join(root, "spec", "ideas", "vanilla.md")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected idea at %s: %v", path, err)
+	}
+	body, _ := os.ReadFile(path)
+	s := string(body)
+	if !strings.Contains(s, "# Idea: Vanilla") {
+		t.Errorf("expected Idea prefix, got:\n%s", s)
+	}
+	// Should NOT contain Type or Targets fields.
+	if strings.Contains(s, "**Type:**") {
+		t.Errorf("default idea should not have Type field:\n%s", s)
+	}
+	if strings.Contains(s, "**Targets:**") {
+		t.Errorf("default idea should not have Targets field:\n%s", s)
+	}
+}
+
+// Test invalid --type value.
+func TestIdeaNew_InvalidType(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	_, _, err := runIdea(t, "new", "bad-type", "--type", "banana")
+	if err == nil {
+		t.Fatal("expected error for invalid --type")
+	}
+	if !strings.Contains(err.Error(), "banana") {
+		t.Errorf("error should mention invalid type: %v", err)
+	}
+}

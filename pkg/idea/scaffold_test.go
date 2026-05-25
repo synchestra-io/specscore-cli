@@ -158,3 +158,84 @@ func TestScaffold_DefaultsApplied(t *testing.T) {
 		t.Error("HMW prompt should be HTML comment")
 	}
 }
+
+func TestScaffold_ChangeRequestProposal(t *testing.T) {
+	body, err := idea.Scaffold(idea.ScaffoldOptions{
+		Slug:    "add-mfa",
+		Title:   "Add MFA Support",
+		Type:    "change-request",
+		Targets: "auth",
+	})
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	s := string(body)
+	for _, want := range []string{
+		"# Proposal: Add MFA Support",
+		"**Type:** change-request",
+		"**Targets:** auth",
+		"**Status:** Draft",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q in proposal body:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "# Idea:") {
+		t.Errorf("change-request should not have Idea prefix:\n%s", s)
+	}
+}
+
+func TestScaffold_FeatureRequestNoTypeField(t *testing.T) {
+	body, err := idea.Scaffold(idea.ScaffoldOptions{Slug: "plain"})
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	s := string(body)
+	if strings.Contains(s, "**Type:**") {
+		t.Errorf("default idea should not have Type field:\n%s", s)
+	}
+	if strings.Contains(s, "**Targets:**") {
+		t.Errorf("default idea should not have Targets field:\n%s", s)
+	}
+}
+
+func TestScaffold_PhaseField(t *testing.T) {
+	body, err := idea.Scaffold(idea.ScaffoldOptions{
+		Slug:  "phased",
+		Phase: "discovery",
+	})
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	if !strings.Contains(string(body), "**Phase:** discovery") {
+		t.Errorf("Phase field not emitted:\n%s", body)
+	}
+}
+
+func TestScaffold_NoPhaseByDefault(t *testing.T) {
+	body, err := idea.Scaffold(idea.ScaffoldOptions{Slug: "no-phase"})
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	if strings.Contains(string(body), "**Phase:**") {
+		t.Errorf("Phase field should not appear by default:\n%s", body)
+	}
+}
+
+func TestScaffold_ChangeRequestEmptyTargets(t *testing.T) {
+	body, err := idea.Scaffold(idea.ScaffoldOptions{
+		Slug: "empty-targets",
+		Type: "change-request",
+		// Targets intentionally left empty.
+	})
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	s := string(body)
+	if !strings.Contains(s, "**Targets:** —") {
+		t.Errorf("empty Targets should default to em-dash:\n%s", s)
+	}
+	if !strings.Contains(s, "# Proposal:") {
+		t.Errorf("change-request should use Proposal prefix:\n%s", s)
+	}
+}

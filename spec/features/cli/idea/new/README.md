@@ -13,7 +13,7 @@
 ## Synopsis
 
 ```
-specscore idea new <slug> [--title <text>] [--owner <id>] [--hmw <text>] [--context <text>] [--recommended-direction <text>] [--mvp <text>] [--not-doing "<thing> — <reason>" ...] [--interactive] [--force] [--project <path>]
+specscore idea new <slug> [--title <text>] [--owner <id>] [--hmw <text>] [--context <text>] [--recommended-direction <text>] [--mvp <text>] [--not-doing "<thing> — <reason>" ...] [--type <feature-request|change-request>] [--targets <feature-slug>] [--phase <text>] [--interactive] [--force] [--project <path>]
 ```
 
 ## Problem
@@ -47,6 +47,9 @@ Content for required fields can come from flags, interactive stdin prompts, or f
 | `--recommended-direction` | Recommended Direction body |
 | `--mvp` | MVP Scope body |
 | `--not-doing` | Repeatable `Not Doing` entry (format: `"<thing> — <reason>"`) |
+| `--type` | Idea type: `feature-request` (default) or `change-request` |
+| `--targets` | Target feature slug (required when `--type=change-request`) |
+| `--phase` | Optional lifecycle phase to pre-populate in the header |
 
 #### REQ: interactive-mode
 
@@ -55,6 +58,18 @@ Content for required fields can come from flags, interactive stdin prompts, or f
 #### REQ: sensible-defaults
 
 When a field has no flag value and the command is not interactive, the scaffolder MUST emit an HTML-comment prompt (`<!-- TODO: ... -->`) in place of the missing content. The resulting file MUST still be lint-clean — prompts are valid Markdown and do not break required-sections checks.
+
+### Change-request mode
+
+When `--type=change-request` is supplied with `--targets=<feature-slug>`, the artifact is scaffolded at `spec/features/<feature-slug>/proposals/<slug>.md` instead of the default Idea path. The title is prefixed with `# Proposal:` and the header includes `**Type:** change-request` and `**Targets:** <feature-slug>` fields. The target feature directory must exist.
+
+#### REQ: change-request-location
+
+When `--type=change-request --targets=<feature-slug>` is supplied, the file MUST be written to `spec/features/<feature-slug>/proposals/<slug>.md` (creating the `proposals/` directory if absent). The `--targets` flag MUST be required when `--type=change-request` and MUST be rejected when `--type=feature-request` (or absent).
+
+### Phase pre-population
+
+The optional `--phase` flag pre-populates a `**Phase:**` header field in the generated artifact. When omitted, no Phase field is emitted.
 
 ### Overwrite behavior
 

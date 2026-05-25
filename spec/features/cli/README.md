@@ -36,7 +36,11 @@ Queries the feature tree: list every feature, inspect a feature's metadata and s
 
 ### idea
 
-Scaffolds Idea artifacts at `spec/ideas/<slug>.md` and hosts lifecycle verbs (`idea new`, `idea approve`, planned `idea archive`). `idea new` emits a lint-clean Idea skeleton with HTML-comment prompts for every required section. Lifecycle verbs follow the [lifecycle-transitions](lifecycle-transitions/README.md) shared contract. Future artifact kinds (Plan, Decision) will live in their own resource groups (`specscore plan new`, `specscore decision new`) following the same pattern.
+Scaffolds Idea artifacts at `spec/ideas/<slug>.md` and hosts lifecycle verbs (`idea new`, `idea list`, `idea change-status`). `idea new` emits a lint-clean Idea skeleton with HTML-comment prompts for every required section; with `--type=change-request --targets=<feature-slug>` it scaffolds a Proposal at `spec/features/<target>/proposals/<slug>.md`. `idea list` enumerates Ideas (excluding archived by default; use `--include-archived` to include them). Lifecycle verbs follow the [lifecycle-transitions](lifecycle-transitions/README.md) shared contract.
+
+### proposal
+
+Convenience alias group for change-request Ideas. `proposal new <feature-slug> <slug>` delegates to `idea new <slug> --type change-request --targets <feature-slug>`. All `idea new` flags are forwarded.
 
 ### lifecycle-transitions
 

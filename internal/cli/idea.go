@@ -154,12 +154,18 @@ func lintPostMutationHook(specSub string) idea.PostMutationHook {
 	}
 }
 
-// ideaNewCommand scaffolds a lint-clean Idea artifact at spec/ideas/<slug>.md.
+// ideaNewCommand scaffolds a lint-clean Idea artifact at spec/ideas/<slug>.md,
+// or a Proposal artifact at spec/features/<target>/proposals/<slug>.md when
+// --type=change-request is supplied.
 func ideaNewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "new <slug>",
-		Short: "Scaffold a new Idea artifact",
+		Short: "Scaffold a new Idea or Proposal artifact",
 		Long: `Creates a lint-clean Idea skeleton at spec/ideas/<slug>.md.
+
+When --type=change-request --targets=<feature-slug> is supplied, creates the
+file at spec/features/<feature-slug>/proposals/<slug>.md with a "# Proposal:"
+title prefix and Type/Targets header fields.
 
 Each required section is emitted with an HTML-comment prompt describing
 what belongs there. Supply content via flags (--title, --owner, --hmw,
@@ -179,6 +185,9 @@ afterwards passes.`,
 	cmd.Flags().String("project", "", "project root (autodetected from current directory if omitted)")
 	cmd.Flags().BoolP("interactive", "i", false, "prompt for each field on stdin")
 	cmd.Flags().Bool("force", false, "overwrite an existing idea file at that slug")
+	cmd.Flags().String("type", "", "idea type: feature-request (default) or change-request")
+	cmd.Flags().String("targets", "", "target feature slug (required when --type=change-request)")
+	cmd.Flags().String("phase", "", "optional lifecycle phase to pre-populate")
 	return cmd
 }
 
@@ -198,6 +207,27 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 	projectFlag, _ := cmd.Flags().GetString("project")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	force, _ := cmd.Flags().GetBool("force")
+	ideaType, _ := cmd.Flags().GetString("type")
+	targets, _ := cmd.Flags().GetString("targets")
+	phase, _ := cmd.Flags().GetString("phase")
+
+	// Validate --type value.
+	isChangeRequest := false
+	if ideaType != "" {
+		if !idea.ValidIdeaTypes[ideaType] {
+			return exitcode.InvalidArgsErrorf("invalid --type %q; valid values: feature-request, change-request", ideaType)
+		}
+		isChangeRequest = ideaType == "change-request"
+	}
+
+	// --targets requires --type=change-request.
+	if targets != "" && !isChangeRequest {
+		return exitcode.InvalidArgsErrorf("--targets requires --type=change-request")
+	}
+	// --type=change-request requires --targets.
+	if isChangeRequest && targets == "" {
+		return exitcode.InvalidArgsErrorf("--type=change-request requires --targets=<feature-slug>")
+	}
 
 	if owner == "" {
 		if u := os.Getenv("USER"); u != "" {
@@ -209,6 +239,9 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 		Slug:                 slug,
 		Title:                title,
 		Owner:                owner,
+		Type:                 ideaType,
+		Targets:              targets,
+		Phase:                phase,
 		HMW:                  hmw,
 		Context:              ctx,
 		RecommendedDirection: direction,
@@ -226,13 +259,34 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ideasDir := filepath.Join(specRoot, "spec", "ideas")
-	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
-		return exitcode.UnexpectedErrorf("creating %s: %v", ideasDir, err)
+
+	var target string
+	if isChangeRequest {
+		// Proposal: scaffold at spec/features/<targets>/proposals/<slug>.md.
+		featureDir := filepath.Join(specRoot, "spec", "features", targets)
+		if _, err := os.Stat(featureDir); os.IsNotExist(err) {
+			return exitcode.NotFoundErrorf("target feature directory does not exist: %s", featureDir)
+		}
+		proposalsDir := filepath.Join(featureDir, "proposals")
+		if err := os.MkdirAll(proposalsDir, 0o755); err != nil {
+			return exitcode.UnexpectedErrorf("creating %s: %v", proposalsDir, err)
+		}
+		target = filepath.Join(proposalsDir, slug+".md")
+	} else {
+		// Standard idea: scaffold at spec/ideas/<slug>.md.
+		ideasDir := filepath.Join(specRoot, "spec", "ideas")
+		if err := os.MkdirAll(ideasDir, 0o755); err != nil {
+			return exitcode.UnexpectedErrorf("creating %s: %v", ideasDir, err)
+		}
+		target = filepath.Join(ideasDir, slug+".md")
 	}
-	target := filepath.Join(ideasDir, slug+".md")
+
 	if _, err := os.Stat(target); err == nil && !force {
-		return exitcode.ConflictErrorf("idea already exists: %s (pass --force to overwrite)", target)
+		kind := "idea"
+		if isChangeRequest {
+			kind = "proposal"
+		}
+		return exitcode.ConflictErrorf("%s already exists: %s (pass --force to overwrite)", kind, target)
 	}
 
 	// cli/idea/new#req:ancestor-indexes-materialized — create the spec/

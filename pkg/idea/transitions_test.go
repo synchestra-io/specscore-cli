@@ -217,9 +217,8 @@ func TestChangeStatus_CaseInsensitiveToFlag(t *testing.T) {
 func TestChangeStatus_IllegalTargetRejected(t *testing.T) {
 	root := stageIdeaTree(t, "foo", "Draft")
 
-	// `Implementing` is a recognized Idea status but is NOT a legal
-	// target from any source (it's plan-tool-driven, not user-facing
-	// in change-status). The state-machine check returns
+	// `Implementing` is a recognized Idea status that is legal from
+	// Specified, but NOT from Draft. The state-machine check returns
 	// ErrInvalidTransition (exit 4) BEFORE any mutation.
 	_, err := ChangeStatus(ChangeStatusOptions{
 		SpecRoot:     root,
@@ -272,7 +271,7 @@ func TestChangeStatus_AlreadyApprovedRejected(t *testing.T) {
 // ParseStatus returns (_, false) for a bogus value; the cobra adapter
 // turns that into exit 2 BEFORE invoking ChangeStatus. We assert both
 // the ParseStatus rejection AND that IsLegalChangeStatusTarget rejects
-// recognized-but-not-user-settable values (e.g., "Draft", "Implementing").
+// recognized-but-not-user-settable values (e.g., "Draft").
 func TestChangeStatus_UnrecognizedToValueRejected(t *testing.T) {
 	// Wholly unrecognized — even ParseStatus rejects.
 	if _, ok := lifecycle.ParseStatus(lifecycle.KindIdea, "banana"); ok {
@@ -281,7 +280,9 @@ func TestChangeStatus_UnrecognizedToValueRejected(t *testing.T) {
 
 	// Recognized as an Idea status but not a user-facing --to target:
 	// IsLegalChangeStatusTarget rejects so the cobra adapter exits 2.
-	for _, raw := range []string{"draft", "implementing", "specified", "under review"} {
+	// Only "Draft" and "Under Review" are pure source states with no
+	// incoming arcs (never a To in the matrix).
+	for _, raw := range []string{"draft", "under review"} {
 		s, ok := lifecycle.ParseStatus(lifecycle.KindIdea, raw)
 		if !ok {
 			t.Fatalf("ParseStatus(%q) failed; expected recognition", raw)
@@ -290,8 +291,8 @@ func TestChangeStatus_UnrecognizedToValueRejected(t *testing.T) {
 			t.Errorf("IsLegalChangeStatusTarget(%q) should be false (not a user-facing target)", s)
 		}
 	}
-	// Sanity — Approved and Archived are accepted.
-	for _, raw := range []string{"approved", "archived"} {
+	// Sanity — statuses that appear as To in the matrix are accepted.
+	for _, raw := range []string{"approved", "archived", "specifying", "specified", "implementing", "implemented"} {
 		s, ok := lifecycle.ParseStatus(lifecycle.KindIdea, raw)
 		if !ok {
 			t.Fatalf("ParseStatus(%q) failed", raw)
@@ -413,7 +414,7 @@ func TestLegalTransitionMatrix_IncludesAllSources(t *testing.T) {
 		t.Errorf("missing table headers:\n%s", m)
 	}
 	// Every source status with ≥1 outgoing target MUST appear.
-	for _, src := range []string{"Draft", "Under Review", "Approved", "Implementing", "Specified"} {
+	for _, src := range []string{"Draft", "Under Review", "Approved", "Specifying", "Specified", "Implementing", "Implemented"} {
 		if !strings.Contains(m, src) {
 			t.Errorf("matrix missing source %q:\n%s", src, m)
 		}
@@ -541,7 +542,7 @@ func TestChangeStatus_ArchiveStatNonENOENT_Injected(t *testing.T) {
 
 func TestLegalChangeStatusTargetNames_Stable(t *testing.T) {
 	got := LegalChangeStatusTargetNames()
-	want := []string{"Approved", "Archived"}
+	want := []string{"Approved", "Archived", "Implemented", "Implementing", "Specified", "Specifying"}
 	if fmt.Sprintf("%v", got) != fmt.Sprintf("%v", want) {
 		t.Errorf("LegalChangeStatusTargetNames = %v; want %v", got, want)
 	}

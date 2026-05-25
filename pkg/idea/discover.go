@@ -11,9 +11,11 @@ import (
 
 // Discovered is a summary of an Idea file found during discovery.
 type Discovered struct {
-	Slug     string
-	Path     string // absolute or relative path to the .md file
-	Archived bool   // true if located under archived/
+	Slug       string
+	Path       string // absolute or relative path to the .md file
+	Archived   bool   // true if located under archived/
+	IsProposal bool   // true if located under spec/features/*/proposals/
+	FeatureDir string // non-empty for proposals: the feature directory slug
 }
 
 // Discover walks `<specRoot>/ideas` and returns every idea file found.
@@ -65,6 +67,43 @@ func Discover(specRoot string) ([]Discovered, error) {
 				Path:     filepath.Join(archivedDir, name),
 				Archived: true,
 			})
+		}
+	}
+
+	// Proposals: scan spec/features/*/proposals/*.md
+	featuresDir := filepath.Join(specRoot, "features")
+	if fi, ferr := os.Stat(featuresDir); ferr == nil && fi.IsDir() {
+		featureEntries, ferr := os.ReadDir(featuresDir)
+		if ferr == nil {
+			for _, fe := range featureEntries {
+				if !fe.IsDir() {
+					continue
+				}
+				proposalsDir := filepath.Join(featuresDir, fe.Name(), "proposals")
+				pi, perr := os.Stat(proposalsDir)
+				if perr != nil || !pi.IsDir() {
+					continue
+				}
+				pEntries, perr := os.ReadDir(proposalsDir)
+				if perr != nil {
+					continue
+				}
+				for _, pe := range pEntries {
+					if pe.IsDir() {
+						continue
+					}
+					name := pe.Name()
+					if name == "README.md" || !strings.HasSuffix(name, ".md") {
+						continue
+					}
+					out = append(out, Discovered{
+						Slug:       strings.TrimSuffix(name, ".md"),
+						Path:       filepath.Join(proposalsDir, name),
+						IsProposal: true,
+						FeatureDir: fe.Name(),
+					})
+				}
+			}
 		}
 	}
 

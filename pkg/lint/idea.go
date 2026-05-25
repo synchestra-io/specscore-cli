@@ -45,6 +45,12 @@ var ideaRuleNames = []string{
 	"idea-feature-cross-reference",
 	"idea-index-completeness",
 	"idea-archived-index-chronological",
+	"idea-type-values",
+	"idea-type-title-consistency",
+	"idea-targets-required",
+	"idea-targets-exists",
+	"idea-change-request-location",
+	"idea-phase-non-empty",
 }
 
 func (c *ideaChecker) name() string     { return "idea-location" }
@@ -135,7 +141,7 @@ func CheckIdeas(specRoot string, fix bool) ([]Violation, error) {
 			continue
 		}
 		rel, _ := filepath.Rel(specRoot, d.Path)
-		violations = append(violations, ideaFileRules(p, rel, d.Archived, parsed, archivedMap)...)
+		violations = append(violations, ideaFileRules(p, rel, d.Archived, d.IsProposal, d.FeatureDir, specRoot, parsed, archivedMap)...)
 	}
 
 	// 6. Cross-artifact: sync-lint-strict + feature-cross-reference.
@@ -181,7 +187,7 @@ func findMisplacedIdeaFiles(specRoot string) ([]string, error) {
 }
 
 // ideaFileRules returns violations for a single parsed idea file.
-func ideaFileRules(p *idea.Idea, relPath string, archived bool, all map[string]*idea.Idea, archivedMap map[string]bool) []Violation {
+func ideaFileRules(p *idea.Idea, relPath string, archived bool, isProposal bool, featureDir string, specRoot string, all map[string]*idea.Idea, archivedMap map[string]bool) []Violation {
 	var vs []Violation
 
 	// idea-slug-format
@@ -192,21 +198,21 @@ func ideaFileRules(p *idea.Idea, relPath string, archived bool, all map[string]*
 		})
 	}
 
-	// idea-title-format
+	// idea-title-format — accept both "# Idea: <Name>" and "# Proposal: <Name>"
 	if !p.HasTitle {
 		vs = append(vs, Violation{
 			File: relPath, Line: 1, Severity: "error",
-			Rule: "idea-title-format", Message: "missing title (expected `# Idea: <Name>`)",
+			Rule: "idea-title-format", Message: "missing title (expected `# Idea: <Name>` or `# Proposal: <Name>`)",
 		})
 	} else if !p.TitleOK {
 		vs = append(vs, Violation{
 			File: relPath, Line: p.TitleLine, Severity: "error",
-			Rule: "idea-title-format", Message: "title must use `# Idea: <Name>` format",
+			Rule: "idea-title-format", Message: "title must use `# Idea: <Name>` or `# Proposal: <Name>` format",
 		})
 	} else if strings.TrimSpace(p.TitleName) == "" {
 		vs = append(vs, Violation{
 			File: relPath, Line: p.TitleLine, Severity: "error",
-			Rule: "idea-title-format", Message: "title must use `# Idea: <Name>` format (missing name)",
+			Rule: "idea-title-format", Message: "title must use `# Idea: <Name>` or `# Proposal: <Name>` format (missing name)",
 		})
 	}
 
@@ -265,30 +271,38 @@ func ideaFileRules(p *idea.Idea, relPath string, archived bool, all map[string]*
 		})
 	}
 
+	// Determine effective type early — needed by multiple rules below.
+	effectiveType := p.EffectiveType()
+
 	// idea-status-values
 	status := p.Status()
 	if status != "" && !idea.ValidStatuses[status] {
 		vs = append(vs, Violation{
 			File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
 			Rule:    "idea-status-values",
-			Message: fmt.Sprintf("Status %q is not one of Draft, Under Review, Approved, Implementing, Specified, Archived", status),
+			Message: fmt.Sprintf("Status %q is not one of Draft, Under Review, Approved, Specifying, Specified, Implementing, Implemented, Archived", status),
 		})
 	}
 
-	// idea-specified-requires-promotion (also covers Implementing — both
-	// derived statuses require a non-empty Promotes To list).
-	if status == "Specified" || status == "Implementing" {
-		if len(p.PromotesTo()) == 0 {
-			vs = append(vs, Violation{
-				File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
-				Rule:    "idea-specified-requires-promotion",
-				Message: fmt.Sprintf("Status: %s requires a non-empty **Promotes To:** list", status),
-			})
+	// idea-specified-requires-promotion (covers all derived statuses that
+	// require a non-empty Promotes To list). Change-request ideas are
+	// author-managed and always have Promotes To = "—", so skip them.
+	if effectiveType == "feature-request" {
+		if status == "Specifying" || status == "Specified" || status == "Implementing" || status == "Implemented" {
+			if len(p.PromotesTo()) == 0 {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
+					Rule:    "idea-specified-requires-promotion",
+					Message: fmt.Sprintf("Status: %s requires a non-empty **Promotes To:** list", status),
+				})
+			}
 		}
 	}
 
 	// idea-archived-location
-	if status == "Archived" && !archived {
+	// Change-request ideas stay at their feature-scoped path when archived;
+	// only feature-request ideas must move to spec/ideas/archived/.
+	if status == "Archived" && !archived && effectiveType != "change-request" {
 		vs = append(vs, Violation{
 			File: relPath, Line: p.FieldByName["Status"].Line, Severity: "error",
 			Rule:    "idea-archived-location",
@@ -461,6 +475,176 @@ func ideaFileRules(p *idea.Idea, relPath string, archived bool, all map[string]*
 		}
 	}
 
+	// --- Idea type, targets, phase, and change-request location rules ---
+
+	ideaType := p.IdeaType()
+
+	// idea-type-values — validate Type field when present.
+	if ideaType != "" && !idea.ValidIdeaTypes[ideaType] {
+		vs = append(vs, Violation{
+			File: relPath, Line: p.FieldByName["Type"].Line, Severity: "error",
+			Rule:    "idea-type-values",
+			Message: fmt.Sprintf("Type %q is not one of feature-request, change-request", ideaType),
+		})
+	}
+
+	// idea-type-title-consistency — title prefix must agree with type.
+	if p.TitleOK {
+		if p.TitlePrefix == "Proposal" && effectiveType != "change-request" {
+			vs = append(vs, Violation{
+				File: relPath, Line: p.TitleLine, Severity: "error",
+				Rule:    "idea-type-title-consistency",
+				Message: "`# Proposal:` title requires **Type:** change-request",
+			})
+		}
+		if p.TitlePrefix == "Idea" && ideaType == "change-request" {
+			vs = append(vs, Violation{
+				File: relPath, Line: p.TitleLine, Severity: "error",
+				Rule:    "idea-type-title-consistency",
+				Message: "`# Idea:` title is not compatible with **Type:** change-request (use `# Proposal:` instead)",
+			})
+		}
+	}
+
+	// idea-targets-required — Targets required for change-request, prohibited for feature-request.
+	targets := p.Targets()
+	if effectiveType == "change-request" {
+		if targets == "" || targets == "—" || targets == "-" {
+			line := 0
+			if f, ok := p.FieldByName["Targets"]; ok {
+				line = f.Line
+			}
+			vs = append(vs, Violation{
+				File: relPath, Line: line, Severity: "error",
+				Rule:    "idea-targets-required",
+				Message: "**Type:** change-request requires a non-empty **Targets:** field referencing a feature slug",
+			})
+		}
+	}
+	if effectiveType == "feature-request" && targets != "" && targets != "—" && targets != "-" {
+		vs = append(vs, Violation{
+			File: relPath, Line: p.FieldByName["Targets"].Line, Severity: "error",
+			Rule:    "idea-targets-required",
+			Message: "**Targets:** is not allowed when Type is feature-request (or absent)",
+		})
+	}
+
+	// idea-targets-exists — Targets must reference an existing Feature directory
+	// (one that contains a README.md).
+	if effectiveType == "change-request" && targets != "" && targets != "—" && targets != "-" {
+		featureReadme := filepath.Join(specRoot, "features", targets, "README.md")
+		if _, err := os.Stat(featureReadme); err != nil {
+			vs = append(vs, Violation{
+				File: relPath, Line: p.FieldByName["Targets"].Line, Severity: "error",
+				Rule:    "idea-targets-exists",
+				Message: fmt.Sprintf("**Targets:** %q does not resolve to an existing feature directory", targets),
+			})
+		}
+	}
+
+	// idea-change-request-location — change-request must live at
+	// spec/features/{targets}/proposals/{slug}.md
+	if effectiveType == "change-request" && targets != "" && targets != "—" && targets != "-" {
+		expectedRel := filepath.Join("features", targets, "proposals", p.Slug+".md")
+		if relPath != expectedRel {
+			vs = append(vs, Violation{
+				File: relPath, Line: 0, Severity: "error",
+				Rule:    "idea-change-request-location",
+				Message: fmt.Sprintf("change-request idea must be at %s; got %s", expectedRel, relPath),
+			})
+		}
+	}
+
+	// idea-phase-non-empty — Phase, when present, must not be empty.
+	if f, ok := p.FieldByName["Phase"]; ok {
+		phase := strings.TrimSpace(f.Value)
+		if phase == "" {
+			vs = append(vs, Violation{
+				File: relPath, Line: f.Line, Severity: "error",
+				Rule:    "idea-phase-non-empty",
+				Message: "**Phase:** field is present but empty; provide a value or remove the field",
+			})
+		}
+	}
+
+	// idea-header-fields ordering: validate Type, Targets, Phase position
+	// relative to Status and Date. When present, Type/Targets/Phase must
+	// appear after Status and before Date.
+	if len(p.Fields) > 0 {
+		fieldPositions := make(map[string]int)
+		for idx, f := range p.Fields {
+			if _, exists := fieldPositions[f.Name]; !exists {
+				fieldPositions[f.Name] = idx
+			}
+		}
+		statusPos, hasStatus := fieldPositions["Status"]
+		datePos, hasDate := fieldPositions["Date"]
+		typePos, hasType := fieldPositions["Type"]
+		targetsPos, hasTargets := fieldPositions["Targets"]
+		phasePos, hasPhase := fieldPositions["Phase"]
+
+		if hasType {
+			if hasStatus && typePos <= statusPos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Type"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Type:** must appear after **Status:**",
+				})
+			}
+			if hasDate && typePos >= datePos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Type"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Type:** must appear before **Date:**",
+				})
+			}
+		}
+		if hasTargets {
+			if hasType && targetsPos <= typePos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Targets"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Targets:** must appear after **Type:**",
+				})
+			} else if !hasType && hasStatus && targetsPos <= statusPos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Targets"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Targets:** must appear after **Status:**",
+				})
+			}
+			if hasDate && targetsPos >= datePos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Targets"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Targets:** must appear before **Date:**",
+				})
+			}
+		}
+		if hasPhase {
+			if hasTargets && phasePos <= targetsPos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Phase"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Phase:** must appear after **Targets:**",
+				})
+			} else if !hasTargets && hasType && phasePos <= typePos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Phase"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Phase:** must appear after **Type:**",
+				})
+			}
+			if hasDate && phasePos >= datePos {
+				vs = append(vs, Violation{
+					File: relPath, Line: p.FieldByName["Phase"].Line, Severity: "error",
+					Rule:    "idea-header-fields",
+					Message: "**Phase:** must appear before **Date:**",
+				})
+			}
+		}
+	}
+
 	return vs
 }
 
@@ -485,8 +669,15 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 	}
 
 	// idea-feature-cross-reference: each feature->idea reference must resolve
-	// and the idea must be Approved, Implementing, or Specified
-	// (not Draft/Under Review/Archived).
+	// and the idea must be Approved, Specifying, Specified, Implementing, or
+	// Implemented (not Draft/Under Review/Archived).
+	validCrossRefStatuses := map[string]bool{
+		"Approved":     true,
+		"Specifying":   true,
+		"Specified":    true,
+		"Implementing": true,
+		"Implemented":  true,
+	}
 	for featureSlug, ideas := range featureIdeas {
 		for _, slug := range ideas {
 			p, ok := parsed[slug]
@@ -500,12 +691,12 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 				continue
 			}
 			st := p.Status()
-			if st != "Approved" && st != "Implementing" && st != "Specified" {
+			if !validCrossRefStatuses[st] {
 				rel := filepath.Join("features", featureSlug, "README.md")
 				vs = append(vs, Violation{
 					File: rel, Line: 0, Severity: "error",
 					Rule:    "idea-feature-cross-reference",
-					Message: fmt.Sprintf("Source Ideas references idea %q with Status %q (must be Approved, Implementing, or Specified)", slug, st),
+					Message: fmt.Sprintf("Source Ideas references idea %q with Status %q (must be Approved, Specifying, Specified, Implementing, or Implemented)", slug, st),
 				})
 			}
 		}
@@ -531,10 +722,19 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 	//
 	// Derivation rules (per spec REQ:implementing-derivation +
 	// REQ:specified-derivation):
-	//   - no Feature references                            -> Approved
-	//   - 1+ refs, every referenced Feature Status==Stable -> Specified
-	//   - 1+ refs, any  referenced Feature Status!=Stable  -> Implementing
+	//   - no Feature references                                             -> Approved
+	//   - 1+ refs, any  referenced Feature at Draft or Under Review         -> Specifying
+	//   - 1+ refs, every referenced Feature at Approved                     -> Specified
+	//   - 1+ refs, any  referenced Feature at Implementing                  -> Implementing
+	//   - 1+ refs, every referenced Feature at Stable                       -> Implemented
+	//
+	// Change-request ideas are author-managed — skip all derivation.
 	for slug, p := range parsed {
+		// Skip change-request ideas: they are author-managed, not derived.
+		if p.EffectiveType() == "change-request" {
+			continue
+		}
+
 		refs := reverse[slug]
 		expectedPromotes := append([]string{}, refs...)
 		sort.Strings(expectedPromotes)
@@ -546,23 +746,36 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 			// No references. The idea may legitimately be Draft/Approved/etc.
 			// Drift only if current status is one of the derived states.
 			cur := p.Status()
-			if cur == "Specified" || cur == "Implementing" {
+			if cur == "Specifying" || cur == "Specified" || cur == "Implementing" || cur == "Implemented" {
 				expectedStatus = "Approved" // drop back
 			} else {
 				expectedStatus = "" // no change expected
 			}
 		} else {
 			allStable := true
+			anyImplementing := false
+			anyDraftOrUnderReview := false
 			for _, fs := range refs {
-				if getFeatureStatus(fs) != "Stable" {
+				fst := getFeatureStatus(fs)
+				if fst != "Stable" {
 					allStable = false
-					break
+				}
+				if fst == "Implementing" {
+					anyImplementing = true
+				}
+				if fst == "Draft" || fst == "Under Review" {
+					anyDraftOrUnderReview = true
 				}
 			}
 			if allStable {
-				expectedStatus = "Specified"
-			} else {
+				expectedStatus = "Implemented"
+			} else if anyImplementing {
 				expectedStatus = "Implementing"
+			} else if anyDraftOrUnderReview {
+				expectedStatus = "Specifying"
+			} else {
+				// All features at Approved (none Draft/UnderReview/Implementing/Stable).
+				expectedStatus = "Specified"
 			}
 		}
 

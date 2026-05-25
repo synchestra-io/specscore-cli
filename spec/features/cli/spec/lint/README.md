@@ -118,6 +118,31 @@ When a `SPECSCORE_VERSION:` line is present but the value does not parse as semv
 
 `dogfood-version-bump` MUST NOT support `--fix`. Bumping a pinned CLI version is a deliberate human decision (per the convention `# bump intentionally via PR` comment seen in dogfood workflows) and the rule's role is purely to surface drift — never to silently rewrite the pin.
 
+### Idea change-request and lifecycle rules
+
+Rules added to support the change-request idea type, the extended lifecycle statuses (`Specifying`, `Implemented`), and related structural constraints.
+
+| Rule | Severity | Description |
+|---|---|---|
+| `idea-type-values` | error | `**Type:**` field when present must be `feature-request` or `change-request`. |
+| `idea-type-title-consistency` | error | `# Proposal:` prefix requires `change-request` type; `# Idea:` prefix rejects `change-request`. |
+| `idea-targets-required` | error | `**Targets:**` required for change-request, prohibited for feature-request. |
+| `idea-targets-exists` | error | `**Targets:**` value must reference an existing Feature directory (one containing `README.md`). |
+| `idea-change-request-location` | error | Change-request idea must live at `spec/features/{targets}/proposals/{slug}.md`. |
+| `idea-phase-non-empty` | error | `**Phase:**` field when present must be non-empty. |
+
+#### Modified rules
+
+| Rule | Change |
+|---|---|
+| `idea-status-values` | Now accepts 8 statuses: Draft, Under Review, Approved, Specifying, Specified, Implementing, Implemented, Archived. |
+| `idea-sync-lint-strict` | New derivation levels: `Specifying` (any referenced Feature at Draft/Under Review), `Implemented` (all referenced Features at Stable). Skips change-request ideas (author-managed). |
+| `idea-specified-requires-promotion` | Now checks `Specifying`, `Specified`, `Implementing`, and `Implemented` for non-empty `**Promotes To:**`. Skips change-request ideas. |
+| `idea-feature-cross-reference` | Accepts `Specifying` and `Implemented` as valid statuses for cross-referenced ideas. |
+| `idea-archived-location` | Relaxed for change-request ideas — they remain at their feature-scoped `proposals/` path when archived. |
+| `idea-related-ideas-target-exists` | Resolves slugs under `spec/features/*/proposals/` in addition to `spec/ideas/`. |
+| `idea-index-completeness` | Scans `spec/features/*/proposals/` directories for change-request ideas. |
+
 ### Severity filtering
 
 Each rule has a built-in severity (`error`, `warning`, `info`). `--severity` sets the minimum severity reported.

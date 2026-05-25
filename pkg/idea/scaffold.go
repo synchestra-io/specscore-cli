@@ -10,14 +10,24 @@ import (
 // empty keeps the section's default HTML-comment prompt.
 type ScaffoldOptions struct {
 	Slug string
-	// Title is the human-readable name after `# Idea: `. Defaults to
-	// a title-cased version of the slug.
+	// Title is the human-readable name after `# Idea: ` or `# Proposal: `.
+	// Defaults to a title-cased version of the slug.
 	Title string
 	Owner string
 	// Date in ISO-8601 (YYYY-MM-DD). Defaults to today's UTC date.
 	Date string
 	// Status defaults to "Draft".
 	Status string
+
+	// Type is the idea type: "feature-request" (default) or "change-request".
+	// When "change-request", the title prefix becomes "# Proposal: " and the
+	// Type/Targets fields are emitted in the header.
+	Type string
+	// Targets is the feature slug this change-request targets. Only meaningful
+	// when Type is "change-request".
+	Targets string
+	// Phase is an optional lifecycle phase value pre-populated in the header.
+	Phase string
 
 	// Section content. Empty strings leave the default prompt in place.
 	HMW                  string // Problem Statement
@@ -180,9 +190,27 @@ func Scaffold(opts ScaffoldOptions) ([]byte, error) {
 		oq = "None at this time."
 	}
 
+	// Determine title prefix based on Type.
+	isChangeRequest := strings.TrimSpace(opts.Type) == "change-request"
+	titlePrefix := "Idea"
+	if isChangeRequest {
+		titlePrefix = "Proposal"
+	}
+
 	var out strings.Builder
-	fmt.Fprintf(&out, "# Idea: %s\n\n", title)
+	fmt.Fprintf(&out, "# %s: %s\n\n", titlePrefix, title)
 	fmt.Fprintf(&out, "**Status:** %s\n", status)
+	if isChangeRequest {
+		fmt.Fprintf(&out, "**Type:** %s\n", strings.TrimSpace(opts.Type))
+		targets := strings.TrimSpace(opts.Targets)
+		if targets == "" {
+			targets = "—"
+		}
+		fmt.Fprintf(&out, "**Targets:** %s\n", targets)
+	}
+	if phase := strings.TrimSpace(opts.Phase); phase != "" {
+		fmt.Fprintf(&out, "**Phase:** %s\n", phase)
+	}
 	fmt.Fprintf(&out, "**Date:** %s\n", date)
 	fmt.Fprintf(&out, "**Owner:** %s\n", owner)
 	out.WriteString("**Promotes To:** —\n")

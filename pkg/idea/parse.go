@@ -14,9 +14,17 @@ var ValidStatuses = map[string]bool{
 	"Draft":        true,
 	"Under Review": true,
 	"Approved":     true,
-	"Implementing": true,
+	"Specifying":   true,
 	"Specified":    true,
+	"Implementing": true,
+	"Implemented":  true,
 	"Archived":     true,
+}
+
+// ValidIdeaTypes enumerates the allowed values for the **Type:** field.
+var ValidIdeaTypes = map[string]bool{
+	"feature-request": true,
+	"change-request":  true,
 }
 
 // Valid relationship types for Related Ideas entries.
@@ -91,8 +99,9 @@ type Idea struct {
 	Path           string
 	Slug           string
 	Title          string // full title line (without leading "# ")
-	TitleName      string // name portion after "Idea: "
-	TitleOK        bool   // true if title matches "# Idea: <Name>"
+	TitleName      string // name portion after "Idea: " or "Proposal: "
+	TitleOK        bool   // true if title matches "# Idea: <Name>" or "# Proposal: <Name>"
+	TitlePrefix    string // "Idea" or "Proposal" (set when TitleOK is true)
 	TitleLine      int
 	HasTitle       bool
 	Fields         []HeaderField // in-order header fields encountered
@@ -126,6 +135,32 @@ func (i *Idea) RelatedIdeas() []string {
 // ArchiveReason returns the Archive Reason value or "".
 func (i *Idea) ArchiveReason() string {
 	return strings.TrimSpace(i.FieldByName["Archive Reason"].Value)
+}
+
+// IdeaType returns the Type field value or "" if absent.
+// An absent Type is treated as "feature-request" by convention.
+func (i *Idea) IdeaType() string {
+	return strings.TrimSpace(i.FieldByName["Type"].Value)
+}
+
+// EffectiveType returns the Type field value, defaulting to "feature-request"
+// when the field is absent.
+func (i *Idea) EffectiveType() string {
+	t := i.IdeaType()
+	if t == "" {
+		return "feature-request"
+	}
+	return t
+}
+
+// Targets returns the Targets field value or "" if absent.
+func (i *Idea) Targets() string {
+	return strings.TrimSpace(i.FieldByName["Targets"].Value)
+}
+
+// Phase returns the Phase field value or "" if absent.
+func (i *Idea) Phase() string {
+	return strings.TrimSpace(i.FieldByName["Phase"].Value)
 }
 
 // splitCSVSlugs splits a comma-separated header value, normalizing common
@@ -195,6 +230,11 @@ func Parse(path string) (*Idea, error) {
 			idea.Title = strings.TrimPrefix(trimmed, "# ")
 			if name, ok := strings.CutPrefix(idea.Title, "Idea: "); ok {
 				idea.TitleOK = true
+				idea.TitlePrefix = "Idea"
+				idea.TitleName = strings.TrimSpace(name)
+			} else if name, ok := strings.CutPrefix(idea.Title, "Proposal: "); ok {
+				idea.TitleOK = true
+				idea.TitlePrefix = "Proposal"
 				idea.TitleName = strings.TrimSpace(name)
 			}
 			continue

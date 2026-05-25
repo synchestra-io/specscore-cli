@@ -130,6 +130,87 @@ func TestParse_MalformedTitle(t *testing.T) {
 	}
 }
 
+func TestPhase(t *testing.T) {
+	dir := t.TempDir()
+
+	// Idea with Phase field.
+	withPhase := filepath.Join(dir, "with-phase.md")
+	if err := os.WriteFile(withPhase, []byte("# Idea: With Phase\n\n**Status:** Draft\n**Phase:** discovery\n**Date:** 2026-04-10\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p1, err := Parse(withPhase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p1.Phase(); got != "discovery" {
+		t.Errorf("Phase() = %q, want %q", got, "discovery")
+	}
+
+	// Idea without Phase field.
+	noPhase := filepath.Join(dir, "no-phase.md")
+	if err := os.WriteFile(noPhase, []byte("# Idea: No Phase\n\n**Status:** Draft\n**Date:** 2026-04-10\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p2, err := Parse(noPhase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p2.Phase(); got != "" {
+		t.Errorf("Phase() = %q, want empty string", got)
+	}
+}
+
+func TestEffectiveType_Fallback(t *testing.T) {
+	dir := t.TempDir()
+
+	// Idea without Type field — EffectiveType should return "feature-request".
+	noType := filepath.Join(dir, "no-type.md")
+	if err := os.WriteFile(noType, []byte("# Idea: No Type\n\n**Status:** Draft\n**Date:** 2026-04-10\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p1, err := Parse(noType)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p1.EffectiveType(); got != "feature-request" {
+		t.Errorf("EffectiveType() = %q, want %q (no Type field)", got, "feature-request")
+	}
+
+	// Idea with explicit Type field — EffectiveType should return the value.
+	withType := filepath.Join(dir, "with-type.md")
+	if err := os.WriteFile(withType, []byte("# Proposal: Has Type\n\n**Status:** Draft\n**Type:** change-request\n**Targets:** auth\n**Date:** 2026-04-10\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p2, err := Parse(withType)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p2.EffectiveType(); got != "change-request" {
+		t.Errorf("EffectiveType() = %q, want %q (explicit Type)", got, "change-request")
+	}
+}
+
+func TestParse_ProposalTitle(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "add-mfa.md")
+	if err := os.WriteFile(path, []byte("# Proposal: Add MFA\n\n**Status:** Draft\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := Parse(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.TitleOK {
+		t.Fatal("expected TitleOK=true for Proposal prefix")
+	}
+	if p.TitlePrefix != "Proposal" {
+		t.Errorf("TitlePrefix = %q, want %q", p.TitlePrefix, "Proposal")
+	}
+	if p.TitleName != "Add MFA" {
+		t.Errorf("TitleName = %q, want %q", p.TitleName, "Add MFA")
+	}
+}
+
 func TestSplitCSVSlugs(t *testing.T) {
 	cases := []struct {
 		in   string

@@ -34,11 +34,17 @@ Only the transitions in the table below are accepted. Any other `(from, to)` pai
 | `Draft` | `Approved` | Status rewrite + ideas-index sync |
 | `Draft` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
 | `Under Review` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
+| `Approved` | `Specifying` | Status rewrite + ideas-index sync |
 | `Approved` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
-| `Implementing` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
+| `Specifying` | `Specified` | Status rewrite + ideas-index sync |
+| `Specifying` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
+| `Specified` | `Implementing` | Status rewrite + ideas-index sync |
 | `Specified` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
+| `Implementing` | `Implemented` | Status rewrite + ideas-index sync |
+| `Implementing` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
+| `Implemented` | `Archived` | Status rewrite + file move + active-index + archived-index sync |
 
-`Specified` and `Implementing` as TARGETS are NOT in the matrix — those transitions are managed externally by lint tooling (`Specified` fires when a Feature declares `source_idea`, via the `idea-sync-lint-strict` rule) or plan-tool-driven (`Implementing` is set externally by plan/task tooling), not user-facing in `change-status`.
+For **feature-request** ideas, the forward transitions (`Approved → Specifying → Specified → Implementing → Implemented`) are derived from Feature status by the `idea-sync-lint-strict` lint rule. The `change-status` verb is the user-facing surface for manual override or when a transition is needed ahead of the derivation rule. For **change-request** ideas, all transitions are author-managed (not derived) — the lint derivation rules skip change-request ideas entirely.
 
 #### REQ: legal-transition-matrix
 

@@ -130,6 +130,44 @@ func TestIdeaList_AllIncludesArchived(t *testing.T) {
 	}
 }
 
+// TestIdeaList_IncludeArchivedFlag — --include-archived shows archived ideas.
+func TestIdeaList_IncludeArchivedFlag(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	if _, _, err := runIdea(t, "new", "active-one", "--owner", "test"); err != nil {
+		t.Fatalf("idea new: %v", err)
+	}
+
+	archivedContent := "# Idea: Old Thing\n\n**Status:** Archived\n**Date:** 2025-01-01\n**Owner:** test\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n**Archive Reason:** no longer relevant\n\n## Problem Statement\n\nOld.\n\n## Context\n\nOld.\n\n## Recommended Direction\n\nOld.\n\n## Alternatives Considered\n\n- none\n\n## MVP Scope\n\nN/A.\n\n## Not Doing (and Why)\n\n- nothing — done\n\n## Key Assumptions to Validate\n\n- Must-be-true: this is a test\n\n## SpecScore Integration\n\nN/A.\n\n## Open Questions\n\nNone.\n"
+	if err := os.WriteFile(filepath.Join(root, "spec", "ideas", "archived", "old-thing.md"), []byte(archivedContent), 0o644); err != nil {
+		t.Fatalf("write archived idea: %v", err)
+	}
+
+	// Without --include-archived, only active idea shown.
+	stdout, _, err := runIdea(t, "list")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	lines := nonEmptyLines(stdout)
+	if len(lines) != 1 || lines[0] != "active-one" {
+		t.Errorf("without --include-archived: expected [active-one], got %v", lines)
+	}
+
+	// With --include-archived, both shown.
+	stdout, _, err = runIdea(t, "list", "--include-archived")
+	if err != nil {
+		t.Fatalf("list --include-archived: %v", err)
+	}
+	lines = nonEmptyLines(stdout)
+	if len(lines) != 2 {
+		t.Fatalf("with --include-archived: expected 2 lines, got %d: %v", len(lines), lines)
+	}
+	if lines[0] != "active-one" || lines[1] != "old-thing" {
+		t.Errorf("with --include-archived: expected [active-one, old-thing], got %v", lines)
+	}
+}
+
 // TestIdeaList_FormatJSON — --format=json emits structured output.
 func TestIdeaList_FormatJSON(t *testing.T) {
 	root := setupSpecRoot(t)

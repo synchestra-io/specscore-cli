@@ -224,8 +224,9 @@ var indexRowRe = regexp.MustCompile(`^\|\s*\[[^\]]+\]\(([^)]+)\.md\)\s*\|\s*(.*?
 
 // readIndexRows scans an index README and returns one indexRow per row
 // of the ## Index table. Header and separator lines are skipped.
-// Slugs containing "/" (e.g., links into archived/) are skipped — only
-// flat-slug rows are considered active-index entries.
+// Links into archived/ are skipped. Links to proposals
+// (../features/*/proposals/<slug>.md) are accepted — the slug is
+// extracted from the basename.
 func readIndexRows(path string) ([]indexRow, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -252,9 +253,20 @@ func readIndexRows(path string) ([]indexRow, error) {
 		if m == nil {
 			continue
 		}
-		slug := m[1]
-		if strings.Contains(slug, "/") {
-			continue
+		linkTarget := m[1]
+		// Extract slug: flat links ("slug") are taken as-is;
+		// proposal links ("../features/*/proposals/slug") have the
+		// slug extracted from the basename. All other slash-containing
+		// paths (e.g. "archived/slug") are skipped.
+		slug := linkTarget
+		if strings.Contains(linkTarget, "/") {
+			if strings.Contains(linkTarget, "/proposals/") {
+				if idx := strings.LastIndex(linkTarget, "/"); idx >= 0 {
+					slug = linkTarget[idx+1:]
+				}
+			} else {
+				continue
+			}
 		}
 		rows = append(rows, indexRow{
 			slug:     slug,
@@ -346,8 +358,14 @@ func rewriteActiveIndex(path string, active []idea.Discovered, parsed map[string
 					promotes = strings.Join(pt, ", ")
 				}
 			}
-			fmt.Fprintf(&tbl, "| [%s](%s.md) | %s | %s | %s | %s |\n",
-				d.Slug, d.Slug, status, date, owner, promotes)
+			// Proposals live under ../features/<feature>/proposals/<slug>.md
+			// relative to the ideas/ directory.
+			link := d.Slug + ".md"
+			if d.IsProposal {
+				link = "../features/" + d.FeatureDir + "/proposals/" + d.Slug + ".md"
+			}
+			fmt.Fprintf(&tbl, "| [%s](%s) | %s | %s | %s | %s |\n",
+				d.Slug, link, status, date, owner, promotes)
 		}
 		tbl.WriteString("\n")
 	}

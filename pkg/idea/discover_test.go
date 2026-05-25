@@ -85,3 +85,198 @@ func TestFeatureSourceIdeas_NestedFeatures(t *testing.T) {
 		}
 	}
 }
+
+// TestDiscover_Proposals exercises the proposal discovery path, which
+// scans spec/features/*/proposals/*.md and returns them with IsProposal=true.
+func TestDiscover_Proposals(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+
+	// Required: ideas/ directory must exist for Discover to proceed.
+	ideasDir := filepath.Join(specRoot, "ideas")
+	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a feature with a proposals/ subdirectory containing proposals.
+	proposalsDir := filepath.Join(specRoot, "features", "auth", "proposals")
+	if err := os.MkdirAll(proposalsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Valid proposal
+	if err := os.WriteFile(filepath.Join(proposalsDir, "add-mfa.md"), []byte("# Proposal: Add MFA\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Another valid proposal
+	if err := os.WriteFile(filepath.Join(proposalsDir, "add-sso.md"), []byte("# Proposal: Add SSO\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// README.md should be skipped
+	if err := os.WriteFile(filepath.Join(proposalsDir, "README.md"), []byte("# Proposals\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Non-.md file should be skipped
+	if err := os.WriteFile(filepath.Join(proposalsDir, "notes.txt"), []byte("notes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Subdirectory inside proposals/ should be skipped
+	subDir := filepath.Join(proposalsDir, "drafts")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "ignored.md"), []byte("ignored"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Discover(specRoot)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+
+	// Should find exactly 2 proposals.
+	if len(got) != 2 {
+		t.Fatalf("expected 2 discovered, got %d: %+v", len(got), got)
+	}
+
+	slugs := map[string]Discovered{}
+	for _, d := range got {
+		slugs[d.Slug] = d
+	}
+
+	for _, slug := range []string{"add-mfa", "add-sso"} {
+		d, ok := slugs[slug]
+		if !ok {
+			t.Errorf("missing slug %q", slug)
+			continue
+		}
+		if !d.IsProposal {
+			t.Errorf("%q: IsProposal should be true", slug)
+		}
+		if d.FeatureDir != "auth" {
+			t.Errorf("%q: FeatureDir = %q, want %q", slug, d.FeatureDir, "auth")
+		}
+		if d.Archived {
+			t.Errorf("%q: should not be archived", slug)
+		}
+	}
+}
+
+// TestDiscover_NoProposalsDir verifies that a feature without a proposals/
+// subdirectory is silently skipped.
+func TestDiscover_NoProposalsDir(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+	if err := os.MkdirAll(filepath.Join(specRoot, "ideas"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Feature directory without proposals/
+	if err := os.MkdirAll(filepath.Join(specRoot, "features", "auth"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specRoot, "features", "auth", "README.md"), []byte("# Feature: Auth\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Discover(specRoot)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 discovered, got %d: %+v", len(got), got)
+	}
+}
+
+// TestDiscover_FeatureHasNoProposalFiles verifies that an empty proposals/
+// directory produces no results.
+func TestDiscover_FeatureHasNoProposalFiles(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+	if err := os.MkdirAll(filepath.Join(specRoot, "ideas"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	proposalsDir := filepath.Join(specRoot, "features", "auth", "proposals")
+	if err := os.MkdirAll(proposalsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Discover(specRoot)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 discovered, got %d: %+v", len(got), got)
+	}
+}
+
+// TestDiscover_MixedActiveArchivedAndProposals verifies that active ideas,
+// archived ideas, and proposals are all returned and sorted correctly
+// (active+proposals before archived, alphabetically within each group).
+func TestDiscover_MixedActiveArchivedAndProposals(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+	ideasDir := filepath.Join(specRoot, "ideas")
+	archivedDir := filepath.Join(ideasDir, "archived")
+	proposalsDir := filepath.Join(specRoot, "features", "auth", "proposals")
+	for _, d := range []string{ideasDir, archivedDir, proposalsDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Active idea
+	if err := os.WriteFile(filepath.Join(ideasDir, "beta.md"), []byte("# Idea: Beta\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Archived idea
+	if err := os.WriteFile(filepath.Join(archivedDir, "alpha.md"), []byte("# Idea: Alpha\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Proposal
+	if err := os.WriteFile(filepath.Join(proposalsDir, "add-mfa.md"), []byte("# Proposal: Add MFA\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Discover(specRoot)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("expected 3, got %d: %+v", len(got), got)
+	}
+
+	// Non-archived should come first (active + proposals), sorted by slug.
+	// add-mfa < beta (alphabetical among non-archived), then alpha (archived).
+	if got[0].Slug != "add-mfa" || got[0].IsProposal != true {
+		t.Errorf("got[0] = %+v, want add-mfa proposal", got[0])
+	}
+	if got[1].Slug != "beta" || got[1].Archived != false {
+		t.Errorf("got[1] = %+v, want beta active", got[1])
+	}
+	if got[2].Slug != "alpha" || got[2].Archived != true {
+		t.Errorf("got[2] = %+v, want alpha archived", got[2])
+	}
+}
+
+// TestDiscover_NonDirFeatureEntrySkipped verifies that non-directory entries
+// inside spec/features/ are skipped when scanning for proposals.
+func TestDiscover_NonDirFeatureEntrySkipped(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+	if err := os.MkdirAll(filepath.Join(specRoot, "ideas"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(specRoot, "features"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A file (not directory) at features/ level
+	if err := os.WriteFile(filepath.Join(specRoot, "features", "README.md"), []byte("# Features\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Discover(specRoot)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 discovered, got %d", len(got))
+	}
+}

@@ -19,16 +19,20 @@ Ideas have a strict required-sections contract defined by the [idea](../../idea/
 | Directory | Description |
 |---|---|
 | [change-status/](change-status/README.md) | Transition an Idea's status per the legal-transition matrix; `--to=archived` also relocates the file under `spec/ideas/archived/` |
-| [new/](new/README.md) | Scaffold a new Idea artifact at `spec/ideas/<slug>.md` |
+| [new/](new/README.md) | Scaffold a new Idea artifact at `spec/ideas/<slug>.md` (or a change-request proposal at `spec/features/<target>/proposals/<slug>.md`) |
 | [relocate/](relocate/README.md) | Move an Idea or sidekick-seed artifact across SpecScore-managed repos, with cross-repo link cleanup and per-repo auto-commit |
 
 ### change-status
 
 Transitions an Idea per the kind's legal-transition matrix: `Draft → Approved`, and any active status → `Archived`. The `--to=archived` path additionally moves the file from `spec/ideas/<slug>.md` to `spec/ideas/archived/<slug>.md` (rollback covers both rewrite and relocation; collision exits `1`). Implements the [lifecycle-transitions](../lifecycle-transitions/README.md) shared contract. Illegal `(from, to)` pairs — including re-running on the target status — exit `4` (InvalidTransition).
 
+### list
+
+Lists all Idea slugs (one per line, sorted alphabetically). By default, archived ideas are excluded. `--include-archived` (or `--all`) includes them. `--status <value>` filters by lifecycle status. `--format yaml|json` emits structured output.
+
 ### new
 
-Creates a lint-clean Idea skeleton with every required section, HTML-comment prompts describing what belongs in each, and either flag-supplied or interactively prompted content for the core fields (title, HMW, owner, not-doing entries).
+Creates a lint-clean Idea skeleton with every required section, HTML-comment prompts describing what belongs in each, and either flag-supplied or interactively prompted content for the core fields (title, HMW, owner, not-doing entries). Supports `--type=change-request --targets=<feature-slug>` to scaffold a Proposal at `spec/features/<target>/proposals/<slug>.md`, and `--phase` to pre-populate a Phase field.
 
 ### relocate
 
@@ -42,7 +46,7 @@ Commands under `specscore idea` operate on a single Idea artifact at `spec/ideas
 
 #### REQ: ideas-only
 
-No subcommand of `specscore idea` may mutate `spec/features/`. The canonical write target for this group is `spec/ideas/`.
+No subcommand of `specscore idea` may mutate `spec/features/` except when scaffolding a change-request idea (`--type=change-request`), which writes to `spec/features/<target>/proposals/<slug>.md`. The canonical write target for feature-request ideas is `spec/ideas/`.
 
 ### Lint-clean output
 
@@ -63,7 +67,8 @@ A file produced by any `specscore idea` mutation command MUST satisfy every lint
 
 ## Open Questions
 
-- Should `specscore idea` grow read commands (`idea list`, `idea info`) symmetric with `feature list` / `feature info`, or does the index in `spec/ideas/README.md` (maintained by `spec lint --fix`) cover the same ground at lower cost?
+- ~~Should `specscore idea` grow read commands (`idea list`, `idea info`)?~~ Resolved: `idea list` is now implemented. `idea info` remains open.
+- Should `specscore idea info <slug>` be added for parity with `feature info`?
 
 ---
 *This document follows the https://specscore.md/feature-specification*

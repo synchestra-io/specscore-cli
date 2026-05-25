@@ -25,6 +25,7 @@ include them. Use --status to filter by lifecycle status.`,
 	cmd.Flags().String("project", "", "project root (autodetected from current directory if omitted)")
 	cmd.Flags().String("status", "", "filter by status (case-insensitive, e.g. Draft, Approved)")
 	cmd.Flags().Bool("all", false, "include archived ideas in the output")
+	cmd.Flags().Bool("include-archived", false, "include archived ideas in the output (alias for --all)")
 	cmd.Flags().String("format", "text", "output format: text, yaml, json")
 	return cmd
 }
@@ -41,6 +42,8 @@ func runIdeaList(cmd *cobra.Command, _ []string) error {
 	projectFlag, _ := cmd.Flags().GetString("project")
 	statusFilter, _ := cmd.Flags().GetString("status")
 	showAll, _ := cmd.Flags().GetBool("all")
+	includeArchived, _ := cmd.Flags().GetBool("include-archived")
+	showAll = showAll || includeArchived
 	format, _ := cmd.Flags().GetString("format")
 
 	if format != "text" && format != "yaml" && format != "json" {

@@ -47,8 +47,10 @@ const (
 	IdeaDraft        Status = "Draft"
 	IdeaUnderReview  Status = "Under Review"
 	IdeaApproved     Status = "Approved"
-	IdeaImplementing Status = "Implementing"
+	IdeaSpecifying   Status = "Specifying"
 	IdeaSpecified    Status = "Specified"
+	IdeaImplementing Status = "Implementing"
+	IdeaImplemented  Status = "Implemented"
 	IdeaArchived     Status = "Archived"
 )
 
@@ -114,9 +116,15 @@ var transitionMatrix = map[Kind][]transitionRow{
 		{From: IdeaDraft, To: IdeaApproved},
 		{From: IdeaDraft, To: IdeaArchived},
 		{From: IdeaUnderReview, To: IdeaArchived},
+		{From: IdeaApproved, To: IdeaSpecifying},
 		{From: IdeaApproved, To: IdeaArchived},
-		{From: IdeaImplementing, To: IdeaArchived},
+		{From: IdeaSpecifying, To: IdeaSpecified},
+		{From: IdeaSpecifying, To: IdeaArchived},
+		{From: IdeaSpecified, To: IdeaImplementing},
 		{From: IdeaSpecified, To: IdeaArchived},
+		{From: IdeaImplementing, To: IdeaImplemented},
+		{From: IdeaImplementing, To: IdeaArchived},
+		{From: IdeaImplemented, To: IdeaArchived},
 	},
 	KindFeature: {
 		{From: FeatureDraft, To: FeatureUnderReview},
