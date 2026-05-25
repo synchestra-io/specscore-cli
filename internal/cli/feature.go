@@ -4,7 +4,6 @@ package cli
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"github.com/specscore/specscore-cli/pkg/lifecycle"
 	"github.com/specscore/specscore-cli/pkg/lint"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // featureCommand returns the "feature" command group.
@@ -103,8 +101,7 @@ func writeEnrichedOutput(w io.Writer, features []*feature.EnrichedFeature, field
 }
 
 func writeEnrichedYAML(w io.Writer, features []*feature.EnrichedFeature) error {
-	enc := yaml.NewEncoder(w)
-	enc.SetIndent(2)
+	enc := newYAMLEnc(w)
 	if err := enc.Encode(features); err != nil {
 		return err
 	}
@@ -112,9 +109,7 @@ func writeEnrichedYAML(w io.Writer, features []*feature.EnrichedFeature) error {
 }
 
 func writeEnrichedJSON(w io.Writer, features []*feature.EnrichedFeature) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(features)
+	return newJSONEnc(w).Encode(features)
 }
 
 func writeEnrichedText(w io.Writer, features []*feature.EnrichedFeature, fields []string) error {
@@ -247,16 +242,13 @@ func runFeatureInfo(cmd *cobra.Command, args []string) error {
 func writeFeatureInfo(w io.Writer, format string, info *feature.Info) error {
 	switch format {
 	case "yaml":
-		enc := yaml.NewEncoder(w)
-		enc.SetIndent(2)
+		enc := newYAMLEnc(w)
 		if err := enc.Encode(info); err != nil {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
 	case "json":
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(info)
+		return newJSONEnc(w).Encode(info)
 	case "text":
 		return writeTextInfo(w, info)
 	}

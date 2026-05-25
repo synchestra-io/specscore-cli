@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/idea"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // ideaListCommand returns the "idea list" subcommand.
@@ -118,16 +116,13 @@ func runIdeaList(cmd *cobra.Command, _ []string) error {
 			}
 		}
 		if format == "yaml" {
-			enc := yaml.NewEncoder(w)
-			enc.SetIndent(2)
+			enc := newYAMLEnc(w)
 			if err := enc.Encode(out); err != nil {
 				return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 			}
 			return enc.Close()
 		}
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(out)
+		return newJSONEnc(w).Encode(out)
 	default:
 		for _, e := range entries {
 			_, _ = fmt.Fprintln(w, e.Slug)

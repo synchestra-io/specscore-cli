@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"github.com/specscore/specscore-cli/pkg/feature"
 	"github.com/specscore/specscore-cli/pkg/task"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func taskCommand() *cobra.Command {
@@ -123,16 +121,13 @@ func runTaskList(cmd *cobra.Command, _ []string) error {
 
 	switch formatFlag {
 	case "yaml":
-		enc := yaml.NewEncoder(w)
-		enc.SetIndent(2)
+		enc := newYAMLEnc(w)
 		if err := enc.Encode(rows); err != nil {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
 	case "json":
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(rows)
+		return newJSONEnc(w).Encode(rows)
 	case "md":
 		filtered := &task.BoardView{Rows: rows}
 		_, err := w.Write(task.RenderBoard(filtered))
@@ -226,16 +221,13 @@ func runTaskInfo(cmd *cobra.Command, _ []string) error {
 	w := cmd.OutOrStdout()
 	switch formatFlag {
 	case "yaml":
-		enc := yaml.NewEncoder(w)
-		enc.SetIndent(2)
+		enc := newYAMLEnc(w)
 		if err := enc.Encode(out); err != nil {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
 	case "json":
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(out)
+		return newJSONEnc(w).Encode(out)
 	}
 	return nil
 }
@@ -350,16 +342,13 @@ func runTaskNew(cmd *cobra.Command, _ []string) error {
 	w := cmd.OutOrStdout()
 	switch formatFlag {
 	case "yaml":
-		enc := yaml.NewEncoder(w)
-		enc.SetIndent(2)
+		enc := newYAMLEnc(w)
 		if err := enc.Encode(out); err != nil {
 			return exitcode.UnexpectedErrorf("encoding yaml: %v", err)
 		}
 		return enc.Close()
 	case "json":
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(out)
+		return newJSONEnc(w).Encode(out)
 	}
 	return nil
 }

@@ -3,7 +3,6 @@ package cli
 // Features implemented: cli/spec
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/specscore/specscore-cli/pkg/lint"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // specCommand returns the "spec" command group.
@@ -172,9 +170,7 @@ func outputLintJSON(w io.Writer, violations []lint.Violation) error {
 	if violations == nil {
 		violations = []lint.Violation{}
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(violations)
+	return newJSONEnc(w).Encode(violations)
 }
 
 func outputLintYAML(w io.Writer, violations []lint.Violation) error {
@@ -182,8 +178,7 @@ func outputLintYAML(w io.Writer, violations []lint.Violation) error {
 		_, _ = fmt.Fprintln(w, "[]")
 		return nil
 	}
-	enc := yaml.NewEncoder(w)
-	enc.SetIndent(2)
+	enc := newYAMLEnc(w)
 	if err := enc.Encode(violations); err != nil {
 		return err
 	}
