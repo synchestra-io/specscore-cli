@@ -2491,7 +2491,7 @@ func TestPlanRules_P002MissingSourceFeature(t *testing.T) {
 	mkdir(t, filepath.Join(root, "features"))
 	mkdir(t, filepath.Join(root, "plans"))
 	// Plan without Source Feature field
-	writeFile(t, filepath.Join(root, "plans", "my-plan.md"), "# Plan: My Plan\n\n### Task 1: Do something\n\n**Verifies:** auth#ac:login\n**Status:** pending\n")
+	writeFile(t, filepath.Join(root, "plans", "my-plan.md"), "# Plan: My Plan\n\n## Tasks\n\n### Task 1: Do something\n\n**Verifies:** auth#ac:login\n**Status:** pending\n")
 
 	c := newPlanRulesChecker()
 	violations, err := c.check(root)
@@ -2522,7 +2522,7 @@ func TestPlanRules_P003DuplicateTaskNumber(t *testing.T) {
 		"# Feature: Auth\n\n**Status:** Approved\n\n## Acceptance Criteria\n\n### AC: login (verifies REQ:r)\n\n**Given** g **When** w **Then** t\n")
 	mkdir(t, filepath.Join(root, "plans"))
 	writeFile(t, filepath.Join(root, "plans", "dups.md"),
-		"# Plan: Dups\n\n**Source Feature:** auth\n\n### Task 1: First\n\n**Verifies:** auth#ac:login\n**Status:** pending\n\n### Task 1: Duplicate\n\n**Verifies:** auth#ac:login\n**Status:** pending\n")
+		"# Plan: Dups\n\n**Source Feature:** auth\n\n## Tasks\n\n### Task 1: First\n\n**Verifies:** auth#ac:login\n**Status:** pending\n\n### Task 1: Duplicate\n\n**Verifies:** auth#ac:login\n**Status:** pending\n")
 
 	c := newPlanRulesChecker()
 	violations, err := c.check(root)
@@ -2548,7 +2548,7 @@ func TestPlanRules_P002StaleACRef(t *testing.T) {
 	mkdir(t, filepath.Join(root, "plans"))
 	// Task verifies an AC that doesn't exist in the feature
 	writeFile(t, filepath.Join(root, "plans", "stale-ref.md"),
-		"# Plan: Stale Ref\n\n**Source Feature:** auth\n\n### Task 1: Do thing\n\n**Verifies:** auth#ac:nonexistent\n**Status:** pending\n")
+		"# Plan: Stale Ref\n\n**Source Feature:** auth\n\n## Tasks\n\n### Task 1: Do thing\n\n**Verifies:** auth#ac:nonexistent\n**Status:** pending\n")
 
 	c := newPlanRulesChecker()
 	violations, err := c.check(root)
@@ -2572,7 +2572,7 @@ func TestPlanRules_P002UnresolvableSourceFeature(t *testing.T) {
 	mkdir(t, filepath.Join(root, "features"))
 	mkdir(t, filepath.Join(root, "plans"))
 	writeFile(t, filepath.Join(root, "plans", "bad-ref.md"),
-		"# Plan: Bad Ref\n\n**Source Feature:** nonexistent\n\n### Task 1: Do thing\n\n**Verifies:** nonexistent#ac:login\n**Status:** pending\n")
+		"# Plan: Bad Ref\n\n**Source Feature:** nonexistent\n\n## Tasks\n\n### Task 1: Do thing\n\n**Verifies:** nonexistent#ac:login\n**Status:** pending\n")
 
 	c := newPlanRulesChecker()
 	violations, err := c.check(root)
@@ -2603,7 +2603,7 @@ func TestPlanRules_P001DeferredAC(t *testing.T) {
 		"# Feature: Auth\n\n**Status:** Approved\n\n## Acceptance Criteria\n\n### AC: login (verifies REQ:r)\n\n**Given** g **When** w **Then** t\n\n### AC: logout (verifies REQ:r)\n\n**Given** g **When** w **Then** t\n")
 	mkdir(t, filepath.Join(root, "plans"))
 	writeFile(t, filepath.Join(root, "plans", "partial.md"),
-		"# Plan: Partial\n\n**Source Feature:** auth\n\n### Task 1: Login\n\n**Verifies:** auth#ac:login\n**Status:** pending\n\n## Deferred AC Coverage\n\n- auth#ac:logout — later\n")
+		"# Plan: Partial\n\n**Source Feature:** auth\n\n## Tasks\n\n### Task 1: Login\n\n**Verifies:** auth#ac:login\n**Status:** pending\n\n## Deferred AC Coverage\n\n- auth#ac:logout — later\n")
 
 	c := newPlanRulesChecker()
 	violations, err := c.check(root)
@@ -2863,5 +2863,205 @@ func TestLintFix_OQSection(t *testing.T) {
 	}
 	if !strings.Contains(string(got), "Open Questions") {
 		t.Error("expected canonical Open Questions heading")
+	}
+}
+
+// =============================================================================
+// issue_rules.go — I-006 additional sub-cases
+// =============================================================================
+
+func TestIssueRulesCheck_I006RejectedWithoutReason(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/rejected-no-reason.md": "---\ntype: issue\nstatus: rejected\nseverity: low\n---\n# Issue: Rejected No Reason\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":             "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-006" && strings.Contains(v.Message, "requires rejection_reason") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-006 for rejected without rejection_reason")
+	}
+}
+
+func TestIssueRulesCheck_I006NonRejectedWithReason(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/open-with-reason.md": "---\ntype: issue\nstatus: open\nseverity: high\nrejection_reason: duplicate\n---\n# Issue: Open With Reason\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":           "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-006" && strings.Contains(v.Message, "must be absent") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-006 for non-rejected with rejection_reason")
+	}
+}
+
+func TestIssueRulesCheck_I006OrphanNotes(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/orphan-notes.md": "---\ntype: issue\nstatus: open\nseverity: high\nrejection_notes: some notes\n---\n# Issue: Orphan Notes\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":       "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-006" && strings.Contains(v.Message, "rejection_notes") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-006 for orphan rejection_notes")
+	}
+}
+
+// =============================================================================
+// issue_rules.go — I-008 missing, duplicate, empty, wrong-order sections
+// =============================================================================
+
+func TestIssueRulesCheck_I008DuplicateSection(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/dup-section.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Dup Section\n\n## Description\n\nFirst.\n\n## Description\n\nSecond.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":      "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-008" && strings.Contains(v.Message, "more than once") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-008 for duplicate Description section")
+	}
+}
+
+func TestIssueRulesCheck_I008EmptySection(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/empty-desc.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Empty Desc\n\n## Description\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":     "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-008" && strings.Contains(v.Message, "empty") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-008 for empty Description section")
+	}
+}
+
+func TestIssueRulesCheck_I008WrongOrder(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/wrong-order.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Wrong Order\n\n## Steps to Reproduce\n\n- Step\n\n## Description\n\nDesc.\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":      "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-008" && strings.Contains(v.Message, "canonical order") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-008 for wrong section order")
+	}
+}
+
+// =============================================================================
+// issue_rules.go — I-001 unknown frontmatter key
+// =============================================================================
+
+func TestIssueRulesCheck_I001UnknownKey(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/unknown-key.md": "---\ntype: issue\nstatus: open\nseverity: high\nbanana: yes\n---\n# Issue: Unknown Key\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md":      "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-001" && strings.Contains(v.Message, "banana") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-001 for unknown frontmatter key")
+	}
+}
+
+// =============================================================================
+// issue_rules.go — I-007 no H1 at all
+// =============================================================================
+
+func TestIssueRulesCheck_I007NoH1(t *testing.T) {
+	root := setupSpecTree(t, map[string]string{
+		"issues/no-h1.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n\nJust text without any heading.\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/README.md": "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
+	})
+
+	c := newIssueRulesChecker()
+	violations, err := c.check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range violations {
+		if v.Rule == "I-007" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected I-007 for missing H1")
 	}
 }
