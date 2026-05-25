@@ -1,10 +1,45 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"testing"
 )
+
+// ---------- in-process tests (provide coverage) ----------
+
+func TestRun_Success(t *testing.T) {
+	called := false
+	runFn := func([]string) error { called = true; return nil }
+	fatalFn := func(error) { t.Fatal("fatalFn should not be called on success") }
+
+	run([]string{"specscore", "--help"}, runFn, fatalFn)
+	if !called {
+		t.Error("runFn was not called")
+	}
+}
+
+func TestRun_Error(t *testing.T) {
+	wantErr := errors.New("boom")
+	var gotErr error
+	runFn := func([]string) error { return wantErr }
+	fatalFn := func(err error) { gotErr = err }
+
+	run([]string{"specscore", "bad"}, runFn, fatalFn)
+	if gotErr != wantErr {
+		t.Errorf("fatalFn got %v, want %v", gotErr, wantErr)
+	}
+}
+
+func TestMain_CallsRun(t *testing.T) {
+	orig := os.Args
+	defer func() { os.Args = orig }()
+	os.Args = []string{"specscore", "--help"}
+	main() // exercises the real main → run wiring
+}
+
+// ---------- subprocess tests (validate real binary behavior) ----------
 
 func TestMain_HelpExitsZero(t *testing.T) {
 	// Build the binary and run it with --help to cover the main() function.
