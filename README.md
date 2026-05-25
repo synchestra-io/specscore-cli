@@ -64,8 +64,6 @@ Then bootstrap the CLI itself with `/specscore:install`, or install manually wit
 
 We're proud that `specscore-cli` maintains **99% test coverage**, enforced automatically — the CI pipeline rejects any pull request that drops below 99%.
 
-Reaching that level required going well beyond the happy path: error injection via package-level `var` stubs (swapped in tests via `t.Cleanup`), dead-code removal to keep the denominator honest, and thorough coverage of subprocess, I/O, and shell-integration paths.
-
 Our goal is **100%**. Every uncovered statement is a known gap tracked in [`spec/ideas/full-test-coverage.md`](spec/ideas/full-test-coverage.md).
 
 ## License
