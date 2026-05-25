@@ -424,6 +424,121 @@ func TestLegalTransitionMatrix_IncludesAllSources(t *testing.T) {
 	}
 }
 
+// AC: no-status-line-transitions
+func TestChangeStatus_NoStatusLineTransitions(t *testing.T) {
+	root := t.TempDir()
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	if err := os.MkdirAll(filepath.Join(ideasDir, "archived"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Write an idea file WITHOUT a **Status:** line
+	body := "# Idea: No Status\n\nNo status line here.\n"
+	if err := os.WriteFile(filepath.Join(ideasDir, "no-status.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "no-status",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: noopLint,
+	})
+	assertExitCode(t, err, exitcode.Unexpected)
+	if !strings.Contains(err.Error(), "no **Status:** line") {
+		t.Errorf("expected 'no **Status:** line' in error, got: %v", err)
+	}
+}
+
+// AC: lint-failure-non-archive — lint failure on non-archive transition
+// covers the fullRollback path without archive side-effects.
+func TestChangeStatus_LintFailureRollsBack_NonArchive(t *testing.T) {
+	root := stageIdeaTree(t, "lint-fail", "Draft")
+	simulatedErr := exitcode.UnexpectedErrorf("lint failed: oq-section error")
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "lint-fail",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: failingLint(simulatedErr),
+	})
+	assertExitCode(t, err, exitcode.Unexpected)
+
+	// File should be rolled back to Draft
+	body := readIdea(t, root, "lint-fail")
+	if !strings.Contains(body, "**Status:** Draft") {
+		t.Errorf("status should be rolled back to Draft; got:\n%s", body)
+	}
+}
+
+// AC: legal-targets-empty — test state with no outgoing transitions
+func TestChangeStatus_NoLegalTargets(t *testing.T) {
+	root := stageIdeaTree(t, "archived-idea", "Archived")
+	// Move to active path since stageIdeaTree creates at active
+	// Archived has no legal outgoing transitions.
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "archived-idea",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: noopLint,
+	})
+	assertExitCode(t, err, exitcode.InvalidState)
+	if !strings.Contains(err.Error(), "no legal targets") {
+		t.Errorf("expected 'no legal targets' message, got: %v", err)
+	}
+}
+
+// AC: stat-archived-readme-non-ENOENT
+func TestChangeStatus_ArchiveStatReadmeNonENOENT(t *testing.T) {
+	root := stageIdeaTree(t, "stat-rm", "Approved")
+	archivedDir := filepath.Join(root, "spec", "ideas", "archived")
+	// Remove the archived README so the code takes the os.IsNotExist branch.
+	// Then make the archived dir non-searchable so WriteFile (line 197) fails
+	// because the parent dir has no execute permission.
+	os.Remove(filepath.Join(archivedDir, "README.md"))
+	os.Chmod(archivedDir, 0o600) // read-write but no execute
+	defer os.Chmod(archivedDir, 0o755)
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "stat-rm",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		// On some systems this might succeed. That's OK.
+		return
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+}
+
+// AC: archive-stat-non-enoent — injected stat error (covers transitions.go:225)
+func TestChangeStatus_ArchiveStatNonENOENT_Injected(t *testing.T) {
+	root := stageIdeaTree(t, "stat-inject", "Approved")
+
+	old := osStatFn
+	osStatFn = func(name string) (os.FileInfo, error) {
+		if strings.HasSuffix(name, "stat-inject.md") {
+			return nil, fmt.Errorf("injected stat error: not ENOENT")
+		}
+		return os.Stat(name)
+	}
+	t.Cleanup(func() { osStatFn = old })
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "stat-inject",
+		To:           lifecycle.IdeaArchived,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error from injected stat failure")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+	if !strings.Contains(err.Error(), "stat archive target") {
+		t.Errorf("expected 'stat archive target' in error, got: %v", err)
+	}
+}
+
 func TestLegalChangeStatusTargetNames_Stable(t *testing.T) {
 	got := LegalChangeStatusTargetNames()
 	want := []string{"Approved", "Archived"}

@@ -41,6 +41,12 @@ type runtimeState struct {
 // invocation is the singleton runtime state for the current process.
 var invocation runtimeState
 
+// Testable indirections for telemetry functions. Tests inject failures via these.
+var (
+	installIDFn = telemetry.InstallID
+	statePathFn = telemetry.StatePath
+)
+
 // noTelemetryFlag is the persistent --no-telemetry boolean flag bound at the
 // root command. cobra populates it before PersistentPreRun fires.
 var noTelemetryFlag bool
@@ -119,7 +125,7 @@ func preRun(cmd *cobra.Command) {
 	invocation.Decisions = telemetry.ResolveOptOut(invocation.Signals, known)
 
 	// Install-id handling and first-run notice.
-	id, justCreated, err := telemetry.InstallID()
+	id, justCreated, err := installIDFn()
 	if err != nil {
 		// Best-effort; telemetry already gated by opt-out. Leave InstallID
 		// empty so emission paths can skip.
@@ -148,7 +154,7 @@ func suppressFirstRunNotice(sigs telemetry.OptOutSignals) bool {
 // error messages; on any error resolving the path, returns the literal
 // "~/.specscore/telemetry.yaml" as a fallback.
 func stateFilePathForMessage() string {
-	if p, err := telemetry.StatePath(); err == nil {
+	if p, err := statePathFn(); err == nil {
 		return p
 	}
 	return "~/.specscore/telemetry.yaml"

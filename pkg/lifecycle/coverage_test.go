@@ -488,6 +488,65 @@ func TestWriteFileAtomic_RenameError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// writeFileAtomic — injected fileSync failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_SyncError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := fileSync
+	fileSync = func(f *os.File) error {
+		return fmt.Errorf("injected sync error")
+	}
+	t.Cleanup(func() { fileSync = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected Sync failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — injected fileClose failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_CloseError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := fileClose
+	fileClose = func(f *os.File) error {
+		_ = f.Close() // actually close so no fd leak
+		return fmt.Errorf("injected close error")
+	}
+	t.Cleanup(func() { fileClose = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected Close failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // readStatus — scanner error (huge line exceeds buffer)
 // ---------------------------------------------------------------------------
 

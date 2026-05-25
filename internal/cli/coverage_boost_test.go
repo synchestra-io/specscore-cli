@@ -6261,3 +6261,132 @@ func TestIdeaRelocate_TargetRepoNotFound(t *testing.T) {
 		t.Fatal("expected error for nonexistent target repo")
 	}
 }
+
+// ===========================================================================
+// init.go — stat error non-ENOENT (line 82-84)
+// ===========================================================================
+
+func TestInit_StatErrorNonENOENT(t *testing.T) {
+	root := t.TempDir()
+	// Create specscore.yaml as a directory so Stat returns not-a-file but no ENOENT
+	configDir := filepath.Join(root, "specscore.yaml")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Stat will succeed (it's a dir). The init code checks `statErr == nil` first → conflict.
+	// Actually, this takes the `statErr == nil` path since Stat succeeds on a dir.
+	// To trigger the `!os.IsNotExist(statErr)` path, we need Stat to fail with non-ENOENT.
+	// Make the parent dir non-executable so Stat can't traverse.
+	os.RemoveAll(configDir)
+	// Create a symlink that points to nothing (creates ENOENT), that won't help.
+	// Instead, create a scenario where the path's parent has restricted perms.
+	subDir := filepath.Join(root, "project")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a file so the path exists before we restrict permissions
+	configPath := filepath.Join(subDir, "specscore.yaml")
+	if err := os.WriteFile(configPath, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Remove the file, then restrict the dir so Stat fails with EACCES
+	os.Remove(configPath)
+	os.Chmod(subDir, 0o000)
+	defer os.Chmod(subDir, 0o755)
+
+	_, _, err := runInitCmd(t, nil, "--project", subDir)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	// The init will fail on Stat with permission denied (not ENOENT)
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// writeMissingIndex error test already declared above (TestInit_WriteMissingIndexError).
+
+// ===========================================================================
+// task.go — resolveTasksDir: os.Getwd() error (line 38-40) — untestable
+// task.go — resolveFeaturesDir: os.Getwd() error (line 50-52) — untestable
+// These require stubbing os.Getwd which isn't done in this codebase.
+// ===========================================================================
+
+// ===========================================================================
+// task.go — taskNew writeFile error (line 306-308)
+// ===========================================================================
+
+func TestTaskNew_WriteFileError(t *testing.T) {
+	root := setupTaskProject(t)
+	withCwd(t, root)
+
+	// Inject a stub failure for writing the task README.
+	old := osWriteFileFn
+	osWriteFileFn = func(name string, data []byte, perm os.FileMode) error {
+		return fmt.Errorf("injected write error")
+	}
+	t.Cleanup(func() { osWriteFileFn = old })
+
+	_, _, err := runTask(t, "new", "--task=inject-fail", "--title=Fail Task")
+	if err == nil {
+		t.Fatal("expected error from injected write failure")
+	}
+}
+
+// ===========================================================================
+// telemetry_wiring.go — installIDFn error (lines 123-129)
+// ===========================================================================
+
+func TestStateFilePathForMessage_ForcedFallback(t *testing.T) {
+	old := statePathFn
+	statePathFn = func() (string, error) {
+		return "", fmt.Errorf("injected statepath error")
+	}
+	t.Cleanup(func() { statePathFn = old })
+
+	got := stateFilePathForMessage()
+	if got != "~/.specscore/telemetry.yaml" {
+		t.Errorf("expected fallback path, got %q", got)
+	}
+}
+
+func TestSetupPersistentPreRun_InstallIDError(t *testing.T) {
+	old := installIDFn
+	installIDFn = func() (string, bool, error) {
+		return "", false, fmt.Errorf("injected installid error")
+	}
+	t.Cleanup(func() { installIDFn = old })
+
+	// Run any command — the PersistentPreRun fires.
+	err := Run([]string{"specscore", "version"})
+	// The command should still succeed (install-id failure is best-effort).
+	if err != nil {
+		t.Errorf("expected success with installid error, got: %v", err)
+	}
+}
+
+// ===========================================================================
+// init.go — interactive EOF mid-prompt (covers promptProjectMetadata EOF path)
+// ===========================================================================
+
+func TestInit_InteractiveEOFMidPrompt(t *testing.T) {
+	root := t.TempDir()
+	orig := isTerminal
+	isTerminal = func(_ io.Reader) bool { return true }
+	t.Cleanup(func() { isTerminal = orig })
+
+	// Send only 2 lines — title and host; then EOF
+	stdin := strings.NewReader("My Title\nmyhost.com\n")
+	_, _, err := runInitCmd(t, stdin, "--project", root, "-i")
+	// Should succeed because EOF is treated as "accept defaults for remaining fields"
+	if err != nil {
+		t.Fatalf("expected success on EOF mid-prompt, got: %v", err)
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "specscore.yaml"))
+	if !strings.Contains(string(body), "title: My Title") {
+		t.Errorf("title not applied: %s", body)
+	}
+	if !strings.Contains(string(body), "host: myhost.com") {
+		t.Errorf("host not applied: %s", body)
+	}
+}

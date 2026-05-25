@@ -17,6 +17,8 @@ var (
 	ioCopy       = io.Copy
 	osChmod      = os.Chmod
 	osRename     = os.Rename
+	fileSync     = func(f *os.File) error { return f.Sync() }
+	fileClose    = func(f *os.File) error { return f.Close() }
 )
 
 // statusLineRe matches a header line of the form `**Status:** <value>`,
@@ -237,12 +239,12 @@ func writeFileAtomic(dst string, content []byte) error {
 		cleanup()
 		return err
 	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
+	if err := fileSync(tmp); err != nil {
+		_ = fileClose(tmp)
 		cleanup()
 		return err
 	}
-	if err := tmp.Close(); err != nil {
+	if err := fileClose(tmp); err != nil {
 		cleanup()
 		return err
 	}

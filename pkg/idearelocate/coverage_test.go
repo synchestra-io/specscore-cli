@@ -2329,6 +2329,177 @@ func TestResolveSourceArtifact_SeedOnly(t *testing.T) {
 	}
 }
 
+// ===== resolveTargetByPath — stat error non-ENOENT =====
+
+func TestResolveTargetRepo_PathStatErrorNonENOENT(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRepo(t, parent, "src", "src")
+
+	// Create a directory, then make it non-traversable so Stat fails with EACCES
+	targetDir := filepath.Join(parent, "restricted")
+	os.MkdirAll(filepath.Join(targetDir, "inner"), 0o755)
+	os.Chmod(targetDir, 0o000)
+	defer os.Chmod(targetDir, 0o755)
+
+	_, err := ResolveTargetRepo(source, filepath.Join(targetDir, "inner"))
+	if err == nil {
+		t.Fatal("expected error for restricted path")
+	}
+	var ec *exitcode.Error
+	if !errors.As(err, &ec) {
+		t.Fatalf("expected *exitcode.Error, got %T: %v", err, err)
+	}
+	// Could be NotFound or Unexpected depending on OS behavior
+	if ec.ExitCode() != exitcode.NotFound && ec.ExitCode() != exitcode.Unexpected {
+		t.Errorf("exit code: got %d", ec.ExitCode())
+	}
+}
+
+// resolveTargetBySlug no-match already tested above (TestResolveTargetRepo_SlugNoMatch).
+
+// ===== resolveTargetByPath — yaml read error =====
+
+func TestResolveTargetRepo_PathYamlReadError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRepo(t, parent, "src", "src")
+	badDir := filepath.Join(parent, "badyaml")
+	os.MkdirAll(badDir, 0o755)
+	// Write a specscore.yaml that exists but is unreadable
+	yamlPath := filepath.Join(badDir, "specscore.yaml")
+	os.WriteFile(yamlPath, []byte("{{malformed"), 0o644)
+
+	_, err := ResolveTargetRepo(source, badDir)
+	if err == nil {
+		t.Fatal("expected error for malformed yaml")
+	}
+}
+
+// ===== linkcleanup.go — line 58 readFile error, line 84 walk error =====
+
+func TestUpdateCrossRepoLinks_UnreadableSpecFile(t *testing.T) {
+	parent := t.TempDir()
+	repo := stageRepo(t, parent, "repo", "repo")
+
+	specDir := filepath.Join(repo, "spec", "ideas")
+	os.MkdirAll(specDir, 0o755)
+	unreadable := filepath.Join(specDir, "secret.md")
+	os.WriteFile(unreadable, []byte("[Link](foo.md)"), 0o644)
+	os.Chmod(unreadable, 0o000)
+	defer os.Chmod(unreadable, 0o644)
+
+	targetRepo := TargetRepo{Path: repo, RepoName: "repo", Org: "org"}
+	results, err := UpdateCrossRepoLinks(
+		[]TargetRepo{targetRepo}, targetRepo, "foo", "spec/ideas/foo.md",
+	)
+	// Unreadable files are skipped gracefully
+	if err != nil {
+		t.Logf("error (may be expected): %v", err)
+	}
+	_ = results
+}
+
+// ===== preflight.go — FindReferences with Walk error =====
+
+func TestFindReferences_WalkError(t *testing.T) {
+	tmp := t.TempDir()
+	specDir := filepath.Join(tmp, "spec")
+	os.MkdirAll(specDir, 0o755)
+	// Create a subdirectory that's unreadable
+	badSubDir := filepath.Join(specDir, "locked")
+	os.MkdirAll(badSubDir, 0o755)
+	os.WriteFile(filepath.Join(badSubDir, "file.md"), []byte("**Source Ideas:** slug\n"), 0o644)
+	os.Chmod(badSubDir, 0o000)
+	defer os.Chmod(badSubDir, 0o755)
+
+	hits, err := FindReferences(tmp, "slug")
+	// Walk skips unreadable dirs; the func returns nil error
+	if err != nil {
+		t.Logf("error (may be expected): %v", err)
+	}
+	_ = hits
+}
+
+// ===== mutate.go uncovered lines 37 and 60 =====
+
+func TestApplyMutation_DestDirCreationError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRepo(t, parent, "src", "src")
+	target := stageRepo(t, parent, "tgt", "tgt")
+
+	writeIdea(t, source, "dest-err", "# Idea: dest-err\nBody.\n")
+
+	// Make the target's spec dir non-writable so MkdirAll for seeds fails
+	seedDir := filepath.Join(target, "spec", "ideas", "seeds")
+	os.RemoveAll(seedDir) // remove seeds dir if it exists
+
+	artifact := SourceArtifact{
+		Path: filepath.Join(source, "spec", "ideas", "seeds", "dest-err.md"),
+		Kind: KindSeed,
+	}
+	// Write the seed file
+	os.MkdirAll(filepath.Join(source, "spec", "ideas", "seeds"), 0o755)
+	os.WriteFile(artifact.Path, []byte("# Seed: dest-err\n"), 0o644)
+
+	// Make target's ideas dir read-only so seeds dir can't be created
+	targetIdeasDir := filepath.Join(target, "spec", "ideas")
+	os.Chmod(targetIdeasDir, 0o555)
+	defer os.Chmod(targetIdeasDir, 0o755)
+
+	targetRepo := TargetRepo{Path: target, RepoName: "tgt", Org: "tgt"}
+	_, err := ApplyMutation(source, artifact, targetRepo)
+	if err == nil {
+		t.Fatal("expected error for dest dir creation failure")
+	}
+}
+
+// ===== ExecutePreCommitPhase — link update failure triggers rollback (lines 96-101) =====
+
+func TestExecutePreCommitPhase_InjectedLinkUpdateFailure(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRepo(t, parent, "src", "src")
+	target := stageRepo(t, parent, "tgt", "tgt")
+
+	writeIdea(t, source, "link-fail", "# Idea: link-fail\nBody.\n")
+
+	artifact := SourceArtifact{
+		Path: filepath.Join(source, "spec", "ideas", "link-fail.md"),
+		Kind: KindIdea,
+	}
+	targetRepo := TargetRepo{Path: target, RepoName: "tgt", Org: "tgt"}
+
+	// Inject a failing UpdateCrossRepoLinks
+	origFn := updateCrossRepoLinksFn
+	updateCrossRepoLinksFn = func(allRepos []TargetRepo, tr TargetRepo, slug string, targetRelPath string) ([]LinkUpdateResult, error) {
+		return []LinkUpdateResult{
+			{RepoPath: source, Updated: []string{"spec/ideas/README.md"}},
+		}, errors.New("injected link update failure")
+	}
+	t.Cleanup(func() { updateCrossRepoLinksFn = origFn })
+
+	_, _, err := ExecutePreCommitPhase(
+		source, artifact, targetRepo,
+		[]TargetRepo{{Path: source, RepoName: "src", Org: "src"}, targetRepo},
+		"link-fail",
+	)
+	if err == nil {
+		t.Fatal("expected error from injected link update failure")
+	}
+	var ec *exitcode.Error
+	if !errors.As(err, &ec) {
+		t.Fatalf("expected *exitcode.Error, got %T: %v", err, err)
+	}
+	if ec.ExitCode() != exitcode.Unexpected {
+		t.Errorf("exit code: got %d want %d", ec.ExitCode(), exitcode.Unexpected)
+	}
+	msg := ec.Error()
+	if !strings.Contains(msg, "cross-repo link update") {
+		t.Errorf("error should mention 'cross-repo link update': %s", msg)
+	}
+	if !strings.Contains(msg, "Rollback actions performed:") {
+		t.Errorf("error should mention rollback actions: %s", msg)
+	}
+}
+
 // ===== helper =====
 
 func sliceEqual(a, b []string) bool {

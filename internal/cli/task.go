@@ -303,7 +303,7 @@ func runTaskNew(cmd *cobra.Command, _ []string) error {
 		DependsOn:   deps,
 	}
 	taskFilePath := filepath.Join(taskDir, "README.md")
-	if err := os.WriteFile(taskFilePath, task.RenderTaskFile(tfd), 0o644); err != nil {
+	if err := osWriteFileFn(taskFilePath, task.RenderTaskFile(tfd), 0o644); err != nil {
 		return exitcode.UnexpectedErrorf("writing task file: %v", err)
 	}
 

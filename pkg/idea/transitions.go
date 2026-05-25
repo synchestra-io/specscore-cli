@@ -31,6 +31,10 @@ import (
 	"github.com/specscore/specscore-cli/pkg/lifecycle"
 )
 
+// osStatFn is a testable indirection for os.Stat used in the archive
+// collision check. Tests can replace it to inject non-ENOENT errors.
+var osStatFn = os.Stat
+
 // archivedIndexStub is the minimal lint-clean content the verb writes to
 // spec/ideas/archived/README.md when that file does not already exist on
 // the first archive transition. lint --fix will subsequently rewrite the
@@ -217,7 +221,7 @@ func ChangeStatus(opts ChangeStatusOptions) (ChangeStatusResult, error) {
 
 		// Collision check. If a stale archived file already exists,
 		// exit 1 without overwriting and roll back the status rewrite.
-		if _, err := os.Stat(archivedPath); err == nil {
+		if _, err := osStatFn(archivedPath); err == nil {
 			fullRollback()
 			return ChangeStatusResult{}, exitcode.ConflictErrorf(
 				"archive collision: %s already exists; aborted move from %s",

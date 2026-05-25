@@ -92,7 +92,7 @@ func ExecutePreCommitPhase(
 		actions = appendIfSourceMissing(actions, source.Path, sourceBody)
 		return mutation, nil, ioRollbackError("computing artifact target-relative path", err, actions)
 	}
-	linkResults, linkErr := UpdateCrossRepoLinks(scanRepos, target, slug, targetRel)
+	linkResults, linkErr := updateCrossRepoLinksFn(scanRepos, target, slug, targetRel)
 	if linkErr != nil {
 		actions = appendCheckoutsForResults(actions, linkResults)
 		actions = appendIfPartialDest(actions, mutation.DestinationPath)
