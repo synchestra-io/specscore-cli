@@ -138,6 +138,134 @@ func TestExecNonZeroExitReturnsExitError(t *testing.T) {
 	}
 }
 
+// TestExecEmptyArgvName verifies that Name() with empty argv returns "exec:".
+func TestExecEmptyArgvName(t *testing.T) {
+	sub := NewExec(nil, nil, 2*time.Second)
+	if got, want := sub.Name(), "exec:"; got != want {
+		t.Fatalf("Name() = %q, want %q", got, want)
+	}
+}
+
+// TestExecEmptyArgvDeliver verifies that Deliver with empty argv returns an
+// error immediately without spawning a process.
+func TestExecEmptyArgvDeliver(t *testing.T) {
+	sub := NewExec(nil, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("Deliver with empty argv should return error")
+	}
+	if !strings.Contains(err.Error(), "empty argv") {
+		t.Errorf("error message = %q, want to contain 'empty argv'", err.Error())
+	}
+}
+
+// TestExecTimeoutErrorMethods covers the Error() and Unwrap() methods of
+// ExecTimeoutError.
+func TestExecTimeoutErrorMethods(t *testing.T) {
+	cause := errors.New("signal: killed")
+	e := &ExecTimeoutError{Timeout: 200 * time.Millisecond, Cause: cause}
+
+	wantMsg := "exec: timeout after 200ms"
+	if got := e.Error(); got != wantMsg {
+		t.Fatalf("Error() = %q, want %q", got, wantMsg)
+	}
+	if unwrapped := e.Unwrap(); unwrapped != cause {
+		t.Fatalf("Unwrap() = %v, want %v", unwrapped, cause)
+	}
+}
+
+// TestExecExitErrorMethods covers the Error() and Unwrap() methods of
+// ExecExitError.
+func TestExecExitErrorMethods(t *testing.T) {
+	cause := errors.New("exit status 7")
+	e := &ExecExitError{ExitCode: 7, Cause: cause}
+
+	wantMsg := "exec: child exited with code 7"
+	if got := e.Error(); got != wantMsg {
+		t.Fatalf("Error() = %q, want %q", got, wantMsg)
+	}
+	if unwrapped := e.Unwrap(); unwrapped != cause {
+		t.Fatalf("Unwrap() = %v, want %v", unwrapped, cause)
+	}
+}
+
+// TestExecChildExitsBeforeReadingStdin verifies the behavior when a child
+// exits non-zero without reading all of stdin. This exercises the write-error
+// → Wait → classifyWaitError path.
+func TestExecChildExitsBeforeReadingStdin(t *testing.T) {
+	// A child that exits immediately with code 3 without reading stdin.
+	sub := NewExec([]string{"sh", "-c", "exit 3"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	// The error should be an ExecExitError with code 3.
+	var exitErr *ExecExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error type = %T (%v), want *ExecExitError", err, err)
+	}
+	if exitErr.ExitCode != 3 {
+		t.Fatalf("ExitCode = %d, want 3", exitErr.ExitCode)
+	}
+}
+
+// TestExecCancelledContext verifies that a pre-cancelled context results in a
+// start failure or timeout error.
+func TestExecCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	sub := NewExec([]string{"sleep", "10"}, nil, 2*time.Second)
+	err := sub.Deliver(ctx, execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error with cancelled context, got nil")
+	}
+	// The error should mention exec in some form.
+	if !strings.Contains(err.Error(), "exec") {
+		t.Errorf("error = %q, want to contain 'exec'", err.Error())
+	}
+}
+
+// TestExecContextCancelDuringRun exercises the classifyWaitError fallback path
+// where the context error is context.Canceled (not DeadlineExceeded) and the
+// wait error is not *exec.ExitError.
+func TestExecContextCancelDuringRun(t *testing.T) {
+	// Use a parent context that we cancel after a short delay. The Exec
+	// subscriber uses WithTimeout internally, so if our cancel fires before
+	// the timeout, cctx.Err() might be Canceled rather than DeadlineExceeded.
+	// We use a very long timeout so the cancel wins.
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel after 50ms - before the 5s exec timeout fires.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	sub := NewExec([]string{"sleep", "30"}, nil, 5*time.Second)
+	err := sub.Deliver(ctx, execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error with context cancel during run, got nil")
+	}
+	// Should get the "exec: wait:" fallback or a timeout error depending on timing.
+	// Either is acceptable; the key is that we don't panic.
+	if !strings.Contains(err.Error(), "exec") {
+		t.Errorf("error = %q, want to contain 'exec'", err.Error())
+	}
+}
+
+// TestExecNotFoundCommand verifies that a non-existent executable returns a
+// start error.
+func TestExecNotFoundCommand(t *testing.T) {
+	sub := NewExec([]string{"/nonexistent/binary/path"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error for non-existent binary, got nil")
+	}
+	if !strings.Contains(err.Error(), "exec: start") {
+		t.Errorf("error = %q, want to contain 'exec: start'", err.Error())
+	}
+}
+
 // TestExecEnvIsAdditive verifies that the configured env mapping is appended
 // to os.Environ rather than replacing it: a variable from the parent
 // environment must remain visible to the child, alongside the configured one.

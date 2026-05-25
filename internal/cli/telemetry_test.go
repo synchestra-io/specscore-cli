@@ -245,3 +245,194 @@ func TestPreRun_FirstRunNoticeSuppressedInCI(t *testing.T) {
 func newRootCommandForTest() *cobra.Command {
 	return &cobra.Command{Use: "specscore"}
 }
+
+// ---------------------------------------------------------------------------
+// Cobra-level tests for telemetry subcommands (status, enable, disable).
+// These exercise the command constructors via cmd.Execute(), covering the
+// wiring that unit tests of writeStatus/mutateState/validateChannelArg miss.
+// ---------------------------------------------------------------------------
+
+// runTelemetry builds the telemetry cobra command tree and executes it with
+// the given args (e.g. "status", "enable", "disable usage-stats").
+func runTelemetry(t *testing.T, args ...string) (string, string, error) {
+	t.Helper()
+	cmd := telemetryCommand()
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), errOut.String(), err
+}
+
+// --- telemetry status -------------------------------------------------------
+
+func TestTelemetry_Status(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "status")
+	if err != nil {
+		t.Fatalf("telemetry status: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats:") {
+		t.Errorf("expected usage-stats line in output, got %q", out)
+	}
+	if !strings.Contains(out, "crash-reports:") {
+		t.Errorf("expected crash-reports line in output, got %q", out)
+	}
+}
+
+func TestTelemetry_Status_SingleChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "status", "usage-stats")
+	if err != nil {
+		t.Fatalf("telemetry status usage-stats: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats:") {
+		t.Errorf("expected usage-stats line, got %q", out)
+	}
+	if strings.Contains(out, "crash-reports:") {
+		t.Errorf("should only show usage-stats, got %q", out)
+	}
+}
+
+func TestTelemetry_Status_InvalidChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	_, _, err := runTelemetry(t, "status", "banana")
+	if err == nil {
+		t.Fatal("expected error for invalid channel, got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown channel") {
+		t.Errorf("error should mention unknown channel, got %q", err.Error())
+	}
+}
+
+// --- telemetry enable -------------------------------------------------------
+
+func TestTelemetry_Enable(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "enable")
+	if err != nil {
+		t.Fatalf("telemetry enable: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "all channels enabled") {
+		t.Errorf("expected confirmation of all channels enabled, got %q", out)
+	}
+}
+
+func TestTelemetry_Enable_SpecificChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "enable", "usage-stats")
+	if err != nil {
+		t.Fatalf("telemetry enable usage-stats: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats enabled") {
+		t.Errorf("expected confirmation of usage-stats enabled, got %q", out)
+	}
+}
+
+func TestTelemetry_Enable_InvalidChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	_, _, err := runTelemetry(t, "enable", "banana")
+	if err == nil {
+		t.Fatal("expected error for invalid channel, got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown channel") {
+		t.Errorf("error should mention unknown channel, got %q", err.Error())
+	}
+}
+
+// --- telemetry disable ------------------------------------------------------
+
+func TestTelemetry_Disable(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "disable")
+	if err != nil {
+		t.Fatalf("telemetry disable: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "all channels disabled") {
+		t.Errorf("expected confirmation of all channels disabled, got %q", out)
+	}
+}
+
+func TestTelemetry_Disable_SpecificChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t, "disable", "crash-reports")
+	if err != nil {
+		t.Fatalf("telemetry disable crash-reports: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "crash-reports disabled") {
+		t.Errorf("expected confirmation of crash-reports disabled, got %q", out)
+	}
+}
+
+func TestTelemetry_Disable_InvalidChannel(t *testing.T) {
+	withTempHomeForCLI(t)
+	_, _, err := runTelemetry(t, "disable", "banana")
+	if err == nil {
+		t.Fatal("expected error for invalid channel, got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown channel") {
+		t.Errorf("error should mention unknown channel, got %q", err.Error())
+	}
+}
+
+// --- telemetry (bare) prints help -------------------------------------------
+
+func TestTelemetry_BareCommand_PrintsHelp(t *testing.T) {
+	withTempHomeForCLI(t)
+	out, _, err := runTelemetry(t)
+	if err != nil {
+		t.Fatalf("bare telemetry command: unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "status") || !strings.Contains(out, "enable") || !strings.Contains(out, "disable") {
+		t.Errorf("expected help text listing subcommands, got %q", out)
+	}
+}
+
+// --- telemetry enable/disable round-trip via cobra --------------------------
+
+func TestTelemetry_EnableDisable_RoundTrip_ViaCobra(t *testing.T) {
+	withTempHomeForCLI(t)
+
+	// Disable all channels.
+	out, _, err := runTelemetry(t, "disable")
+	if err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+	if !strings.Contains(out, "all channels disabled") {
+		t.Errorf("disable confirmation: got %q", out)
+	}
+
+	// Status should report disabled.
+	out, _, err = runTelemetry(t, "status")
+	if err != nil {
+		t.Fatalf("status after disable: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats: disabled") {
+		t.Errorf("expected usage-stats disabled, got %q", out)
+	}
+	if !strings.Contains(out, "crash-reports: disabled") {
+		t.Errorf("expected crash-reports disabled, got %q", out)
+	}
+
+	// Re-enable usage-stats only.
+	out, _, err = runTelemetry(t, "enable", "usage-stats")
+	if err != nil {
+		t.Fatalf("enable usage-stats: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats enabled") {
+		t.Errorf("enable confirmation: got %q", out)
+	}
+
+	// Status: usage-stats enabled, crash-reports still disabled.
+	out, _, err = runTelemetry(t, "status")
+	if err != nil {
+		t.Fatalf("status after partial enable: %v", err)
+	}
+	if !strings.Contains(out, "usage-stats: enabled") {
+		t.Errorf("expected usage-stats enabled, got %q", out)
+	}
+	if !strings.Contains(out, "crash-reports: disabled") {
+		t.Errorf("expected crash-reports still disabled, got %q", out)
+	}
+}

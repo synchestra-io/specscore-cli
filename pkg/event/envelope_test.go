@@ -188,3 +188,84 @@ func TestValidate_RejectsNonObjectPayload(t *testing.T) {
 		t.Errorf("error %q does not name 'payload'", err.Error())
 	}
 }
+
+// TestValidate_RejectsZeroTimestamp asserts a zero-valued timestamp fails.
+func TestValidate_RejectsZeroTimestamp(t *testing.T) {
+	e := validEvent()
+	e.Timestamp = time.Time{} // zero value
+
+	err := Validate(e)
+	if err == nil {
+		t.Fatalf("Validate(zero timestamp) = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "timestamp") {
+		t.Errorf("error %q does not name 'timestamp'", err.Error())
+	}
+}
+
+// TestValidate_RejectsEmptyPayload asserts that an empty payload is rejected.
+func TestValidate_RejectsEmptyPayload(t *testing.T) {
+	e := validEvent()
+	e.Payload = json.RawMessage(``)
+
+	err := Validate(e)
+	if err == nil {
+		t.Fatalf("Validate(empty payload) = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "payload") {
+		t.Errorf("error %q does not name 'payload'", err.Error())
+	}
+}
+
+// TestValidate_RejectsInvalidJSONPayload asserts that bytes starting with '{'
+// but not valid JSON are rejected.
+func TestValidate_RejectsInvalidJSONPayload(t *testing.T) {
+	e := validEvent()
+	e.Payload = json.RawMessage(`{bad json`)
+
+	err := Validate(e)
+	if err == nil {
+		t.Fatalf("Validate(invalid JSON payload) = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "payload") {
+		t.Errorf("error %q does not name 'payload'", err.Error())
+	}
+}
+
+// TestValidate_RejectsScalarPayload asserts that a JSON scalar (not an object)
+// is rejected.
+func TestValidate_RejectsScalarPayload(t *testing.T) {
+	e := validEvent()
+	e.Payload = json.RawMessage(`42`)
+
+	err := Validate(e)
+	if err == nil {
+		t.Fatalf("Validate(scalar payload) = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "payload") {
+		t.Errorf("error %q does not name 'payload'", err.Error())
+	}
+}
+
+// TestValidationError_Format verifies both branches of ValidationError.Error()
+// (with and without Value).
+func TestValidationError_Format(t *testing.T) {
+	t.Run("with_value", func(t *testing.T) {
+		ve := &ValidationError{Field: "name", Value: "Bad", Rule: "must match pattern"}
+		got := ve.Error()
+		if !strings.Contains(got, "name") || !strings.Contains(got, `"Bad"`) || !strings.Contains(got, "must match pattern") {
+			t.Fatalf("Error() = %q, missing expected components", got)
+		}
+	})
+	t.Run("without_value", func(t *testing.T) {
+		ve := &ValidationError{Field: "actor.id", Rule: "must be a non-empty string"}
+		got := ve.Error()
+		if !strings.Contains(got, "actor.id") || !strings.Contains(got, "must be a non-empty string") {
+			t.Fatalf("Error() = %q, missing expected components", got)
+		}
+		// When Value is empty, no value= should appear.
+		if strings.Contains(got, "value=") {
+			t.Fatalf("Error() = %q, should not contain 'value=' when Value is empty", got)
+		}
+	})
+}

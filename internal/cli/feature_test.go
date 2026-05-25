@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -440,6 +441,291 @@ func TestFeatureChangeStatus_FeatureNotFound(t *testing.T) {
 	}
 }
 
+// --- feature list tests ---
+
+func TestFeatureList_Text(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "list")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+}
+
+func TestFeatureList_YAML(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "list", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: auth") {
+		t.Errorf("stdout = %q, want it to contain 'path: auth'", out)
+	}
+}
+
+func TestFeatureList_JSON(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "list", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, `"path"`) {
+		t.Errorf("stdout = %q, want it to contain '\"path\"'", out)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+}
+
+func TestFeatureList_WithFields(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "list", "--fields=status")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// --fields auto-switches to yaml format
+	if !strings.Contains(out, "status: Approved") {
+		t.Errorf("stdout = %q, want it to contain 'status: Approved'", out)
+	}
+}
+
+func TestFeatureList_InvalidFormat(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	_, _, err := runFeature(t, "list", "--format=csv")
+	if err == nil {
+		t.Fatal("expected error for invalid format")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+// --- feature info tests ---
+
+func TestFeatureInfo_YAML(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "info", "auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: auth") {
+		t.Errorf("stdout = %q, want it to contain 'path: auth'", out)
+	}
+	if !strings.Contains(out, "status: Approved") {
+		t.Errorf("stdout = %q, want it to contain 'status: Approved'", out)
+	}
+}
+
+func TestFeatureInfo_JSON(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "info", "auth", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, `"path"`) {
+		t.Errorf("stdout = %q, want it to contain '\"path\"'", out)
+	}
+	if !strings.Contains(out, `"auth"`) {
+		t.Errorf("stdout = %q, want it to contain '\"auth\"'", out)
+	}
+}
+
+func TestFeatureInfo_Text(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "info", "auth", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "Feature: auth") {
+		t.Errorf("stdout = %q, want it to contain 'Feature: auth'", out)
+	}
+	if !strings.Contains(out, "Status:  Approved") {
+		t.Errorf("stdout = %q, want it to contain 'Status:  Approved'", out)
+	}
+}
+
+func TestFeatureInfo_NotFound(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	_, _, err := runFeature(t, "info", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent feature")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.NotFound {
+		t.Errorf("exit code = %d, want %d (NotFound)", got, exitcode.NotFound)
+	}
+}
+
+// --- feature tree tests ---
+
+func TestFeatureTree_FullTree(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+}
+
+func TestFeatureTree_Focused(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree", "auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "* auth") {
+		t.Errorf("stdout = %q, want it to contain '* auth' (focused marker)", out)
+	}
+}
+
+func TestFeatureTree_DirectionDown(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree", "auth", "--direction=down")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+}
+
+func TestFeatureTree_InvalidDirection(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	_, _, err := runFeature(t, "tree", "auth", "--direction=sideways")
+	if err == nil {
+		t.Fatal("expected error for invalid direction")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestFeatureTree_DirectionWithoutID(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	_, _, err := runFeature(t, "tree", "--direction=down")
+	if err == nil {
+		t.Fatal("expected error for --direction without feature_id")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+// --- feature deps/refs helpers ---
+
+// setupFeatureWithDeps extends the base fixture with a second feature
+// `billing` that depends on `auth`.
+func setupFeatureWithDeps(t *testing.T) string {
+	t.Helper()
+	root := setupFeatureSpec(t, "Approved")
+
+	billingDir := filepath.Join(root, "spec", "features", "billing")
+	if err := os.MkdirAll(billingDir, 0o755); err != nil {
+		t.Fatalf("mkdir billing: %v", err)
+	}
+	body := "# Feature: Billing\n\n**Status:** Draft\n\n## Summary\n\nBilling.\n\n## Dependencies\n\n- auth\n\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(filepath.Join(billingDir, "README.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write billing/README.md: %v", err)
+	}
+
+	// Update features index to include billing
+	idxPath := filepath.Join(root, "spec", "features", "README.md")
+	idxData, err := os.ReadFile(idxPath)
+	if err != nil {
+		t.Fatalf("read features index: %v", err)
+	}
+	updated := strings.Replace(string(idxData),
+		"## Open Questions",
+		"| [billing](billing/README.md) | Draft | Command | desc-billing |\n\n## Open Questions", 1)
+	if err := os.WriteFile(idxPath, []byte(updated), 0o644); err != nil {
+		t.Fatalf("rewrite features index: %v", err)
+	}
+	return root
+}
+
+// --- feature deps tests ---
+
+func TestFeatureDeps_NoDeps(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "deps", "auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// auth has no dependencies — output should be empty
+	if strings.TrimSpace(out) != "" {
+		t.Errorf("stdout = %q, want empty (no deps)", out)
+	}
+}
+
+func TestFeatureDeps_WithDeps(t *testing.T) {
+	setupFeatureWithDeps(t)
+
+	out, _, err := runFeature(t, "deps", "billing")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+}
+
+func TestFeatureDeps_NotFound(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	_, _, err := runFeature(t, "deps", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent feature")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.NotFound {
+		t.Errorf("exit code = %d, want %d (NotFound)", got, exitcode.NotFound)
+	}
+}
+
+// --- feature refs tests ---
+
+func TestFeatureRefs_NoRefs(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "refs", "auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// auth has no incoming references — output should be empty
+	if strings.TrimSpace(out) != "" {
+		t.Errorf("stdout = %q, want empty (no refs)", out)
+	}
+}
+
+func TestFeatureRefs_WithRefs(t *testing.T) {
+	setupFeatureWithDeps(t)
+
+	out, _, err := runFeature(t, "refs", "auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+}
+
 // AC: lint-failure-rolls-back — when a post-rewrite lint pass reports
 // an error-severity violation, the original Status line MUST be
 // restored and the command MUST exit 10.
@@ -494,5 +780,481 @@ func TestFeatureChangeStatus_LintFailureRollsBack(t *testing.T) {
 	afterAuth, _ := os.ReadFile(filepath.Join(root, "spec", "features", "auth", "README.md"))
 	if string(beforeAuth) != string(afterAuth) {
 		t.Errorf("rollback did not restore auth/README.md:\nbefore=%q\nafter =%q", beforeAuth, afterAuth)
+	}
+}
+
+// --- setupFeatureChain helper ---
+
+// setupFeatureChain creates a 3-feature chain: auth (Approved, no deps),
+// billing (Draft, depends on auth), payments (Draft, depends on billing).
+// Returns the repo root.
+func setupFeatureChain(t *testing.T) string {
+	t.Helper()
+	root := setupFeatureSpec(t, "Approved")
+	featDir := filepath.Join(root, "spec", "features")
+
+	// Add billing depending on auth
+	billingDir := filepath.Join(featDir, "billing")
+	if err := os.MkdirAll(billingDir, 0o755); err != nil {
+		t.Fatalf("mkdir billing: %v", err)
+	}
+	billingBody := "# Feature: Billing\n\n**Status:** Draft\n\n## Summary\n\nBilling.\n\n## Dependencies\n\n- auth\n\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(filepath.Join(billingDir, "README.md"), []byte(billingBody), 0o644); err != nil {
+		t.Fatalf("write billing/README.md: %v", err)
+	}
+
+	// Add payments depending on billing
+	paymentsDir := filepath.Join(featDir, "payments")
+	if err := os.MkdirAll(paymentsDir, 0o755); err != nil {
+		t.Fatalf("mkdir payments: %v", err)
+	}
+	paymentsBody := "# Feature: Payments\n\n**Status:** Draft\n\n## Summary\n\nPayments.\n\n## Dependencies\n\n- billing\n\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n"
+	if err := os.WriteFile(filepath.Join(paymentsDir, "README.md"), []byte(paymentsBody), 0o644); err != nil {
+		t.Fatalf("write payments/README.md: %v", err)
+	}
+
+	// Update features index
+	idxPath := filepath.Join(featDir, "README.md")
+	idxData, err := os.ReadFile(idxPath)
+	if err != nil {
+		t.Fatalf("read features index: %v", err)
+	}
+	updated := strings.Replace(string(idxData),
+		"## Open Questions",
+		"| [billing](billing/README.md) | Draft | Command | desc-billing |\n| [payments](payments/README.md) | Draft | Command | desc-payments |\n\n## Open Questions", 1)
+	if err := os.WriteFile(idxPath, []byte(updated), 0o644); err != nil {
+		t.Fatalf("rewrite features index: %v", err)
+	}
+	return root
+}
+
+// --- feature list: fields + text format ---
+
+func TestFeatureList_FieldsText(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	out, _, err := runFeature(t, "list", "--fields=status", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+	if !strings.Contains(out, "status=Draft") {
+		t.Errorf("stdout = %q, want it to contain 'status=Draft'", out)
+	}
+}
+
+// --- feature list: fields + JSON ---
+
+func TestFeatureList_FieldsJSON(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "list", "--fields=status", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one feature in JSON output")
+	}
+	if result[0]["path"] != "auth" {
+		t.Errorf("path = %v, want auth", result[0]["path"])
+	}
+	if result[0]["status"] != "Approved" {
+		t.Errorf("status = %v, want Approved", result[0]["status"])
+	}
+}
+
+// --- feature tree: fields + text ---
+
+func TestFeatureTree_FieldsText(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree", "--fields=status", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth'", out)
+	}
+	if !strings.Contains(out, "status=Approved") {
+		t.Errorf("stdout = %q, want it to contain 'status=Approved'", out)
+	}
+}
+
+// --- feature tree: fields + YAML ---
+
+func TestFeatureTree_FieldsYAML(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree", "--fields=status", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: auth") {
+		t.Errorf("stdout = %q, want it to contain 'path: auth'", out)
+	}
+	if !strings.Contains(out, "status: Approved") {
+		t.Errorf("stdout = %q, want it to contain 'status: Approved'", out)
+	}
+}
+
+// --- feature tree: fields + JSON ---
+
+func TestFeatureTree_FieldsJSON(t *testing.T) {
+	setupFeatureSpec(t, "Approved")
+
+	out, _, err := runFeature(t, "tree", "--fields=status", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one feature in JSON output")
+	}
+	if result[0]["path"] != "auth" {
+		t.Errorf("path = %v, want auth", result[0]["path"])
+	}
+	if result[0]["status"] != "Approved" {
+		t.Errorf("status = %v, want Approved", result[0]["status"])
+	}
+}
+
+// --- feature deps: transitive ---
+
+func TestFeatureDeps_Transitive(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "payments", "--transitive")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+	if !strings.Contains(out, "auth") {
+		t.Errorf("stdout = %q, want it to contain 'auth' (transitive dep)", out)
+	}
+}
+
+func TestFeatureDeps_TransitiveText(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "payments", "--transitive", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Transitive text uses indentation: billing at depth 0, auth at depth 1
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+	if !strings.Contains(out, "\tauth") {
+		t.Errorf("stdout = %q, want it to contain indented 'auth'", out)
+	}
+}
+
+func TestFeatureDeps_WithFieldsYAML(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "billing", "--fields=status", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: auth") {
+		t.Errorf("stdout = %q, want it to contain 'path: auth'", out)
+	}
+	if !strings.Contains(out, "status: Approved") {
+		t.Errorf("stdout = %q, want it to contain 'status: Approved'", out)
+	}
+}
+
+func TestFeatureDeps_FormatJSON(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "billing", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one dep in JSON output")
+	}
+	if result[0]["path"] != "auth" {
+		t.Errorf("path = %v, want auth", result[0]["path"])
+	}
+}
+
+func TestFeatureDeps_TransitiveWithFields(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "payments", "--transitive", "--fields=status", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+	if !strings.Contains(out, "status=Draft") {
+		t.Errorf("stdout = %q, want it to contain 'status=Draft'", out)
+	}
+}
+
+func TestFeatureDeps_TransitiveYAML(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "payments", "--transitive", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: billing") {
+		t.Errorf("stdout = %q, want it to contain 'path: billing'", out)
+	}
+	if !strings.Contains(out, "path: auth") {
+		t.Errorf("stdout = %q, want it to contain 'path: auth'", out)
+	}
+}
+
+func TestFeatureDeps_TransitiveJSON(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "deps", "payments", "--transitive", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one node in JSON output")
+	}
+	if result[0]["path"] != "billing" {
+		t.Errorf("path = %v, want billing", result[0]["path"])
+	}
+}
+
+// --- feature refs: transitive ---
+
+func TestFeatureRefs_Transitive(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--transitive")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+	if !strings.Contains(out, "payments") {
+		t.Errorf("stdout = %q, want it to contain 'payments' (transitive ref)", out)
+	}
+}
+
+func TestFeatureRefs_FormatYAML(t *testing.T) {
+	setupFeatureWithDeps(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: billing") {
+		t.Errorf("stdout = %q, want it to contain 'path: billing'", out)
+	}
+}
+
+func TestFeatureRefs_FormatJSON(t *testing.T) {
+	setupFeatureWithDeps(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one ref in JSON output")
+	}
+	if result[0]["path"] != "billing" {
+		t.Errorf("path = %v, want billing", result[0]["path"])
+	}
+}
+
+func TestFeatureRefs_WithFields(t *testing.T) {
+	setupFeatureWithDeps(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--fields=status")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// --fields auto-selects yaml format
+	if !strings.Contains(out, "path: billing") {
+		t.Errorf("stdout = %q, want it to contain 'path: billing'", out)
+	}
+	if !strings.Contains(out, "status: Draft") {
+		t.Errorf("stdout = %q, want it to contain 'status: Draft'", out)
+	}
+}
+
+func TestFeatureRefs_TransitiveYAML(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--transitive", "--format=yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "path: billing") {
+		t.Errorf("stdout = %q, want it to contain 'path: billing'", out)
+	}
+}
+
+func TestFeatureRefs_TransitiveJSON(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--transitive", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one node in JSON output")
+	}
+	if result[0]["path"] != "billing" {
+		t.Errorf("path = %v, want billing", result[0]["path"])
+	}
+}
+
+func TestFeatureRefs_TransitiveWithFields(t *testing.T) {
+	setupFeatureChain(t)
+
+	out, _, err := runFeature(t, "refs", "auth", "--transitive", "--fields=status", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "billing") {
+		t.Errorf("stdout = %q, want it to contain 'billing'", out)
+	}
+	if !strings.Contains(out, "status=Draft") {
+		t.Errorf("stdout = %q, want it to contain 'status=Draft'", out)
+	}
+}
+
+// --- feature new ---
+
+func TestFeatureNew_Basic(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	out, _, err := runFeature(t, "new", "--title=New Feature")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "new-feature") {
+		t.Errorf("stdout = %q, want it to contain 'new-feature' (generated slug)", out)
+	}
+}
+
+func TestFeatureNew_WithParent(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	out, _, err := runFeature(t, "new", "--title=Sub Feature", "--parent=auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "auth/sub-feature") {
+		t.Errorf("stdout = %q, want it to contain 'auth/sub-feature'", out)
+	}
+}
+
+func TestFeatureNew_MissingTitle(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	_, _, err := runFeature(t, "new")
+	if err == nil {
+		t.Fatal("expected error for missing --title")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestFeatureNew_InvalidFormat(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	_, _, err := runFeature(t, "new", "--title=Foo", "--format=csv")
+	if err == nil {
+		t.Fatal("expected error for invalid format")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidArgs {
+		t.Errorf("exit code = %d, want %d (InvalidArgs)", got, exitcode.InvalidArgs)
+	}
+}
+
+func TestFeatureNew_JSONOutput(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	out, _, err := runFeature(t, "new", "--title=JSON Feature", "--format=json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput=%q", err, out)
+	}
+	if result["path"] != "json-feature" {
+		t.Errorf("path = %v, want json-feature", result["path"])
+	}
+}
+
+func TestFeatureNew_TextOutput(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	out, _, err := runFeature(t, "new", "--title=Text Feature", "--format=text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "Feature: text-feature") {
+		t.Errorf("stdout = %q, want it to contain 'Feature: text-feature'", out)
+	}
+	if !strings.Contains(out, "Status:  Draft") {
+		t.Errorf("stdout = %q, want it to contain 'Status:  Draft'", out)
+	}
+}
+
+func TestFeatureNew_ParentNotFound(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	_, _, err := runFeature(t, "new", "--title=Orphan", "--parent=nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent parent")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.NotFound {
+		t.Errorf("exit code = %d, want %d (NotFound)", got, exitcode.NotFound)
+	}
+}
+
+func TestFeatureNew_DuplicateSlug(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	// auth already exists
+	_, _, err := runFeature(t, "new", "--title=Auth")
+	if err == nil {
+		t.Fatal("expected error for duplicate feature slug")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.InvalidState {
+		t.Errorf("exit code = %d, want %d (InvalidState)", got, exitcode.InvalidState)
 	}
 }

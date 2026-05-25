@@ -574,3 +574,391 @@ func TestRewrite_FeatureFixture(t *testing.T) {
 		t.Errorf("Feature Rewrite not byte-clean.\nGot:\n%q\nWant:\n%q", got, want)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// InvalidTransitionError.Error(): both message paths.
+// ---------------------------------------------------------------------------
+
+func TestInvalidTransitionError_ErrorWithTargets(t *testing.T) {
+	t.Parallel()
+	e := &InvalidTransitionError{
+		Kind:         KindIdea,
+		From:         IdeaDraft,
+		To:           Status("Bogus"),
+		LegalTargets: []Status{IdeaApproved, IdeaArchived},
+	}
+	msg := e.Error()
+	if !strings.Contains(msg, "idea") {
+		t.Errorf("error message should contain kind: %s", msg)
+	}
+	if !strings.Contains(msg, "Draft") {
+		t.Errorf("error message should contain from status: %s", msg)
+	}
+	if !strings.Contains(msg, "Bogus") {
+		t.Errorf("error message should contain to status: %s", msg)
+	}
+	if !strings.Contains(msg, "Approved") {
+		t.Errorf("error message should contain legal targets: %s", msg)
+	}
+}
+
+func TestInvalidTransitionError_ErrorNoTargets(t *testing.T) {
+	t.Parallel()
+	e := &InvalidTransitionError{
+		Kind:         KindIdea,
+		From:         IdeaArchived,
+		To:           Status("Bogus"),
+		LegalTargets: []Status{},
+	}
+	msg := e.Error()
+	if !strings.Contains(msg, "no legal targets") {
+		t.Errorf("error message should mention 'no legal targets': %s", msg)
+	}
+	if !strings.Contains(msg, "Archived") {
+		t.Errorf("error message should contain from status: %s", msg)
+	}
+}
+
+func TestInvalidTransitionError_Unwrap(t *testing.T) {
+	t.Parallel()
+	e := &InvalidTransitionError{
+		Kind: KindIdea,
+		From: IdeaDraft,
+		To:   Status("Bogus"),
+	}
+	if !errors.Is(e, ErrInvalidTransition) {
+		t.Error("Unwrap should expose ErrInvalidTransition")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegalTargets / LegalSources: unknown kind branches.
+// ---------------------------------------------------------------------------
+
+func TestLegalTargets_UnknownKind(t *testing.T) {
+	t.Parallel()
+	got := LegalTargets(Kind("unknown"), Status("X"))
+	if got == nil {
+		t.Error("LegalTargets(unknown) returned nil, want empty []Status")
+	}
+	if len(got) != 0 {
+		t.Errorf("LegalTargets(unknown) = %v, want empty", got)
+	}
+}
+
+func TestLegalSources_UnknownKind(t *testing.T) {
+	t.Parallel()
+	got := LegalSources(Kind("unknown"), Status("X"))
+	if got == nil {
+		t.Error("LegalSources(unknown) returned nil, want empty []Status")
+	}
+	if len(got) != 0 {
+		t.Errorf("LegalSources(unknown) = %v, want empty", got)
+	}
+}
+
+func TestLegalSources_NoSources(t *testing.T) {
+	t.Parallel()
+	// IdeaDraft has no sources (nothing transitions INTO Draft).
+	got := LegalSources(KindIdea, IdeaDraft)
+	if got == nil {
+		t.Error("LegalSources returned nil, want empty []Status")
+	}
+	if len(got) != 0 {
+		t.Errorf("LegalSources(KindIdea, IdeaDraft) = %v, want empty", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rewrite / Rollback: file-not-found error paths.
+// ---------------------------------------------------------------------------
+
+func TestRewrite_MissingFile(t *testing.T) {
+	t.Parallel()
+	_, err := Rewrite(filepath.Join(t.TempDir(), "nope.md"), IdeaApproved)
+	if err == nil {
+		t.Fatal("Rewrite should error on missing file")
+	}
+}
+
+func TestRollback_MissingFile(t *testing.T) {
+	t.Parallel()
+	err := Rollback(filepath.Join(t.TempDir(), "nope.md"), "**Status:** Draft\n")
+	if err == nil {
+		t.Fatal("Rollback should error on missing file")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// splitKeepTerminators: edge cases.
+// ---------------------------------------------------------------------------
+
+func TestSplitKeepTerminators_Empty(t *testing.T) {
+	t.Parallel()
+	got := splitKeepTerminators(nil)
+	if got != nil {
+		t.Errorf("splitKeepTerminators(nil) = %v, want nil", got)
+	}
+	got = splitKeepTerminators([]byte{})
+	if got != nil {
+		t.Errorf("splitKeepTerminators(empty) = %v, want nil", got)
+	}
+}
+
+func TestSplitKeepTerminators_NoTrailingNewline(t *testing.T) {
+	t.Parallel()
+	got := splitKeepTerminators([]byte("line1\nline2"))
+	if len(got) != 2 {
+		t.Fatalf("len = %d; want 2; got %q", len(got), got)
+	}
+	if got[0] != "line1\n" {
+		t.Errorf("got[0] = %q; want %q", got[0], "line1\n")
+	}
+	if got[1] != "line2" {
+		t.Errorf("got[1] = %q; want %q", got[1], "line2")
+	}
+}
+
+func TestSplitKeepTerminators_SingleLineNoNewline(t *testing.T) {
+	t.Parallel()
+	got := splitKeepTerminators([]byte("hello"))
+	if len(got) != 1 {
+		t.Fatalf("len = %d; want 1; got %q", len(got), got)
+	}
+	if got[0] != "hello" {
+		t.Errorf("got[0] = %q; want %q", got[0], "hello")
+	}
+}
+
+func TestSplitKeepTerminators_RoundTrip(t *testing.T) {
+	t.Parallel()
+	original := []byte("line1\r\nline2\nline3")
+	lines := splitKeepTerminators(original)
+	reassembled := joinLines(lines)
+	if !bytes.Equal(original, reassembled) {
+		t.Errorf("round-trip failed.\nOriginal: %q\nReassembled: %q", original, reassembled)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// splitTerminator: edge cases.
+// ---------------------------------------------------------------------------
+
+func TestSplitTerminator_LF(t *testing.T) {
+	t.Parallel()
+	body, term := splitTerminator("hello\n")
+	if body != "hello" || term != "\n" {
+		t.Errorf("splitTerminator(LF) = (%q, %q), want (%q, %q)", body, term, "hello", "\n")
+	}
+}
+
+func TestSplitTerminator_CRLF(t *testing.T) {
+	t.Parallel()
+	body, term := splitTerminator("hello\r\n")
+	if body != "hello" || term != "\r\n" {
+		t.Errorf("splitTerminator(CRLF) = (%q, %q), want (%q, %q)", body, term, "hello", "\r\n")
+	}
+}
+
+func TestSplitTerminator_NoTerminator(t *testing.T) {
+	t.Parallel()
+	body, term := splitTerminator("hello")
+	if body != "hello" || term != "" {
+		t.Errorf("splitTerminator(bare) = (%q, %q), want (%q, %q)", body, term, "hello", "")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// dirOf: edge cases.
+// ---------------------------------------------------------------------------
+
+func TestDirOf_SimpleDir(t *testing.T) {
+	t.Parallel()
+	if got := dirOf("/foo/bar/baz.txt"); got != "/foo/bar" {
+		t.Errorf("dirOf(/foo/bar/baz.txt) = %q; want %q", got, "/foo/bar")
+	}
+}
+
+func TestDirOf_RootPath(t *testing.T) {
+	t.Parallel()
+	if got := dirOf("/baz.txt"); got != "/" {
+		t.Errorf("dirOf(/baz.txt) = %q; want %q", got, "/")
+	}
+}
+
+func TestDirOf_NoSlash(t *testing.T) {
+	t.Parallel()
+	if got := dirOf("baz.txt"); got != "." {
+		t.Errorf("dirOf(baz.txt) = %q; want %q", got, ".")
+	}
+}
+
+func TestDirOf_Backslash(t *testing.T) {
+	t.Parallel()
+	if got := dirOf(`foo\bar\baz.txt`); got != `foo\bar` {
+		t.Errorf(`dirOf(foo\bar\baz.txt) = %q; want %q`, got, `foo\bar`)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// joinLines: edge case.
+// ---------------------------------------------------------------------------
+
+func TestJoinLines_Empty(t *testing.T) {
+	t.Parallel()
+	got := joinLines(nil)
+	if len(got) != 0 {
+		t.Errorf("joinLines(nil) = %q; want empty", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// computeStatusUnion: directly tested for correctness.
+// ---------------------------------------------------------------------------
+
+func TestComputeStatusUnion_Deduplication(t *testing.T) {
+	t.Parallel()
+	rows := []transitionRow{
+		{From: Status("A"), To: Status("B")},
+		{From: Status("A"), To: Status("C")},
+		{From: Status("B"), To: Status("C")},
+	}
+	got := computeStatusUnion(rows)
+	want := []Status{"A", "B", "C"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("computeStatusUnion = %v, want %v", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rewrite: file ending without trailing newline.
+// ---------------------------------------------------------------------------
+
+func TestRewrite_NoTrailingNewline(t *testing.T) {
+	t.Parallel()
+	content := "# Idea\n\n**Status:** Draft"
+	path := writeFixture(t, content)
+	origLine, err := Rewrite(path, IdeaApproved)
+	if err != nil {
+		t.Fatalf("Rewrite: %v", err)
+	}
+	if !strings.Contains(origLine, "Draft") {
+		t.Errorf("origLine missing Draft: %q", origLine)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(content, "**Status:** Draft", "**Status:** Approved", 1)
+	if string(got) != want {
+		t.Errorf("file after Rewrite:\nGot:  %q\nWant: %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rollback after Rewrite with CRLF: round-trip byte identity.
+// ---------------------------------------------------------------------------
+
+func TestRollback_CRLFRoundTrip(t *testing.T) {
+	t.Parallel()
+	content := "# Idea\r\n\r\n**Status:** Draft\r\n**Owner:** alice\r\n"
+	path := writeFixture(t, content)
+	before, _ := os.ReadFile(path)
+
+	origLine, err := Rewrite(path, IdeaApproved)
+	if err != nil {
+		t.Fatalf("Rewrite: %v", err)
+	}
+	if err := Rollback(path, origLine); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	after, _ := os.ReadFile(path)
+	if !bytes.Equal(before, after) {
+		t.Errorf("CRLF round-trip failed.\nBefore: %q\nAfter:  %q", before, after)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic: error paths.
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_StatFails(t *testing.T) {
+	t.Parallel()
+	// Write to a path that doesn't exist - os.Stat will fail.
+	err := writeFileAtomic(filepath.Join(t.TempDir(), "does-not-exist.md"), []byte("content"))
+	if err == nil {
+		t.Fatal("writeFileAtomic should error when file doesn't exist (Stat fails)")
+	}
+}
+
+func TestWriteFileAtomic_UnwritableDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	if err := os.WriteFile(path, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make the directory unwritable so CreateTemp fails.
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("writeFileAtomic should error when directory is not writable")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rewrite: writeFileAtomic fails (directory made unwritable after read).
+// ---------------------------------------------------------------------------
+
+func TestRewrite_WriteFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	content := "# Idea\n\n**Status:** Draft\n"
+	path := filepath.Join(dir, "sample.md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make dir unwritable so the atomic write (CreateTemp) fails.
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	_, err := Rewrite(path, IdeaApproved)
+	if err == nil {
+		t.Fatal("Rewrite should fail when directory is not writable")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// readStatus: scanner error path is hard to trigger naturally.
+// We test it indirectly by verifying readStatus works on a valid file.
+// The scanner error requires an I/O failure mid-read, which is not
+// realistically testable without mocking. Instead we verify the function
+// signature handles the file-not-found case correctly.
+// ---------------------------------------------------------------------------
+
+func TestReadStatus_FileNotFound(t *testing.T) {
+	t.Parallel()
+	_, err := readStatus(filepath.Join(t.TempDir(), "nonexistent.md"))
+	if err == nil {
+		t.Fatal("readStatus should error on nonexistent file")
+	}
+}
+
+func TestReadStatus_FoundValue(t *testing.T) {
+	t.Parallel()
+	content := "# Idea\n\n**Status:** Under Review\n"
+	path := writeFixture(t, content)
+	got, err := readStatus(path)
+	if err != nil {
+		t.Fatalf("readStatus: %v", err)
+	}
+	if got != Status("Under Review") {
+		t.Errorf("readStatus = %q; want %q", got, "Under Review")
+	}
+}

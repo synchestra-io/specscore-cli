@@ -173,3 +173,45 @@ func TestJsonlWriterAbsolutePathUnchanged(t *testing.T) {
 		t.Fatalf("expected file at absolute path %q, stat err: %v", abs, err)
 	}
 }
+
+// TestJsonlWriterDeliverMkdirError verifies that Deliver returns an error when
+// parent directory creation fails (e.g. a file exists where the dir should be).
+func TestJsonlWriterDeliverMkdirError(t *testing.T) {
+	root := t.TempDir()
+
+	// Create a regular file where the parent directory should be, so MkdirAll fails.
+	blocker := filepath.Join(root, ".specscore")
+	if err := os.WriteFile(blocker, []byte("not a dir"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+
+	w := NewJsonlWriter(".specscore/events.jsonl", root)
+	err := w.Deliver(context.Background(), sampleEvent("idea.drafted"))
+	if err == nil {
+		t.Fatal("expected error when parent dir cannot be created, got nil")
+	}
+	if !strings.Contains(err.Error(), "create parent dir") {
+		t.Errorf("error message = %q, want to contain 'create parent dir'", err.Error())
+	}
+}
+
+// TestJsonlWriterDeliverOpenError verifies that Deliver returns an error when
+// the file cannot be opened (e.g. the path is a directory).
+func TestJsonlWriterDeliverOpenError(t *testing.T) {
+	root := t.TempDir()
+
+	// Create .specscore/events.jsonl as a directory so OpenFile fails.
+	dirPath := filepath.Join(root, ".specscore", "events.jsonl")
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	w := NewJsonlWriter(".specscore/events.jsonl", root)
+	err := w.Deliver(context.Background(), sampleEvent("idea.drafted"))
+	if err == nil {
+		t.Fatal("expected error when file is a directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "open jsonl file") {
+		t.Errorf("error message = %q, want to contain 'open jsonl file'", err.Error())
+	}
+}
