@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -5342,5 +5343,135 @@ func TestFeatureChangeStatus_UnfixableViolationsRollback(t *testing.T) {
 	readme, _ := os.ReadFile(filepath.Join(featDir, "auth", "README.md"))
 	if strings.Contains(string(readme), "Under Review") {
 		t.Error("status was NOT rolled back — should still be Draft")
+	}
+}
+
+// ===========================================================================
+// telemetry_wiring.go — emitInvocationEvent: various short-circuit paths
+// ===========================================================================
+
+func TestEmitInvocationEvent_StartTimeZero(t *testing.T) {
+	// Save and restore invocation state.
+	saved := invocation
+	defer func() { invocation = saved }()
+
+	invocation = runtimeState{} // StartTime is zero value
+	// Should silently return without panicking.
+	emitInvocationEvent(nil)
+}
+
+func TestEmitInvocationEvent_NoChannelsEnabled(t *testing.T) {
+	saved := invocation
+	defer func() { invocation = saved }()
+
+	invocation = runtimeState{
+		StartTime:   saved.StartTime,
+		InstallID:   "test-install-id",
+		CommandPath: "test.cmd",
+		Decisions: map[telemetry.ChannelName]telemetry.ChannelDecision{
+			"usage-stats":   {Enabled: false},
+			"crash-reports": {Enabled: false},
+		},
+	}
+	if invocation.StartTime.IsZero() {
+		// Set a non-zero start time so we don't hit the first guard.
+		invocation.StartTime = saved.StartTime
+		if invocation.StartTime.IsZero() {
+			invocation.StartTime = invocation.StartTime.Add(1)
+		}
+	}
+	emitInvocationEvent(nil)
+}
+
+func TestEmitInvocationEvent_EmptyInstallID(t *testing.T) {
+	saved := invocation
+	defer func() { invocation = saved }()
+
+	invocation = runtimeState{
+		InstallID:   "", // empty — should short-circuit
+		CommandPath: "test.cmd",
+		Decisions: map[telemetry.ChannelName]telemetry.ChannelDecision{
+			"usage-stats": {Enabled: true},
+		},
+	}
+	if invocation.StartTime.IsZero() {
+		invocation.StartTime = saved.StartTime
+		if invocation.StartTime.IsZero() {
+			invocation.StartTime = invocation.StartTime.Add(1)
+		}
+	}
+	emitInvocationEvent(nil)
+}
+
+// ===========================================================================
+// telemetry_wiring.go — executeWithPanicRecovery: normal path
+// ===========================================================================
+
+func TestExecuteWithPanicRecovery_NormalReturn(t *testing.T) {
+	// Build a minimal command that returns nil.
+	cmd := &cobra.Command{
+		Use: "test-normal",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+	err := executeWithPanicRecovery(cmd)
+	if err != nil {
+		t.Errorf("expected nil error for normal command, got: %v", err)
+	}
+}
+
+func TestExecuteWithPanicRecovery_ErrorReturn(t *testing.T) {
+	cmd := &cobra.Command{
+		Use: "test-error",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return exitcode.NotFoundErrorf("not found")
+		},
+	}
+	err := executeWithPanicRecovery(cmd)
+	if err == nil {
+		t.Fatal("expected error from command")
+	}
+	var ec *exitcode.Error
+	if !errors.As(err, &ec) {
+		t.Errorf("expected exitcode.Error, got: %T", err)
+	}
+}
+
+func TestExecuteWithPanicRecovery_PanicRecovery(t *testing.T) {
+	// Save and restore invocation state and stderr.
+	saved := invocation
+	defer func() { invocation = saved }()
+	invocation = runtimeState{}
+
+	// Redirect stderr so the panic output doesn't pollute test output.
+	origStderr := os.Stderr
+	_, w, _ := os.Pipe()
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr; _ = w.Close() })
+
+	cmd := &cobra.Command{
+		Use: "test-panic",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			panic("test panic value")
+		},
+	}
+	err := executeWithPanicRecovery(cmd)
+	if err == nil {
+		t.Fatal("expected error from panicking command")
+	}
+	if !strings.Contains(err.Error(), "panic recovered") {
+		t.Errorf("error should mention panic; got %v", err)
+	}
+	var ec *exitcode.Error
+	if !errors.As(err, &ec) {
+		t.Fatalf("expected exitcode.Error; got %T", err)
+	}
+	if ec.ExitCode() != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", ec.ExitCode(), exitcode.Unexpected)
+	}
+	// Panic info should be captured in invocation.
+	if invocation.Panic == nil {
+		t.Error("expected invocation.Panic to be set")
 	}
 }

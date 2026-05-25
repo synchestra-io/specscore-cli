@@ -322,5 +322,49 @@ func TestRollback_HappyPath(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// writeFileAtomic — custom permissions are preserved
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_CustomPermPreserved(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "exec.md")
+	if err := os.WriteFile(path, []byte("original"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileAtomic(path, []byte("new content")); err != nil {
+		t.Fatalf("writeFileAtomic: %v", err)
+	}
+	info, _ := os.Stat(path)
+	if info.Mode().Perm() != 0o755 {
+		t.Errorf("mode = %v, want 0755", info.Mode().Perm())
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "new content" {
+		t.Errorf("got %q, want %q", got, "new content")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — large content (exercises io.Copy + Sync fully)
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_LargeContent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "large.md")
+	if err := os.WriteFile(path, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// 100KB content to ensure Copy/Sync paths are fully exercised.
+	large := strings.Repeat("x", 100*1024)
+	if err := writeFileAtomic(path, []byte(large)); err != nil {
+		t.Fatalf("writeFileAtomic: %v", err)
+	}
+	got, _ := os.ReadFile(path)
+	if len(got) != 100*1024 {
+		t.Errorf("expected 100KB, got %d bytes", len(got))
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Rewrite — no trailing newline (tested in lifecycle_test.go)
 // ---------------------------------------------------------------------------
