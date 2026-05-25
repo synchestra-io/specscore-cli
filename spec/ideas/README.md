@@ -11,6 +11,7 @@ Pre-spec one-pagers for the `specscore` CLI. Each Idea refines a vague concept i
 | [cli-telemetry](cli-telemetry.md) | Implementing | 2026-05-21 | alexandertrakhimenok | cli/telemetry, cli/telemetry/usage-telemetry |
 | [entity-and-property-cli-support](entity-and-property-cli-support.md) | Approved | 2026-05-18 | alexander.trakhimenok | — |
 | [event-emit-dispatcher](event-emit-dispatcher.md) | Specified | 2026-05-22 | alexandertrakhimenok | cli/event, cli/event/emit |
+| [full-test-coverage](full-test-coverage.md) | Draft | 2026-05-25 | alexander.trakhimenok | — |
 | [index-entries-autofix](index-entries-autofix.md) | Specified | 2026-05-18 | alexander.trakhimenok | cli/spec/lint |
 | [lifecycle-verbs-for-idea-and-feature](lifecycle-verbs-for-idea-and-feature.md) | Implementing | 2026-05-18 | alexander.trakhimenok | cli/feature/change-status, cli/idea/change-status, cli/lifecycle-transitions |
 
