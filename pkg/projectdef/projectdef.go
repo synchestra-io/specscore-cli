@@ -14,6 +14,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// yamlMarshal is the marshal function used by WriteSpecConfig.
+// Tests can replace it to simulate marshal failures.
+var yamlMarshal = yaml.Marshal
+
 // SpecConfigFile is the canonical filename for the repo-level config,
 // per the repo-config feature.
 const SpecConfigFile = "specscore.yaml"
@@ -307,7 +311,7 @@ func ReadSpecConfig(dir string) (SpecConfig, error) {
 // WriteSpecConfig serializes cfg to dir/specscore.yaml, prepending the
 // schema-header comment as line 1.
 func WriteSpecConfig(dir string, cfg SpecConfig) error {
-	body, err := yaml.Marshal(cfg)
+	body, err := yamlMarshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshalling spec config: %w", err)
 	}

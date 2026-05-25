@@ -1,6 +1,7 @@
 package projectdef
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -222,8 +223,24 @@ func TestReadSpecConfig_StudioOmittedNotNull(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// WriteSpecConfig — marshal error (unlikely but covers the branch)
+// WriteSpecConfig — marshal error
 // ---------------------------------------------------------------------------
+
+func TestWriteSpecConfig_MarshalError(t *testing.T) {
+	orig := yamlMarshal
+	t.Cleanup(func() { yamlMarshal = orig })
+	yamlMarshal = func(any) ([]byte, error) {
+		return nil, errors.New("forced marshal failure")
+	}
+
+	err := WriteSpecConfig(t.TempDir(), SpecConfig{})
+	if err == nil {
+		t.Fatal("expected marshal error")
+	}
+	if !strings.Contains(err.Error(), "marshalling spec config") {
+		t.Errorf("expected wrapped marshal error; got %v", err)
+	}
+}
 
 // TestWriteSpecConfig_MarshalSuccess exercises WriteSpecConfig with a
 // custom struct that exercises the marshal path comprehensively.
