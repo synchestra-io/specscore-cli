@@ -1,5 +1,8 @@
 # specscore-cli
 
+[![CI](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml/badge.svg)](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml)
+
 CLI for [SpecScore](https://specscore.md) — lint, query, and scaffold SpecScore specifications.
 
 ## Install
@@ -56,6 +59,14 @@ If you drive `specscore` from inside Claude Code (or any agent host that loads C
 ```
 
 Then bootstrap the CLI itself with `/specscore:install`, or install manually with the one-liner above.
+
+## Test coverage
+
+We're proud that `specscore-cli` maintains **99% test coverage**, enforced automatically — the CI pipeline rejects any pull request that drops below 99%.
+
+Reaching that level required going well beyond the happy path: error injection via package-level `var` stubs (swapped in tests via `t.Cleanup`), dead-code removal to keep the denominator honest, and thorough coverage of subprocess, I/O, and shell-integration paths.
+
+Our goal is **100%**. Every uncovered statement is a known gap tracked in [`spec/ideas/full-test-coverage.md`](spec/ideas/full-test-coverage.md).
 
 ## License
 
