@@ -11,6 +11,10 @@ var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+
+	// osExit is a testable indirection for os.Exit. Tests replace it with a
+	// stub to verify exit codes without killing the test process.
+	osExit = os.Exit
 )
 
 // Run executes the specscore CLI with the given arguments.
@@ -75,7 +79,8 @@ func Fatal(err error) {
 	}
 	var ec exitCoder
 	if errors.As(err, &ec) {
-		os.Exit(ec.ExitCode())
+		osExit(ec.ExitCode())
+		return
 	}
-	os.Exit(1)
+	osExit(1)
 }
