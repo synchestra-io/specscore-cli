@@ -226,8 +226,8 @@ func TestRewriteArchivedIndex_MixedParsedAndNil(t *testing.T) {
 	// Three archived ideas: one with p==nil (hits line 413), two with same date (hits line 426).
 	archived := []idea.Discovered{
 		{Slug: "no-parse-idea"}, // p==nil → continue
-		{Slug: "beta-idea"},    // p!=nil with date "2026-06-01"
-		{Slug: "alpha-idea"},   // p!=nil with same date "2026-06-01" → tie-break on slug
+		{Slug: "beta-idea"},     // p!=nil with date "2026-06-01"
+		{Slug: "alpha-idea"},    // p!=nil with same date "2026-06-01" → tie-break on slug
 	}
 	// parsed map: beta-idea and alpha-idea have entries; no-parse-idea is absent.
 	parsed := map[string]*idea.Idea{

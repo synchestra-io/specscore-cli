@@ -1165,10 +1165,10 @@ func TestLintFix_ComprehensiveSpecTree(t *testing.T) {
 
 func TestLintCheck_WalkIdeaFiles_Success(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"ideas/README.md":     "# Ideas\n\n| Idea | Status |\n|---|---|\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/cool-idea.md":  "# Idea: Cool\n\n**Status:** Draft\n\n## How Might We\n\nHMW?\n\n## Must Be True\n\n- True\n\n## Not Doing\n\n- Nothing\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
-		"features/README.md":  "# Features\n\n---\n*This document follows the https://specscore.md/features-index-specification*\n",
-		"plans/README.md":     "# Plans\n\n---\n*This document follows the https://specscore.md/plans-index-specification*\n",
+		"ideas/README.md":    "# Ideas\n\n| Idea | Status |\n|---|---|\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/cool-idea.md": "# Idea: Cool\n\n**Status:** Draft\n\n## How Might We\n\nHMW?\n\n## Must Be True\n\n- True\n\n## Not Doing\n\n- Nothing\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"features/README.md": "# Features\n\n---\n*This document follows the https://specscore.md/features-index-specification*\n",
+		"plans/README.md":    "# Plans\n\n---\n*This document follows the https://specscore.md/plans-index-specification*\n",
 	})
 
 	violations, err := Lint(Options{
@@ -1429,7 +1429,7 @@ func TestAdherenceFooterCheck_WalksAllDocTypes(t *testing.T) {
 
 func TestLintWithSeverityFilter_ErrorOnly(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n",
+		"features/README.md":      "# Features\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 
@@ -1554,7 +1554,7 @@ func TestDogfoodVersion_NonYAMLFileSkipped(t *testing.T) {
 
 func TestLint_FixThenCheck(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n",
+		"features/README.md":      "# Features\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 
@@ -1615,15 +1615,15 @@ func TestParseSemver_EdgeCases(t *testing.T) {
 	}{
 		{"v1.2.3", true},
 		{"1.2.3", true},
-		{"v1.2.3-rc.1", true},          // pre-release suffix stripped
-		{"v1.2.3+build.123", true},       // build metadata stripped
-		{"1.2", false},                   // only 2 parts
-		{"1.2.3.4", false},              // 4 parts
-		{"abc", false},                   // non-numeric
-		{"1.2.abc", false},              // non-numeric patch
-		{"", false},                      // empty
-		{" v1.2.3 ", true},              // whitespace trimmed
-		{"-1.2.3", false},              // negative number
+		{"v1.2.3-rc.1", true},      // pre-release suffix stripped
+		{"v1.2.3+build.123", true}, // build metadata stripped
+		{"1.2", false},             // only 2 parts
+		{"1.2.3.4", false},         // 4 parts
+		{"abc", false},             // non-numeric
+		{"1.2.abc", false},         // non-numeric patch
+		{"", false},                // empty
+		{" v1.2.3 ", true},         // whitespace trimmed
+		{"-1.2.3", false},          // negative number
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
@@ -1716,7 +1716,7 @@ func TestLint_SpecRootNotFound(t *testing.T) {
 
 func TestLint_RulesFilter(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n",
+		"features/README.md":      "# Features\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n\n## Open Questions\n\nNone.\n",
 	})
 
@@ -1765,7 +1765,7 @@ func TestStringSliceEq(t *testing.T) {
 
 func TestIssueRulesFix_FeatureScopedIssue(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/auth/README.md":         "# Feature: Auth\n\n**Status:** Draft\n",
+		"features/auth/README.md":          "# Feature: Auth\n\n**Status:** Draft\n",
 		"features/auth/issues/auth-bug.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Auth Bug\n\n## Description\n\nBroken.\n\n## Steps to Reproduce\n\n- Step 1\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 	})
 
@@ -1802,7 +1802,7 @@ func TestIssueRulesCheck_VariousViolations(t *testing.T) {
 		"issues/wrong-h1.md": "---\ntype: issue\nstatus: open\nseverity: low\n---\n# Bug: Wrong Prefix\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		// Valid issue for contrast
 		"issues/README.md": "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
-		"issues/valid.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid Bug\n\n## Description\n\nSomething broke.\n\n## Steps to Reproduce\n\n- Step 1\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/valid.md":  "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid Bug\n\n## Description\n\nSomething broke.\n\n## Steps to Reproduce\n\n- Step 1\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 	})
 
 	c := newIssueRulesChecker()
@@ -2054,7 +2054,7 @@ func TestPlanHierarchy_SkipsAcsAndReportsDirs(t *testing.T) {
 
 func TestPlanHierarchy_HiddenDirSkipped(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"plans/my-plan/README.md":       "# Plan: My Plan\n",
+		"plans/my-plan/README.md":         "# Plan: My Plan\n",
 		"plans/my-plan/.hidden/README.md": "# Hidden\n",
 	})
 
@@ -2208,8 +2208,8 @@ func TestPlanROI_NoPlansDir(t *testing.T) {
 
 func TestReadmeExists_SkipsHiddenDirsInWalk(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"README.md":              "# Spec\n",
-		"features/README.md":     "# Features\n",
+		"README.md":               "# Spec\n",
+		"features/README.md":      "# Features\n",
 		"features/auth/README.md": "# Feature: Auth\n",
 	})
 	// Create a hidden dir without README — should not be flagged
@@ -2233,7 +2233,7 @@ func TestReadmeExists_SkipsHiddenDirsInWalk(t *testing.T) {
 
 func TestIndexEntries_PhantomRow(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md": "# Features\n\n| Feature | Description |\n|---|---|\n| [auth](auth/README.md) | Auth |\n| [ghost](ghost/README.md) | Phantom |\n",
+		"features/README.md":      "# Features\n\n| Feature | Description |\n|---|---|\n| [auth](auth/README.md) | Auth |\n| [ghost](ghost/README.md) | Phantom |\n",
 		"features/auth/README.md": "# Feature: Auth\n\n## Contents\n\n",
 	})
 
@@ -2263,10 +2263,10 @@ func TestIndexEntries_PhantomRow(t *testing.T) {
 
 func TestLintFix_PlansAndTasks(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
-		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
-		"plans/README.md":         "# Plans\n",
-		"plans/alpha/README.md":   "# Plan: Alpha\n\n**Effort:** M\n**Impact:** high\n\n## Steps\n\n- Step 1\n",
+		"features/README.md":             "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
+		"features/auth/README.md":        "# Feature: Auth\n\n**Status:** Draft\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
+		"plans/README.md":                "# Plans\n",
+		"plans/alpha/README.md":          "# Plan: Alpha\n\n**Effort:** M\n**Impact:** high\n\n## Steps\n\n- Step 1\n",
 		"plans/alpha/tasks/t1/README.md": "# Task: T1\n\nDo thing.\n",
 	})
 
@@ -2378,7 +2378,7 @@ func TestIssueRulesCheck_I001MissingRequiredField(t *testing.T) {
 
 func TestIssueRulesCheck_I011DuplicateSlug(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"issues/dup-bug.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Dup Bug\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/dup-bug.md":               "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Dup Bug\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"features/auth/issues/dup-bug.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Dup Bug\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"features/auth/README.md":         "# Feature: Auth\n\n**Status:** Draft\n",
 		"issues/README.md":                "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
@@ -2409,7 +2409,7 @@ func TestIssueRulesCheck_I011DuplicateSlug(t *testing.T) {
 func TestIssueRulesCheck_I009OffPatternLocation(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
 		// Issue file in wrong location (not issues/ or features/*/issues/)
-		"features/auth/bug.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Misplaced Bug\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"features/auth/bug.md":    "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Misplaced Bug\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 
@@ -2461,7 +2461,7 @@ func TestWalkFeatureReadmes_SkipsNonReadmeFiles(t *testing.T) {
 
 func TestLint_FixReducesViolations(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n",
+		"features/README.md":      "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Stable\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
 	})
 
@@ -2626,7 +2626,7 @@ func TestPlanRules_P001DeferredAC(t *testing.T) {
 
 func TestIdea_ImplementingIdeaRequiresPromotion(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"ideas/README.md": "# Ideas\n\n| Idea | Status | Specified By |\n|---|---|---|\n| [impl-idea](impl-idea.md) | Implementing | |\n",
+		"ideas/README.md":    "# Ideas\n\n| Idea | Status | Specified By |\n|---|---|---|\n| [impl-idea](impl-idea.md) | Implementing | |\n",
 		"ideas/impl-idea.md": "# Idea: Implementing Idea\n\n**Status:** Implementing\n**Specified By:**\n\n## How Might We\n\nHMW do it?\n\n## Must Be True\n\n- Yes\n\n## Not Doing\n\n- Nothing\n",
 	})
 
@@ -2825,11 +2825,11 @@ func TestSidekickSeed_NoSeedsDirIsClean(t *testing.T) {
 
 func TestLint_ComprehensiveWithAllDocTypes(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"README.md":              "# Spec Root\n",
-		"features/README.md":     "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n\n---\n*This document follows the https://specscore.md/features-index-specification*\n",
+		"README.md":               "# Spec Root\n",
+		"features/README.md":      "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n\n---\n*This document follows the https://specscore.md/features-index-specification*\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n\n## Summary\n\nAuth.\n\n## Dependencies\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n",
-		"ideas/README.md":        "# Ideas\n\n| Idea | Status |\n|---|---|\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"plans/README.md":        "# Plans\n\n---\n*This document follows the https://specscore.md/plans-index-specification*\n",
+		"ideas/README.md":         "# Ideas\n\n| Idea | Status |\n|---|---|\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"plans/README.md":         "# Plans\n\n---\n*This document follows the https://specscore.md/plans-index-specification*\n",
 	})
 
 	violations, err := Lint(Options{SpecRoot: root})
@@ -3046,7 +3046,7 @@ func TestIssueRulesCheck_I001UnknownKey(t *testing.T) {
 
 func TestIssueRulesCheck_I007NoH1(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"issues/no-h1.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n\nJust text without any heading.\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
+		"issues/no-h1.md":  "---\ntype: issue\nstatus: open\nseverity: high\n---\n\nJust text without any heading.\n\n## Description\n\nBad.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"issues/README.md": "# Issues\n\n| Issue | Status | Severity |\n|---|---|---|\n",
 	})
 
@@ -3622,7 +3622,7 @@ func TestAdherenceFooterFix_IdeaFileAppended(t *testing.T) {
 
 func TestIssueRulesFix_MultipleFeatureScopedIssues(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/auth/README.md":          "# Feature: Auth\n\n**Status:** Draft\n",
+		"features/auth/README.md":           "# Feature: Auth\n\n**Status:** Draft\n",
 		"features/auth/issues/auth-bug.md":  "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Auth Bug\n\n## Description\n\nBroken.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"features/auth/issues/auth-bug2.md": "---\ntype: issue\nstatus: open\nseverity: low\n---\n# Issue: Auth Bug 2\n\n## Description\n\nAlso broken.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
 		"issues/root-bug.md":                "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Root Bug\n\n## Description\n\nBroken.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: Not OK.\n",
@@ -3789,7 +3789,7 @@ func TestIdeaIndex_ArchivedOutOfChronologicalOrder(t *testing.T) {
 		"Date":          "2026-02-01",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":              activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/archived/older-idea.md": archivedIdea1 + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		"ideas/archived/newer-idea.md": archivedIdea2 + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Archived index with entries in REVERSE chronological order (newer first).
@@ -3817,7 +3817,7 @@ func TestIdeaIndex_ArchivedMissingFromIndex(t *testing.T) {
 		"Date":          "2026-01-01",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":                activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/archived/missing-idea.md": archivedIdea + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Archived index that does NOT list missing-idea.
 		"ideas/archived/README.md": "# Archived Ideas\n\n_No archived ideas yet._\n",
@@ -3847,8 +3847,8 @@ func TestCheckIdeas_RelatedIdeaNonExistent(t *testing.T) {
 		"Related Ideas": "depends_on: nonexistent-idea",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":          activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/related-test.md":    body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":       activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/related-test.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -3870,8 +3870,8 @@ func TestCheckIdeas_RelatedIdeaBadFormat(t *testing.T) {
 		"Related Ideas": "no-colon-here",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/bad-format.md":     body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/bad-format.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -3893,8 +3893,8 @@ func TestCheckIdeas_RelatedIdeaUnknownRelationship(t *testing.T) {
 		"Related Ideas": "unknown_rel: some-idea",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/bad-rel.md":    body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":  activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/bad-rel.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -3921,7 +3921,7 @@ func TestCheckIdeas_SupersedesNonExistent(t *testing.T) {
 		"ArchiveReason": "Replaced",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":                 activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":                  activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/archived/supersede-test.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		"ideas/archived/README.md":         "# Archived Ideas\n\n- 2026-01-01 — [supersede-test](supersede-test.md) — Replaced\n",
 	})
@@ -3958,7 +3958,7 @@ func TestIdeaIndex_ArchivedChronologicalFix(t *testing.T) {
 		"Date":          "2026-02-01",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/archived/older.md": archivedIdea1 + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		"ideas/archived/newer.md": archivedIdea2 + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Out of chronological order (newer before older).
@@ -3986,7 +3986,7 @@ func TestIdeaIndex_ActiveMissingEntryFix(t *testing.T) {
 	body := validIdeaBody("Brand New", "Draft", nil)
 	root := writeSpec(t, map[string]string{
 		// Active index that does NOT list brand-new.
-		"ideas/README.md": "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|---|---|---|---|---|\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":    "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|---|---|---|---|---|\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/brand-new.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 
@@ -4022,7 +4022,7 @@ func TestIdeaIndex_ActiveRowDriftFix(t *testing.T) {
 	body := validIdeaBody("Drifted Idea", "Approved", nil)
 	root := writeSpec(t, map[string]string{
 		// Index says Draft but idea is Approved.
-		"ideas/README.md": "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|---|---|---|---|---|\n| [drifted-idea](drifted-idea.md) | Draft | 2026-04-10 | alice | — |\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":       "# Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|---|---|---|---|---|\n| [drifted-idea](drifted-idea.md) | Draft | 2026-04-10 | alice | — |\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/drifted-idea.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 
@@ -4056,9 +4056,9 @@ func TestIdeaIndex_ActiveRowDriftFix(t *testing.T) {
 func TestCheckIdeas_FeatureCrossReferenceNonExistent(t *testing.T) {
 	body := validIdeaBody("My Idea", "Draft", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":            activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/my-idea.md":           body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
-		"features/auth/README.md":    "# Feature: Auth\n\n**Status:** Draft\n**Source Ideas:** nonexistent-idea\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
+		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/my-idea.md":        body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n**Source Ideas:** nonexistent-idea\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4078,9 +4078,9 @@ func TestCheckIdeas_FeatureCrossReferenceNonExistent(t *testing.T) {
 func TestCheckIdeas_FeatureCrossReferenceWrongStatus(t *testing.T) {
 	body := validIdeaBody("Draft Idea", "Draft", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":            activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/draft-idea.md":        body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
-		"features/auth/README.md":    "# Feature: Auth\n\n**Status:** Draft\n**Source Ideas:** draft-idea\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
+		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/draft-idea.md":     body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n**Source Ideas:** draft-idea\n\n## Summary\n\nAuth.\n\n## Open Questions\n\nNone.\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4104,8 +4104,8 @@ func TestCheckIdeas_FeatureCrossReferenceWrongStatus(t *testing.T) {
 func TestCheckIdeas_SyncLintImplementingDerivation(t *testing.T) {
 	body := validIdeaBody("Sync Idea", "Approved", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":            activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/sync-idea.md":         body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":    activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/sync-idea.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Feature that references sync-idea and is NOT Stable.
 		"features/my-feat/README.md": "# Feature: My Feat\n\n**Status:** Approved\n**Source Ideas:** sync-idea\n\n## Summary\n\nFeat.\n\n## Open Questions\n\nNone.\n",
 	})
@@ -4128,8 +4128,8 @@ func TestCheckIdeas_SyncLintImplementingDerivation(t *testing.T) {
 func TestCheckIdeas_SyncLintSpecifiedDerivation(t *testing.T) {
 	body := validIdeaBody("Stable Idea", "Approved", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":            activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/stable-idea.md":       body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":      activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/stable-idea.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Feature that references stable-idea and IS Stable.
 		"features/stable-feat/README.md": "# Feature: Stable Feat\n\n**Status:** Stable\n**Source Ideas:** stable-idea\n\n## Summary\n\nFeat.\n\n## Open Questions\n\nNone.\n",
 	})
@@ -4152,10 +4152,10 @@ func TestCheckIdeas_SyncLintSpecifiedDerivation(t *testing.T) {
 func TestCheckIdeas_SyncLintPromotesDrift(t *testing.T) {
 	body := validIdeaBody("Promotes Drift", "Approved", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":               activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/promotes-drift.md":       body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/promotes-drift.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 		// Feature references the idea — Promotes To should list this feature.
-		"features/new-feat/README.md":   "# Feature: New Feat\n\n**Status:** Draft\n**Source Ideas:** promotes-drift\n\n## Summary\n\nFeat.\n\n## Open Questions\n\nNone.\n",
+		"features/new-feat/README.md": "# Feature: New Feat\n\n**Status:** Draft\n**Source Ideas:** promotes-drift\n\n## Summary\n\nFeat.\n\n## Open Questions\n\nNone.\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4179,9 +4179,9 @@ func TestCheckIdeas_ArchiveReasonRequired(t *testing.T) {
 		"ArchiveReason": "—",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":                 activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/archived/no-reason.md":     body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
-		"ideas/archived/README.md":        "# Archived Ideas\n\n- 2026-04-10 — [no-reason](no-reason.md) — —\n",
+		"ideas/README.md":             activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/archived/no-reason.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/archived/README.md":    "# Archived Ideas\n\n- 2026-04-10 — [no-reason](no-reason.md) — —\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4204,8 +4204,8 @@ func TestCheckIdeas_ArchiveReasonRequired(t *testing.T) {
 
 func TestCheckIdeas_HasIdField(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/has-id.md":     "# Idea: Has Id\n\n**Status:** Draft\n**Date:** 2026-05-01\n**Owner:** alice\n**Id:** custom-id\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/has-id.md": "# Idea: Has Id\n\n**Status:** Draft\n**Date:** 2026-05-01\n**Owner:** alice\n**Id:** custom-id\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4228,8 +4228,8 @@ func TestCheckIdeas_HasIdField(t *testing.T) {
 
 func TestCheckIdeas_SectionsOutOfOrder(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/wrong-order.md":    "# Idea: Wrong Order\n\n**Status:** Draft\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Context\nx\n\n## Problem Statement\nHow Might We x.\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":      activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/wrong-order.md": "# Idea: Wrong Order\n\n**Status:** Draft\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Context\nx\n\n## Problem Statement\nHow Might We x.\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4252,8 +4252,8 @@ func TestCheckIdeas_SectionsOutOfOrder(t *testing.T) {
 
 func TestCheckIdeas_HeaderFieldsOutOfOrder(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":           activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/fields-disorder.md":  "# Idea: Fields Disorder\n\n**Date:** 2026-05-01\n**Status:** Draft\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":          activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/fields-disorder.md": "# Idea: Fields Disorder\n\n**Date:** 2026-05-01\n**Status:** Draft\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4307,8 +4307,8 @@ func TestCheckIdeas_IdeaDirectoryViolation(t *testing.T) {
 
 func TestCheckIdeas_UnparseableIdeaFile(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":    activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/bad-idea.md":  "", // empty file — cannot parse
+		"ideas/README.md":   activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/bad-idea.md": "", // empty file — cannot parse
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4344,8 +4344,8 @@ func TestFindMisplacedIdeaFiles_SeedsDirSkipped(t *testing.T) {
 func TestCheckIdeas_SpecifiedRequiresPromotion(t *testing.T) {
 	body := validIdeaBody("Specified Idea", "Specified", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":           activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/specified-idea.md":   body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":         activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/specified-idea.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4371,8 +4371,8 @@ func TestCheckIdeas_ArchivedIdeaLocation(t *testing.T) {
 		"ArchiveReason": "Superseded by better-idea",
 	})
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":              activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/archived-idea.md":       body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":        activeIndex + "\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/archived-idea.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -4432,7 +4432,7 @@ func TestAdherenceFooterCheck_ExistingFooterNoViolation(t *testing.T) {
 
 func TestIssueRulesCheck_I015CorrectColumns(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"issues/valid.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid\n\n## Description\n\nOK.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: OK.\n",
+		"issues/valid.md":  "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid\n\n## Description\n\nOK.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: OK.\n",
 		"issues/README.md": "# Issues\n\n## Contents\n\n| Slug | Title | Status | Severity | Captured |\n|---|---|---|---|---|\n| valid | Valid | open | high | 2026-01-01 |\n",
 	})
 
@@ -4454,7 +4454,7 @@ func TestIssueRulesCheck_I015CorrectColumns(t *testing.T) {
 
 func TestIssueRulesCheck_I015ShortHeaderRow(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"issues/valid.md": "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid\n\n## Description\n\nOK.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: OK.\n",
+		"issues/valid.md":  "---\ntype: issue\nstatus: open\nseverity: high\n---\n# Issue: Valid\n\n## Description\n\nOK.\n\n## Steps to Reproduce\n\n- Step\n\n## Expected vs Actual\n\nExpected: OK. Actual: OK.\n",
 		"issues/README.md": "# Issues\n\n## Contents\n\n| Slug | Title |\n|---|---|\n",
 	})
 
@@ -4982,8 +4982,8 @@ func TestCheckIdeas_DiscoveredButNotParsed(t *testing.T) {
 func TestCheckIdeas_ArchivedDirNonArchivedStatus(t *testing.T) {
 	body := validIdeaBody("In Wrong Place", "Draft", nil)
 	specRoot := writeSpec(t, map[string]string{
-		"ideas/README.md":              activeIndex,
-		"ideas/archived/README.md":     archivedIndex,
+		"ideas/README.md":               activeIndex,
+		"ideas/archived/README.md":      archivedIndex,
 		"ideas/archived/wrong-place.md": body,
 	})
 	vs, err := CheckIdeas(specRoot, false)
@@ -5563,7 +5563,7 @@ func TestIssueRules_I003_EmptyOptionalField(t *testing.T) {
 // unreadable).
 func TestIssueRules_I015_ReadFileError(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"issues/test.md": "---\ntype: issue\nslug: test\nstatus: open\ncaptured_at: 2026-01-01\ncaptured_by: alice\n---\n\n# Issue: Test\n\n## Description\nTest.\n\n## Steps to Reproduce\n1. Do thing.\n\n## Expected vs Actual\nExpected X, got Y.\n",
+		"issues/test.md":   "---\ntype: issue\nslug: test\nstatus: open\ncaptured_at: 2026-01-01\ncaptured_by: alice\n---\n\n# Issue: Test\n\n## Description\nTest.\n\n## Steps to Reproduce\n1. Do thing.\n\n## Expected vs Actual\nExpected X, got Y.\n",
 		"issues/README.md": "---\ntype: index\n---\n\n**Status:** Stable\n\n# Issues\n\n## Contents\n\n| Slug | Title | Status | Severity | Captured |\n| --- | --- | --- | --- | --- |\n\n## Open Questions\n\nNone.\n",
 	})
 	// Make the index README unreadable after discovery.
@@ -5823,7 +5823,7 @@ func TestDogfoodVersion_UnparseablePin(t *testing.T) {
 // the file must become unreadable before readFeatureIndexRows opens it.
 func TestFeatureIndex_ReadFeatureIndexRowsOpenError(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n",
+		"features/README.md":      "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n| [auth](auth/README.md) | Draft | Command | Auth |\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 	indexPath := filepath.Join(root, "features", "README.md")

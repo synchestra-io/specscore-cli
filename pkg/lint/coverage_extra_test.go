@@ -229,7 +229,7 @@ func TestPlanHierarchy_SinglePlanNoChildren(t *testing.T) {
 
 func TestPlanHierarchy_PlanWithChildPlansSection(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"plans/parent/README.md":      "# Parent Plan\n\n## Child Plans\n\n- child\n",
+		"plans/parent/README.md":       "# Parent Plan\n\n## Child Plans\n\n- child\n",
 		"plans/parent/child/README.md": "# Child Plan\n\n## Steps\n\n- Step 1\n",
 	})
 	c := newPlanHierarchyChecker()
@@ -356,7 +356,7 @@ func TestCheckIdeas_NoIdeasDir(t *testing.T) {
 
 func TestCheckIdeas_WithFix(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":    activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/good-idea.md": validIdeaBody("Good Idea", "Draft", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, true)
@@ -418,7 +418,7 @@ func TestIndexEntries_ChildWithNoTable(t *testing.T) {
 
 func TestIndexEntries_RootFeaturesMissing(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
+		"features/README.md":      "# Features\n\n| Feature | Status | Kind | Description |\n|---|---|---|---|\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 	c := newIndexEntriesChecker()
@@ -541,8 +541,8 @@ func TestWalkFeatureReadmes_SkipsNonReadme(t *testing.T) {
 
 func TestIdeaRules_IdeaWithBadSlug(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/BAD_SLUG.md":   "# Idea: Bad Slug\n\n**Status:** Draft\n\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":   activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/BAD_SLUG.md": "# Idea: Bad Slug\n\n**Status:** Draft\n\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, false)
 	if err != nil {
@@ -561,7 +561,7 @@ func TestIdeaRules_IdeaWithBadSlug(t *testing.T) {
 
 func TestIdeaRules_IdeaWithWrongTitle(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":   activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":    activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/bad-title.md": "# Wrong Title Format\n\n**Status:** Draft\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, false)
@@ -581,8 +581,8 @@ func TestIdeaRules_IdeaWithWrongTitle(t *testing.T) {
 
 func TestIdeaRules_IdeaWithInvalidStatus(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":      activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/bad-status.md":  "# Idea: Bad Status\n\n**Status:** Invalid\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/bad-status.md": "# Idea: Bad Status\n\n**Status:** Invalid\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, false)
 	if err != nil {
@@ -645,8 +645,8 @@ func TestIdeaRules_IdeaMissingHMW(t *testing.T) {
 	body := validIdeaBody("No HMW", "Draft", nil)
 	body = strings.Replace(body, "How Might We ship faster?", "Just a statement.", 1)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":    activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/no-hmw.md":    body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/no-hmw.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, false)
 	if err != nil {
@@ -751,7 +751,7 @@ func TestCheckIdeas_DiscoverError(t *testing.T) {
 
 func TestCheckIdeas_ParseErrorPermission(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":  activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/unreadable.md": "# Idea: Unreadable\n",
 	})
 	// Make the idea file unreadable after Discover sees it.
@@ -793,8 +793,8 @@ func TestCheckIdeas_ParseErrorPermission(t *testing.T) {
 
 func TestIdeaRules_ArchiveReasonWithField(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":                  activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/archived/README.md":         "# Archived\n\n_No archived ideas yet._\n\n## Open Questions\n\nNone at this time.\n",
+		"ideas/README.md":             activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/archived/README.md":    "# Archived\n\n_No archived ideas yet._\n\n## Open Questions\n\nNone at this time.\n",
 		"ideas/archived/no-reason.md": "# Idea: No Reason\n\n**Status:** Archived\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n**Archive Reason:** —\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
@@ -922,8 +922,8 @@ func TestIdeaRules_SectionOrderWithExtraSection(t *testing.T) {
 	// Insert a custom section between "Context" and "Recommended Direction".
 	body = strings.Replace(body, "## Recommended Direction", "## Custom Extra Section\n\nCustom content.\n\n## Recommended Direction", 1)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":           activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/extra-section.md":    body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":        activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/extra-section.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -1089,8 +1089,8 @@ func TestPlanRules_UnreadablePlanFile(t *testing.T) {
 
 func TestIdeaIndexRules_ActiveRewriteFailure(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":     activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/new-idea.md":   validIdeaBody("New Idea", "Draft", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":   activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/new-idea.md": validIdeaBody("New Idea", "Draft", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	// Make the index file read-only so fix rewrite fails
 	indexPath := filepath.Join(root, "ideas", "README.md")
@@ -1122,9 +1122,9 @@ func TestIdeaIndexRules_ActiveRewriteFailure(t *testing.T) {
 
 func TestIdeaIndexRules_ArchivedRewriteFailure(t *testing.T) {
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":              activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/archived/README.md":     "# Archived\n\n- 2026-01-01 — [old-idea](old-idea.md) — pivoted\n\n## Open Questions\n\nNone at this time.\n",
-		"ideas/archived/new-arch.md":   "# Idea: New Arch\n\n**Status:** Archived\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n**Archive Reason:** pivoted\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":            activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/archived/README.md":   "# Archived\n\n- 2026-01-01 — [old-idea](old-idea.md) — pivoted\n\n## Open Questions\n\nNone at this time.\n",
+		"ideas/archived/new-arch.md": "# Idea: New Arch\n\n**Status:** Archived\n**Date:** 2026-05-01\n**Owner:** alice\n**Promotes To:** —\n**Supersedes:** —\n**Related Ideas:** —\n**Archive Reason:** pivoted\n\n## Problem Statement\nHow Might We x.\n\n## Context\nx\n\n## Recommended Direction\nx\n\n## Alternatives Considered\nx\n\n## MVP Scope\nx\n\n## Not Doing (and Why)\n- x — y\n\n## Key Assumptions to Validate\n| Tier | Assumption | How to validate |\n|---|---|---|\n| Must-be-true | x | x |\n\n## SpecScore Integration\n- x\n\n## Open Questions\nNone at this time.\n\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	// Make the archived index read-only
 	archIndexPath := filepath.Join(root, "ideas", "archived", "README.md")
@@ -1149,8 +1149,8 @@ func TestIdeaIndexRules_RowSyncDrift(t *testing.T) {
 	// The index row says "Draft" but the actual idea is "Approved" → drift
 	idxContent := "# SpecScore Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n| [drifted](drifted.md) | Draft | 2026-04-10 | alice | — |\n\n## Open Questions\n\nNone at this time.\n"
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":   idxContent,
-		"ideas/drifted.md":  validIdeaBody("Drifted", "Approved", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":  idxContent,
+		"ideas/drifted.md": validIdeaBody("Drifted", "Approved", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -1174,8 +1174,8 @@ func TestIdeaIndexRules_RowSyncDrift(t *testing.T) {
 func TestIdeaIndexRules_ArchivedChronologicalError(t *testing.T) {
 	archContent := "# Archived\n\n- 2026-05-01 — [newer](newer.md) — pivoted\n- 2026-01-01 — [older](older.md) — superseded\n\n## Open Questions\n\nNone at this time.\n"
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":            activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/archived/README.md":   archContent,
+		"ideas/README.md":          activeIndex + "\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/archived/README.md": archContent,
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -1200,9 +1200,9 @@ func TestIdeaIndexRules_ArchivedChronologicalError(t *testing.T) {
 func TestIdeaRules_FeatureCrossRefWithSourceIdeas(t *testing.T) {
 	body := validIdeaBody("Cross Ref", "Approved", nil)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":               activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/cross-ref.md":            body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
-		"features/my-feat/README.md":    "# Feature: My Feat\n\n**Status:** Implementing\n**Source Ideas:** cross-ref\n\n## Summary\n\nTest.\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n",
+		"ideas/README.md":            activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/cross-ref.md":         body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"features/my-feat/README.md": "# Feature: My Feat\n\n**Status:** Implementing\n**Source Ideas:** cross-ref\n\n## Summary\n\nTest.\n\n## Open Questions\n\nNone.\n\n---\n*This document follows the https://specscore.md/feature-specification*\n",
 	})
 	vs, err := CheckIdeas(root, false)
 	if err != nil {
@@ -1217,9 +1217,11 @@ func TestIdeaRules_FeatureCrossRefWithSourceIdeas(t *testing.T) {
 
 type failingChecker struct{}
 
-func (c failingChecker) Name() string                            { return "test-failing-checker" }
-func (c failingChecker) Severity() string                        { return "error" }
-func (c failingChecker) Check(specRoot string) ([]Violation, error) { return nil, fmt.Errorf("injected checker error") }
+func (c failingChecker) Name() string     { return "test-failing-checker" }
+func (c failingChecker) Severity() string { return "error" }
+func (c failingChecker) Check(specRoot string) ([]Violation, error) {
+	return nil, fmt.Errorf("injected checker error")
+}
 
 func TestLint_CheckerError(t *testing.T) {
 	RegisterChecker(failingChecker{})
@@ -1364,7 +1366,7 @@ func TestAdherenceFooterFix_ReadOnlyFile(t *testing.T) {
 
 func TestIndexEntries_UnreadableSubdir(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n| Feature | Status | Description |\n|---|---|---|\n| [auth](auth/) | Draft | Auth |\n",
+		"features/README.md":      "# Features\n\n| Feature | Status | Description |\n|---|---|---|\n| [auth](auth/) | Draft | Auth |\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 	// Create an unreadable subdirectory under features
@@ -1447,7 +1449,7 @@ func TestDogfoodVersion_UnparseablePinnedVersion(t *testing.T) {
 
 func TestFeatureIndex_UnreadableFeatureDir(t *testing.T) {
 	root := setupSpecTree(t, map[string]string{
-		"features/README.md":     "# Features\n\n## Index\n\n| Feature | Status | Description |\n|---|---|---|\n",
+		"features/README.md":      "# Features\n\n## Index\n\n| Feature | Status | Description |\n|---|---|---|\n",
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 	lockedDir := filepath.Join(root, "features", "locked")
@@ -1482,8 +1484,8 @@ func TestIdeaRules_IdeaMissingMustBeTrue(t *testing.T) {
 	body := validIdeaBody("No Must Be True", "Draft", nil)
 	body = strings.Replace(body, "| Must-be-true | Users want this | Survey |", "| Should-be-true | Users want this | Survey |", 1)
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":             activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
-		"ideas/no-must-be-true.md":    body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/README.md":          activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
+		"ideas/no-must-be-true.md": body + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	v, err := CheckIdeas(root, false)
 	if err != nil {

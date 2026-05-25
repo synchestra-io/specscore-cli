@@ -624,7 +624,7 @@ func TestScaffold_WithAllOptions(t *testing.T) {
 		NewFeatures:          "feature-a",
 		Existing:             "feature-b",
 		Dependencies:         "feature-c",
-		OpenQuestions:         []string{"Question 1?", "Question 2?"},
+		OpenQuestions:        []string{"Question 1?", "Question 2?"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -668,9 +668,9 @@ func TestScaffold_EmptyItemsInLists(t *testing.T) {
 	// Exercise the "continue" branches for empty-string items in lists
 	body, err := Scaffold(ScaffoldOptions{
 		Slug:          "empty-items",
-		Alternatives:  []string{"Alt A", "", "Alt C"},         // empty item filtered
-		NotDoing:      []string{"", "Scope X", ""},            // empty items filtered
-		OpenQuestions: []string{"Q1?", "", "Q3?"},             // empty item filtered
+		Alternatives:  []string{"Alt A", "", "Alt C"}, // empty item filtered
+		NotDoing:      []string{"", "Scope X", ""},    // empty items filtered
+		OpenQuestions: []string{"Q1?", "", "Q3?"},     // empty item filtered
 	})
 	if err != nil {
 		t.Fatal(err)

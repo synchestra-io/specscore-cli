@@ -18,9 +18,9 @@ var (
 	randRead     = rand.Read
 	osCreateTemp = os.CreateTemp
 	osRename     = os.Rename
-	fileChmod = (*os.File).Chmod
-	fileSync  = (*os.File).Sync
-	fileClose = (*os.File).Close
+	fileChmod    = (*os.File).Chmod
+	fileSync     = (*os.File).Sync
+	fileClose    = (*os.File).Close
 )
 
 // installIDFilename is the name of the install-ID file inside the

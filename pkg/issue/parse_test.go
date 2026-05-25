@@ -67,10 +67,10 @@ func TestDiscoverAll_FindsIssueOutsidePatterns(t *testing.T) {
 	specRoot := t.TempDir()
 	// One in canonical location, one off-pattern.
 	files := map[string]string{
-		"issues/in.md":         minimalIssue("in"),
-		"random-dir/out.md":    minimalIssue("out"),
+		"issues/in.md":                  minimalIssue("in"),
+		"random-dir/out.md":             minimalIssue("out"),
 		"features/foo/issues/scoped.md": minimalIssue("scoped"),
-		"ideas/seed.md":        "# Just an idea\n", // no frontmatter type=issue
+		"ideas/seed.md":                 "# Just an idea\n", // no frontmatter type=issue
 	}
 	for rel, c := range files {
 		p := filepath.Join(specRoot, rel)

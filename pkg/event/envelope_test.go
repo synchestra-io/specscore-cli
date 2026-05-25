@@ -150,9 +150,9 @@ func TestValidate_RejectsBadArtifactType(t *testing.T) {
 // field and confirms the empty value is rejected with that field named.
 func TestValidate_RejectsEmptyStringFields(t *testing.T) {
 	cases := []struct {
-		name  string
+		name   string
 		mutate func(*Event)
-		field string
+		field  string
 	}{
 		{"actor.id", func(e *Event) { e.Actor.ID = "" }, "actor.id"},
 		{"artifact.id", func(e *Event) { e.Artifact.ID = "" }, "artifact.id"},
