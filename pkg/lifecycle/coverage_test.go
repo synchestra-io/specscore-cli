@@ -1,6 +1,8 @@
 package lifecycle
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -368,3 +370,141 @@ func TestWriteFileAtomic_LargeContent(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Rewrite — no trailing newline (tested in lifecycle_test.go)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — injected CreateTemp failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_CreateTempError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := osCreateTemp
+	osCreateTemp = func(dir, pattern string) (*os.File, error) {
+		return nil, fmt.Errorf("injected createtemp error")
+	}
+	t.Cleanup(func() { osCreateTemp = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected CreateTemp failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — injected io.Copy failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_CopyError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := ioCopy
+	ioCopy = func(dst io.Writer, src io.Reader) (int64, error) {
+		return 0, fmt.Errorf("injected copy error")
+	}
+	t.Cleanup(func() { ioCopy = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected Copy failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — injected os.Chmod failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_ChmodError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := osChmod
+	osChmod = func(name string, mode os.FileMode) error {
+		return fmt.Errorf("injected chmod error")
+	}
+	t.Cleanup(func() { osChmod = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected Chmod failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeFileAtomic — injected os.Rename failure
+// ---------------------------------------------------------------------------
+
+func TestWriteFileAtomic_RenameError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.md")
+	original := []byte("original content")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := osRename
+	osRename = func(oldpath, newpath string) error {
+		return fmt.Errorf("injected rename error")
+	}
+	t.Cleanup(func() { osRename = old })
+
+	err := writeFileAtomic(path, []byte("new content"))
+	if err == nil {
+		t.Fatal("expected error from injected Rename failure")
+	}
+	// Original file should be unchanged.
+	got, _ := os.ReadFile(path)
+	if string(got) != string(original) {
+		t.Errorf("original file changed: got %q, want %q", got, original)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// readStatus — scanner error (huge line exceeds buffer)
+// ---------------------------------------------------------------------------
+
+func TestReadStatus_ScannerError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "artifact.md")
+	// Create a file with a single line exceeding the 1MB scanner buffer
+	// limit. This triggers scanner.Err() != nil.
+	huge := strings.Repeat("x", 2*1024*1024) + "\n"
+	if err := os.WriteFile(path, []byte(huge), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := readStatus(path)
+	if err == nil {
+		t.Fatal("expected error for scanner overflow")
+	}
+	if err == ErrStatusLineNotFound {
+		t.Error("expected scanner error, not ErrStatusLineNotFound")
+	}
+}

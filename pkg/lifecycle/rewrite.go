@@ -11,6 +11,14 @@ import (
 	"strings"
 )
 
+// Testable indirections for OS operations. Tests inject failures via these.
+var (
+	osCreateTemp = os.CreateTemp
+	ioCopy       = io.Copy
+	osChmod      = os.Chmod
+	osRename     = os.Rename
+)
+
 // statusLineRe matches a header line of the form `**Status:** <value>`,
 // allowing leading horizontal whitespace before the `**` marker and tolerating
 // trailing whitespace after the value. The matcher operates on a single line
@@ -216,7 +224,7 @@ func writeFileAtomic(dst string, content []byte) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dirOf(dst), ".lifecycle-rewrite-*")
+	tmp, err := osCreateTemp(dirOf(dst), ".lifecycle-rewrite-*")
 	if err != nil {
 		return err
 	}
@@ -224,7 +232,7 @@ func writeFileAtomic(dst string, content []byte) error {
 	cleanup := func() {
 		_ = os.Remove(tmpName)
 	}
-	if _, err := io.Copy(tmp, bytes.NewReader(content)); err != nil {
+	if _, err := ioCopy(tmp, bytes.NewReader(content)); err != nil {
 		_ = tmp.Close()
 		cleanup()
 		return err
@@ -238,11 +246,11 @@ func writeFileAtomic(dst string, content []byte) error {
 		cleanup()
 		return err
 	}
-	if err := os.Chmod(tmpName, stat.Mode().Perm()); err != nil {
+	if err := osChmod(tmpName, stat.Mode().Perm()); err != nil {
 		cleanup()
 		return err
 	}
-	if err := os.Rename(tmpName, dst); err != nil {
+	if err := osRename(tmpName, dst); err != nil {
 		cleanup()
 		return err
 	}

@@ -2,11 +2,14 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/posthog/posthog-go"
 )
 
 // ---------------------------------------------------------------------------
@@ -754,5 +757,444 @@ func TestInstallID_FixesDirPermissions(t *testing.T) {
 	}
 	if info.Mode().Perm() != installIDDirMode {
 		t.Errorf("dir mode = %v, want %v", info.Mode().Perm(), installIDDirMode)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// setupErrorsChannel — exercises the init() body for errors.go with a
+// non-empty sentryDSN so that sentry.Init is called and
+// errorsClientInitialized is set.
+// ---------------------------------------------------------------------------
+
+func TestSetupErrorsChannel_WithDSN(t *testing.T) {
+	origDSN := sentryDSN
+	origInit := errorsClientInitialized
+	origSetup := setupErrorsChannel
+	t.Cleanup(func() {
+		sentryDSN = origDSN
+		errorsClientInitialized = origInit
+		setupErrorsChannel = origSetup
+	})
+
+	// A syntactically valid but unreachable DSN — sentry.Init accepts it
+	// (it validates lazily on send, not at init time).
+	sentryDSN = "https://examplePublicKey@o0.ingest.de.sentry.io/0"
+	errorsClientInitialized = false
+	setupErrorsChannel()
+	if !errorsClientInitialized {
+		t.Error("expected errorsClientInitialized=true after setupErrorsChannel with valid DSN")
+	}
+}
+
+func TestSetupErrorsChannel_WithInvalidDSN(t *testing.T) {
+	origDSN := sentryDSN
+	origInit := errorsClientInitialized
+	origSetup := setupErrorsChannel
+	t.Cleanup(func() {
+		sentryDSN = origDSN
+		errorsClientInitialized = origInit
+		setupErrorsChannel = origSetup
+	})
+
+	// An obviously invalid DSN should make sentry.Init fail.
+	sentryDSN = "not-a-valid-dsn"
+	errorsClientInitialized = false
+	setupErrorsChannel()
+	if errorsClientInitialized {
+		t.Error("expected errorsClientInitialized=false after setupErrorsChannel with invalid DSN")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// setupUsageChannel — exercises the init() body for usage.go with a
+// non-empty posthogWriteKey.
+// ---------------------------------------------------------------------------
+
+func TestSetupUsageChannel_WithKey(t *testing.T) {
+	origKey := posthogWriteKey
+	origClient := usageClient
+	origSetup := setupUsageChannel
+	t.Cleanup(func() {
+		posthogWriteKey = origKey
+		usageClient = origClient
+		setupUsageChannel = origSetup
+	})
+
+	posthogWriteKey = "phc_test_fake_key_for_coverage"
+	usageClient = nil
+	setupUsageChannel()
+	if usageClient == nil {
+		t.Error("expected usageClient to be set after setupUsageChannel with valid key")
+	}
+	// Close the client to release resources.
+	if usageClient != nil {
+		_ = usageClient.Close()
+	}
+}
+
+func TestSetupUsageChannel_WithEmptyKey(t *testing.T) {
+	origKey := posthogWriteKey
+	origClient := usageClient
+	origSetup := setupUsageChannel
+	t.Cleanup(func() {
+		posthogWriteKey = origKey
+		usageClient = origClient
+		setupUsageChannel = origSetup
+	})
+
+	posthogWriteKey = ""
+	usageClient = nil
+	setupUsageChannel()
+	if usageClient != nil {
+		t.Error("expected usageClient to remain nil with empty key")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// userStateDir — Windows branch via runtimeGOOS indirection.
+// ---------------------------------------------------------------------------
+
+func TestUserStateDir_WindowsBranch(t *testing.T) {
+	origGOOS := runtimeGOOS
+	t.Cleanup(func() { runtimeGOOS = origGOOS })
+
+	runtimeGOOS = "windows"
+	// On non-Windows, os.UserConfigDir may still succeed (it returns
+	// $XDG_CONFIG_HOME or $HOME/.config on Unix). We just need the
+	// code path to execute.
+	dir, err := userStateDir()
+	if err != nil {
+		// Acceptable — UserConfigDir may fail in some environments.
+		t.Logf("userStateDir with windows GOOS returned error (acceptable): %v", err)
+		return
+	}
+	if !filepath.IsAbs(dir) {
+		t.Errorf("expected absolute path, got %q", dir)
+	}
+	// On Unix pretending to be Windows, the returned path should end with
+	// "specscore" (not ".specscore").
+	if filepath.Base(dir) != "specscore" {
+		t.Errorf("expected base dir 'specscore', got %q", filepath.Base(dir))
+	}
+}
+
+func TestUserStateDir_WindowsBranch_ConfigDirError(t *testing.T) {
+	origGOOS := runtimeGOOS
+	t.Cleanup(func() { runtimeGOOS = origGOOS })
+
+	runtimeGOOS = "windows"
+	// Clear HOME-related env vars to make os.UserConfigDir fail.
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", "")
+
+	_, err := userStateDir()
+	if err == nil {
+		t.Error("expected error from userStateDir when HOME/AppData are cleared on 'windows'")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// generateUUIDv4 — crypto/rand error path via randRead indirection.
+// ---------------------------------------------------------------------------
+
+func TestGenerateUUIDv4_RandReadError(t *testing.T) {
+	origRandRead := randRead
+	t.Cleanup(func() { randRead = origRandRead })
+
+	randRead = func(b []byte) (int, error) {
+		return 0, errors.New("injected rand failure")
+	}
+
+	_, err := generateUUIDv4()
+	if err == nil {
+		t.Error("expected error from generateUUIDv4 when rand.Read fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// InstallID — generateUUIDv4 error propagation.
+// ---------------------------------------------------------------------------
+
+func TestInstallID_GenerateUUIDError(t *testing.T) {
+	withTempHome(t)
+
+	origRandRead := randRead
+	t.Cleanup(func() { randRead = origRandRead })
+
+	randRead = func(b []byte) (int, error) {
+		return 0, errors.New("injected rand failure")
+	}
+
+	_, _, err := InstallID()
+	if err == nil {
+		t.Error("expected error from InstallID when generateUUIDv4 fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// InstallID — atomicWriteFile error propagation.
+// ---------------------------------------------------------------------------
+
+func TestInstallID_AtomicWriteError(t *testing.T) {
+	withTempHome(t)
+
+	origRename := osRename
+	t.Cleanup(func() { osRename = origRename })
+
+	osRename = func(_, _ string) error {
+		return errors.New("injected rename failure")
+	}
+
+	_, _, err := InstallID()
+	if err == nil {
+		t.Error("expected error from InstallID when atomicWriteFile fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// atomicWriteFile — Write error path via osCreateTemp that returns a
+// pre-closed file descriptor.
+// ---------------------------------------------------------------------------
+
+func TestAtomicWriteFile_WriteError(t *testing.T) {
+	dir := t.TempDir()
+	origCreateTemp := osCreateTemp
+	t.Cleanup(func() { osCreateTemp = origCreateTemp })
+
+	osCreateTemp = func(dir, pattern string) (*os.File, error) {
+		f, err := origCreateTemp(dir, pattern)
+		if err != nil {
+			return nil, err
+		}
+		// Close the fd so that subsequent Write calls fail.
+		_ = f.Close()
+		return f, nil
+	}
+
+	path := filepath.Join(dir, "testfile")
+	err := atomicWriteFile(path, []byte("data"), 0o600)
+	if err == nil {
+		t.Error("expected error from atomicWriteFile when Write fails on closed fd")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// atomicWriteFile — Rename error path via osRename indirection.
+// ---------------------------------------------------------------------------
+
+func TestAtomicWriteFile_RenameError(t *testing.T) {
+	dir := t.TempDir()
+	origRename := osRename
+	t.Cleanup(func() { osRename = origRename })
+
+	osRename = func(_, _ string) error {
+		return errors.New("injected rename failure")
+	}
+
+	path := filepath.Join(dir, "testfile")
+	err := atomicWriteFile(path, []byte("data"), 0o600)
+	if err == nil {
+		t.Error("expected error from atomicWriteFile when Rename fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// WriteState — yaml.Marshal error path.
+// ---------------------------------------------------------------------------
+
+func TestWriteState_MarshalError(t *testing.T) {
+	withTempHome(t)
+
+	origMarshal := yamlMarshal
+	t.Cleanup(func() { yamlMarshal = origMarshal })
+
+	yamlMarshal = func(v interface{}) ([]byte, error) {
+		return nil, errors.New("injected marshal failure")
+	}
+
+	err := WriteState(State{})
+	if err == nil {
+		t.Error("expected error from WriteState when yaml.Marshal fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// WriteState — "refusing to write malformed state" defensive check.
+// ---------------------------------------------------------------------------
+
+func TestWriteState_RefusingToWriteMalformedState(t *testing.T) {
+	withTempHome(t)
+
+	origMarshal := yamlMarshal
+	t.Cleanup(func() { yamlMarshal = origMarshal })
+
+	// Return YAML with an unknown key so parseStateBytes rejects it.
+	yamlMarshal = func(v interface{}) ([]byte, error) {
+		return []byte("bogus_key: true\n"), nil
+	}
+
+	err := WriteState(State{})
+	if err == nil {
+		t.Error("expected error from WriteState for malformed marshaled state")
+	}
+	if err != nil && !contains(err.Error(), "refusing to write") {
+		t.Errorf("expected 'refusing to write' in error, got: %v", err)
+	}
+}
+
+// contains is a helper to avoid importing strings just for one check.
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+// ---------------------------------------------------------------------------
+// transmitUsage — Enqueue path via usageEnqueue indirection.
+// ---------------------------------------------------------------------------
+
+func TestTransmitUsage_EnqueuePath(t *testing.T) {
+	origEnqueue := usageEnqueue
+	t.Cleanup(func() { usageEnqueue = origEnqueue })
+
+	var captured posthog.Capture
+	usageEnqueue = func(c posthog.Capture) error {
+		captured = c
+		return nil
+	}
+
+	transmitUsage(context.Background(), Event{
+		Command:   "test.cmd",
+		InstallID: "test-id",
+		Caller:    CallerCLI,
+	})
+
+	if captured.Event != usageStatsEventName {
+		t.Errorf("captured event = %q, want %q", captured.Event, usageStatsEventName)
+	}
+	if captured.DistinctId != "test-id" {
+		t.Errorf("captured DistinctId = %q, want %q", captured.DistinctId, "test-id")
+	}
+}
+
+// TestTransmitUsage_RealClientEnqueue exercises the usageClient.Enqueue path
+// (line 187 of usage.go) by setting up a real PostHog client with a fake key.
+// The Enqueue call succeeds (it buffers locally); we close the client after.
+func TestTransmitUsage_RealClientEnqueue(t *testing.T) {
+	origClient := usageClient
+	origEnqueue := usageEnqueue
+	t.Cleanup(func() {
+		usageClient = origClient
+		usageEnqueue = origEnqueue
+	})
+
+	client, err := posthog.NewWithConfig("phc_test_fake_key", posthog.Config{
+		Endpoint: posthogEUEndpoint,
+	})
+	if err != nil {
+		t.Fatalf("posthog.NewWithConfig: %v", err)
+	}
+	usageClient = client
+	usageEnqueue = nil // ensure we go through the real client path
+
+	// Must not panic; Enqueue buffers locally.
+	transmitUsage(context.Background(), Event{
+		Command:   "test.real",
+		InstallID: "test-real-id",
+		Caller:    CallerCLI,
+	})
+
+	_ = client.Close()
+}
+
+// ---------------------------------------------------------------------------
+// atomicWriteFile — Chmod error path via fileChmod indirection.
+// ---------------------------------------------------------------------------
+
+func TestAtomicWriteFile_ChmodError(t *testing.T) {
+	dir := t.TempDir()
+	origChmod := fileChmod
+	t.Cleanup(func() { fileChmod = origChmod })
+
+	fileChmod = func(_ *os.File, _ os.FileMode) error {
+		return errors.New("injected chmod failure")
+	}
+
+	path := filepath.Join(dir, "testfile")
+	err := atomicWriteFile(path, []byte("data"), 0o600)
+	if err == nil {
+		t.Error("expected error from atomicWriteFile when Chmod fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// atomicWriteFile — Sync error path via fileSync indirection.
+// ---------------------------------------------------------------------------
+
+func TestAtomicWriteFile_SyncError(t *testing.T) {
+	dir := t.TempDir()
+	origSync := fileSync
+	t.Cleanup(func() { fileSync = origSync })
+
+	fileSync = func(_ *os.File) error {
+		return errors.New("injected sync failure")
+	}
+
+	path := filepath.Join(dir, "testfile")
+	err := atomicWriteFile(path, []byte("data"), 0o600)
+	if err == nil {
+		t.Error("expected error from atomicWriteFile when Sync fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// atomicWriteFile — Close error path via fileClose indirection.
+// ---------------------------------------------------------------------------
+
+func TestAtomicWriteFile_CloseError(t *testing.T) {
+	dir := t.TempDir()
+	origClose := fileClose
+	t.Cleanup(func() { fileClose = origClose })
+
+	fileClose = func(_ *os.File) error {
+		return errors.New("injected close failure")
+	}
+
+	path := filepath.Join(dir, "testfile")
+	err := atomicWriteFile(path, []byte("data"), 0o600)
+	if err == nil {
+		t.Error("expected error from atomicWriteFile when Close fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// setupUsageChannel — posthog.NewWithConfig error branch.
+// ---------------------------------------------------------------------------
+
+func TestSetupUsageChannel_NewClientError(t *testing.T) {
+	origKey := posthogWriteKey
+	origClient := usageClient
+	origNew := posthogNew
+	origSetup := setupUsageChannel
+	t.Cleanup(func() {
+		posthogWriteKey = origKey
+		usageClient = origClient
+		posthogNew = origNew
+		setupUsageChannel = origSetup
+	})
+
+	posthogWriteKey = "phc_test_key"
+	usageClient = nil
+	posthogNew = func(_ string, _ posthog.Config) (posthog.Client, error) {
+		return nil, errors.New("injected posthog init failure")
+	}
+
+	setupUsageChannel()
+	if usageClient != nil {
+		t.Error("expected usageClient to remain nil when posthog.NewWithConfig fails")
 	}
 }

@@ -38,6 +38,10 @@ var posthogWriteKey = ""
 // is empty.
 var usageClient posthog.Client
 
+// posthogNew is a testable indirection for posthog.NewWithConfig so tests can
+// inject initialization failures.
+var posthogNew = posthog.NewWithConfig
+
 // CallerEnumKnown is the closed-enum set of recognized values for the `caller`
 // event property per cli/telemetry/usage-telemetry#req:caller-enum-known-values.
 // Any caller value not in this set is coerced to CallerOther before
@@ -129,12 +133,15 @@ func coerceCaller(s string) string {
 	return CallerOther
 }
 
-func init() {
-	RegisterChannel(ChannelUsageStats, transmitUsage)
+// setupUsageChannel encapsulates the usage-stats channel initialization
+// logic, extracted from init() so tests can exercise both the
+// posthogWriteKey-empty and posthogWriteKey-populated branches without
+// compile-time constants.
+var setupUsageChannel = func() {
 	if posthogWriteKey == "" {
 		return
 	}
-	client, err := posthog.NewWithConfig(posthogWriteKey, posthog.Config{
+	client, err := posthogNew(posthogWriteKey, posthog.Config{
 		Endpoint: posthogEUEndpoint,
 	})
 	if err != nil {
@@ -142,6 +149,11 @@ func init() {
 		return
 	}
 	usageClient = client
+}
+
+func init() {
+	RegisterChannel(ChannelUsageStats, transmitUsage)
+	setupUsageChannel()
 }
 
 // transmitUsage converts a typed Event into a PostHog capture call. Honors
@@ -160,12 +172,24 @@ func init() {
 // though Event.Caller was already coerced upstream by ResolveCaller — the
 // double-check ensures no arbitrary string ever reaches PostHog regardless of
 // how the Event was constructed.
+
+// usageEnqueue is a testable indirection for the PostHog client's Enqueue
+// method. Production code leaves this nil; when nil, transmitUsage calls
+// usageClient.Enqueue directly. Tests set this to verify the Enqueue path
+// without a real PostHog client.
+var usageEnqueue func(posthog.Capture) error
+
 func transmitUsage(ctx context.Context, event Event) {
 	_ = ctx
-	if usageClient == nil {
+	if usageClient == nil && usageEnqueue == nil {
 		return
 	}
-	_ = usageClient.Enqueue(buildPostHogCapture(event))
+	capture := buildPostHogCapture(event)
+	if usageEnqueue != nil {
+		_ = usageEnqueue(capture)
+		return
+	}
+	_ = usageClient.Enqueue(capture)
 }
 
 // buildPostHogCapture is the pure-function builder for the PostHog Capture

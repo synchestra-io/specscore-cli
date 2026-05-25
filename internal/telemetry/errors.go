@@ -38,8 +38,10 @@ var errorsClientInitialized bool
 // only calls it under the test hook.
 var transmitErrorsTestPanic func()
 
-func init() {
-	RegisterChannel(ChannelCrashReports, transmitErrors)
+// setupErrorsChannel encapsulates the crash-reports channel initialization
+// logic, extracted from init() so tests can exercise both the sentryDSN-empty
+// and sentryDSN-populated branches without compile-time constants.
+var setupErrorsChannel = func() {
 	if sentryDSN == "" {
 		return
 	}
@@ -65,6 +67,11 @@ func init() {
 		return
 	}
 	errorsClientInitialized = true
+}
+
+func init() {
+	RegisterChannel(ChannelCrashReports, transmitErrors)
+	setupErrorsChannel()
 }
 
 // transmitErrors converts a typed Event into a Sentry capture call. Honors

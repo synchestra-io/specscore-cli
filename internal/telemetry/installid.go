@@ -11,6 +11,18 @@ import (
 	"strings"
 )
 
+// Testable indirection points — production code uses the real implementations;
+// tests swap these to inject failures on specific I/O paths.
+var (
+	runtimeGOOS  = runtime.GOOS
+	randRead     = rand.Read
+	osCreateTemp = os.CreateTemp
+	osRename     = os.Rename
+	fileChmod = (*os.File).Chmod
+	fileSync  = (*os.File).Sync
+	fileClose = (*os.File).Close
+)
+
 // installIDFilename is the name of the install-ID file inside the
 // SpecScore-per-user directory. Per cli/telemetry#req:install-id-file-path
 // the file lives at ~/.specscore/install_id on Unix and the platform-
@@ -98,7 +110,7 @@ func InstallIDPath() (string, error) {
 //	for safety and use a subdir "specscore" — matching the Feature's
 //	"%LOCALAPPDATA%\specscore\install_id" example in spirit).
 func userStateDir() (string, error) {
-	if runtime.GOOS == "windows" {
+	if runtimeGOOS == "windows" {
 		base, err := os.UserConfigDir()
 		if err != nil {
 			return "", fmt.Errorf("resolving user config dir: %w", err)
@@ -138,7 +150,7 @@ func readInstallID(path string) (string, error) {
 // crypto/rand for entropy — no external dependency.
 func generateUUIDv4() (string, error) {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return "", err
 	}
 	// Set version (4) in the high nibble of byte 6.
@@ -193,7 +205,7 @@ func isLowerHex(c byte) bool {
 // write (cli/telemetry#req:install-id-creation).
 func atomicWriteFile(path string, data []byte, mode fs.FileMode) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".install_id-*.tmp")
+	tmp, err := osCreateTemp(dir, ".install_id-*.tmp")
 	if err != nil {
 		return err
 	}
@@ -204,16 +216,16 @@ func atomicWriteFile(path string, data []byte, mode fs.FileMode) error {
 		_ = tmp.Close()
 		return err
 	}
-	if err := tmp.Chmod(mode); err != nil {
+	if err := fileChmod(tmp, mode); err != nil {
 		_ = tmp.Close()
 		return err
 	}
-	if err := tmp.Sync(); err != nil {
+	if err := fileSync(tmp); err != nil {
 		_ = tmp.Close()
 		return err
 	}
-	if err := tmp.Close(); err != nil {
+	if err := fileClose(tmp); err != nil {
 		return err
 	}
-	return os.Rename(tmpPath, path)
+	return osRename(tmpPath, path)
 }

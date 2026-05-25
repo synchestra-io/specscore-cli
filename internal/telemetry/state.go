@@ -11,6 +11,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// yamlMarshal is a testable indirection over yaml.Marshal so that tests can
+// inject marshaling failures to exercise the defensive error paths in
+// WriteState.
+var yamlMarshal = yaml.Marshal
+
 // stateFilename is the YAML file under the SpecScore per-user directory that
 // holds the user's persistent telemetry preferences. See
 // cli/telemetry#req:persistent-state-file-shape for the schema.
@@ -122,7 +127,7 @@ func WriteState(s State) error {
 	if mkErr := os.MkdirAll(filepath.Dir(path), installIDDirMode); mkErr != nil {
 		return fmt.Errorf("creating state directory: %w", mkErr)
 	}
-	body, err := yaml.Marshal(&s)
+	body, err := yamlMarshal(&s)
 	if err != nil {
 		return fmt.Errorf("marshaling state: %w", err)
 	}
