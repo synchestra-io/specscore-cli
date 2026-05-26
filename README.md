@@ -1,7 +1,7 @@
 # specscore-cli
 
 [![CI](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml/badge.svg)](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/specscore/specscore-cli/actions/workflows/go-ci.yml)
 
 CLI for [SpecScore](https://specscore.md) — lint, query, and scaffold SpecScore specifications.
 
@@ -62,9 +62,9 @@ Then bootstrap the CLI itself with `/specscore:install`, or install manually wit
 
 ## Test coverage
 
-We're proud that `specscore-cli` maintains **99% test coverage**, enforced automatically — the CI pipeline rejects any pull request that drops below 99%.
+`specscore-cli` maintains **100% statement coverage** across all packages. This is enforced automatically — the CI pipeline and the local pre-push hook both reject any change that drops below 100%.
 
-Our goal is **100%**. Every uncovered statement is a known gap tracked in [`spec/ideas/full-test-coverage.md`](spec/ideas/full-test-coverage.md).
+All contributions are required to maintain 100% coverage. If your change adds or modifies code, include tests that cover every new branch.
 
 ## License
 
