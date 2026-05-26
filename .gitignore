@@ -13,6 +13,9 @@ go.work.sum
 # OS
 .DS_Store
 
+# Test coverage output
+cover*.out
+
 # Tooling local state
 .claude/
 .specscore/
