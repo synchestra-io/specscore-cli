@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"testing/iotest"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/feature"
 	"github.com/specscore/specscore-cli/pkg/idea"
+	"github.com/specscore/specscore-cli/pkg/idearelocate"
+	"github.com/specscore/specscore-cli/pkg/issue"
 	"github.com/specscore/specscore-cli/pkg/lint"
 	"github.com/specscore/specscore-cli/pkg/projectdef"
 	"github.com/spf13/cobra"
@@ -6655,5 +6658,844 @@ func TestMutateState_WriteStateError(t *testing.T) {
 	err := mutateState(io.Discard, "", false, true)
 	if err == nil {
 		t.Fatal("expected error from WriteState stub, got nil")
+	}
+}
+
+// ===========================================================================
+// event.go — resolvePayload: stdin read error
+// ===========================================================================
+
+func TestResolvePayload_StdinError(t *testing.T) {
+	r := iotest.ErrReader(errors.New("broken stdin"))
+	_, err := resolvePayload("", "", r, t.TempDir())
+	if err == nil {
+		t.Fatal("expected error from broken stdin reader; got nil")
+	}
+	if !strings.Contains(err.Error(), "broken stdin") {
+		t.Errorf("error = %q; want it to contain 'broken stdin'", err)
+	}
+}
+
+// ===========================================================================
+// idea_relocate.go — excludeRepoPaths: EvalSymlinks fallback (line 212)
+// ===========================================================================
+
+func TestExcludeRepoPaths_EvalSymlinksFallback(t *testing.T) {
+	// Create a broken symlink so filepath.Abs succeeds but
+	// filepath.EvalSymlinks fails, exercising the Clean(abs) fallback.
+	root := t.TempDir()
+	brokenLink := filepath.Join(root, "broken-link")
+	if err := os.Symlink("/non/existent/target", brokenLink); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	siblings := []idearelocate.TargetRepo{
+		{Path: brokenLink, RepoName: "broken"},
+		{Path: root, RepoName: "good"},
+	}
+	// Exclude the broken-link path — canon falls back to Clean(abs).
+	result := excludeRepoPaths(siblings, brokenLink)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 sibling after exclude, got %d", len(result))
+	}
+	if result[0].RepoName != "good" {
+		t.Errorf("expected remaining sibling to be 'good', got %q", result[0].RepoName)
+	}
+}
+
+// ===========================================================================
+// idea_relocate.go — excludeRepoPaths: Abs fallback (line 214)
+// ===========================================================================
+
+func TestExcludeRepoPaths_AbsFallback(t *testing.T) {
+	// filepath.Abs fails only when os.Getwd fails (for relative paths).
+	// Trigger by chdir-ing into a directory that is then removed.
+	tmpDir := t.TempDir()
+	subDir := filepath.Join(tmpDir, "doomed")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	oldCwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(subDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	// Remove the directory while we are inside it.
+	if err := os.RemoveAll(subDir); err != nil {
+		_ = os.Chdir(oldCwd)
+		t.Skip("cannot remove cwd on this OS")
+	}
+	defer func() { _ = os.Chdir(oldCwd) }()
+
+	// Now filepath.Abs("relative") should fail because Getwd fails.
+	// The canon helper falls back to filepath.Clean(p).
+	siblings := []idearelocate.TargetRepo{
+		{Path: "relative-path", RepoName: "rel"},
+	}
+	result := excludeRepoPaths(siblings, "relative-path")
+	// Both the sibling and the exclude are canonicalized via Clean(p),
+	// so the sibling should be excluded.
+	if len(result) != 0 {
+		t.Errorf("expected 0 siblings after exclude, got %d: %v", len(result), result)
+	}
+}
+
+// ===========================================================================
+// spec.go:148-150 — outputLintViolations: writer error
+// ===========================================================================
+
+func TestOutputLintViolations_WriterError(t *testing.T) {
+	violations := []lint.Violation{
+		{File: "a.md", Line: 1, Severity: "error", Rule: "r1", Message: "m1"},
+	}
+	// json and yaml formats propagate writer errors through their encoders.
+	// (text format silently discards write errors via _, _ = fmt.Fprintf.)
+	for _, format := range []string{"json", "yaml"} {
+		t.Run(format, func(t *testing.T) {
+			err := outputLintViolations(&errWriter{}, violations, format)
+			if err == nil {
+				t.Fatalf("expected error from errWriter for format %q", format)
+			}
+		})
+	}
+}
+
+// TestRunSpecLint_OutputWriterError exercises spec.go:148-150 where
+// outputLintViolations returns an error inside runSpecLint. We build a
+// project with at least one lint violation, set the command's output to
+// an errWriter, and use --format=json so the encoder propagates the error.
+func TestRunSpecLint_OutputWriterError(t *testing.T) {
+	// Create a project with a lint violation: a broken idea file.
+	root := t.TempDir()
+	if err := projectdef.WriteSpecConfig(root, projectdef.SpecConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	specDir := filepath.Join(root, "spec")
+	ideasDir := filepath.Join(specDir, "ideas")
+	featDir := filepath.Join(specDir, "features")
+	for _, d := range []string{ideasDir, featDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// spec/README.md — intentionally missing to produce a lint violation
+	// spec/ideas/README.md — also missing
+	// spec/features/README.md — also missing
+	// These missing indexes will generate lint violations.
+
+	cmd := specCommand()
+	cmd.SilenceUsage = true
+	cmd.SetOut(&errWriter{})
+	cmd.SetErr(&errWriter{})
+	cmd.SetArgs([]string{"lint", "--project", root, "--format=json"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from errWriter during lint output")
+	}
+	// Should be an "output error" (Unexpected) rather than "violation(s) found" (Conflict).
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// ===========================================================================
+// init.go:28-30 — isTerminal: Stat error on closed *os.File
+// ===========================================================================
+
+func TestIsTerminal_StatError(t *testing.T) {
+	// Open then close a file — Stat on a closed *os.File returns an error.
+	f, err := os.CreateTemp(t.TempDir(), "terminal-test")
+	if err != nil {
+		t.Fatalf("create temp: %v", err)
+	}
+	f.Close() // Stat will now fail with "file already closed"
+
+	got := isTerminal(f)
+	if got {
+		t.Error("isTerminal on closed file should return false")
+	}
+}
+
+// ===========================================================================
+// init.go:116-118 — writeMissingIndex error during runInit
+// ===========================================================================
+
+func TestInit_WriteMissingIndexErrorR6(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping as root")
+	}
+	root := t.TempDir()
+	// Create spec/ as a read-only directory — writeMissingIndex will fail
+	// because it can't create spec/README.md inside a read-only dir.
+	specDir := filepath.Join(root, "spec")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Chmod(specDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(specDir, 0o755) })
+
+	_, _, err := runInitCmd(t, nil, "--project", root, "--force")
+	if err == nil {
+		t.Fatal("expected error when spec/ is unwritable")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// ===========================================================================
+// init.go:149 — resolveProjectRootForInit: non-ENOENT stat error
+// ===========================================================================
+
+func TestResolveProjectRootForInit_StatPermissionError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping as root")
+	}
+	root := t.TempDir()
+	// Create inner/project, then make inner non-traversable so
+	// os.Stat(inner/project) fails with EACCES, not ENOENT.
+	inner := filepath.Join(root, "inner")
+	target := filepath.Join(inner, "project")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Chmod(inner, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(inner, 0o755) })
+
+	_, err := resolveProjectRootForInit(target)
+	if err == nil {
+		t.Fatal("expected error for stat permission failure")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// ===========================================================================
+// idea.go:253-255 — runIdeaNew: interactive prompt read error
+// ===========================================================================
+
+func TestIdeaNew_InteractivePromptError(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+
+	cmd := ideaCommand()
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	// Use iotest.ErrReader to make scanner.Scan fail with an error.
+	cmd.SetIn(iotest.ErrReader(errors.New("injected stdin error")))
+	cmd.SetArgs([]string{"new", "prompt-fail", "-i"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from broken stdin reader")
+	}
+	if !strings.Contains(err.Error(), "injected stdin error") {
+		t.Errorf("error = %q, want it to contain 'injected stdin error'", err)
+	}
+}
+
+// ===========================================================================
+// idea.go:271-273 — runIdeaNew: MkdirAll(proposalsDir) error
+// ===========================================================================
+
+func TestIdeaNew_MkdirAllProposalsDirError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping as root")
+	}
+	root := setupSpecRootWithFeature(t, "auth")
+	withCwd(t, root)
+	stubLint(t)
+
+	// Make the feature directory read-only so MkdirAll for proposals/ fails.
+	featDir := filepath.Join(root, "spec", "features", "auth")
+	if err := os.Chmod(featDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(featDir, 0o755) })
+
+	_, _, err := runIdea(t, "new", "add-mfa",
+		"--type", "change-request", "--targets", "auth")
+	if err == nil {
+		t.Fatal("expected error when feature dir is read-only")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// ===========================================================================
+// idea.go:284-289 — runIdeaNew: "proposal already exists" conflict
+// ===========================================================================
+
+func TestIdeaNew_ChangeRequestAlreadyExists(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "auth")
+	withCwd(t, root)
+	stubLint(t)
+
+	// Create the first proposal so the second one triggers the conflict.
+	if _, _, err := runIdea(t, "new", "add-mfa",
+		"--type", "change-request", "--targets", "auth"); err != nil {
+		t.Fatalf("first proposal: %v", err)
+	}
+
+	_, _, err := runIdea(t, "new", "add-mfa",
+		"--type", "change-request", "--targets", "auth")
+	if err == nil {
+		t.Fatal("expected conflict error for duplicate proposal")
+	}
+	if !strings.Contains(err.Error(), "proposal already exists") {
+		t.Errorf("error = %q, want it to contain 'proposal already exists'", err)
+	}
+	if got := exitCodeOf(err); got != exitcode.Conflict {
+		t.Errorf("exit code = %d, want %d (Conflict)", got, exitcode.Conflict)
+	}
+}
+
+// ===========================================================================
+// idea.go:305-307 — runIdeaNew: WriteFile error for change-request
+// ===========================================================================
+
+func TestIdeaNew_ChangeRequestWriteFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping as root")
+	}
+	root := setupSpecRootWithFeature(t, "auth")
+	withCwd(t, root)
+	stubLint(t)
+
+	// Create the proposals dir, then make it read-only so WriteFile fails.
+	proposalsDir := filepath.Join(root, "spec", "features", "auth", "proposals")
+	if err := os.MkdirAll(proposalsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Chmod(proposalsDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(proposalsDir, 0o755) })
+
+	_, _, err := runIdea(t, "new", "add-mfa",
+		"--type", "change-request", "--targets", "auth")
+	if err == nil {
+		t.Fatal("expected error when proposals dir is read-only")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+}
+
+// ===========================================================================
+// 100% coverage: 16 remaining uncovered blocks — seam-based error injection
+// ===========================================================================
+
+// --- Block 1: feature.go — featureFindRefsFn error in runFeatureRefs ---
+
+func TestFeatureFindRefsError(t *testing.T) {
+	setupFeatureSpec(t, "Draft")
+
+	orig := featureFindRefsFn
+	featureFindRefsFn = func(_, _ string) ([]string, error) {
+		return nil, errors.New("injected find-refs error")
+	}
+	t.Cleanup(func() { featureFindRefsFn = orig })
+
+	_, _, err := runFeature(t, "refs", "auth")
+	if err == nil {
+		t.Fatal("expected error from featureFindRefsFn")
+	}
+	if got := exitCodeOfErr(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "finding references") {
+		t.Errorf("error = %q, want it to mention 'finding references'", err.Error())
+	}
+}
+
+// --- Block 2: feature.go — filepathRelFn fallback in runFeatureNew commit ---
+
+func TestFeatureNewCommitRelError(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	root := setupFeatureSpec(t, "Draft")
+	// Initialize git.
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.email", "test@test.com"},
+		{"config", "user.name", "Test"},
+		{"add", "."},
+		{"commit", "-m", "init"},
+	} {
+		c := exec.Command("git", append([]string{"-C", root}, args...)...)
+		if out, err := c.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	// Make filepathRelFn always fail so the fallback path (rel = f) is taken.
+	orig := filepathRelFn
+	filepathRelFn = func(_, _ string) (string, error) {
+		return "", errors.New("injected rel error")
+	}
+	t.Cleanup(func() { filepathRelFn = orig })
+
+	out, _, err := runFeature(t, "new", "--title=Rel Error Feature", "--commit")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "rel-error-feature") {
+		t.Errorf("stdout = %q, want it to contain 'rel-error-feature'", out)
+	}
+}
+
+// --- Block 3: feature.go — retry push failure in gitCommitAndPush ---
+
+func TestGitCommitAndPush_RetryPushFails(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	// Create a bare remote.
+	bare := filepath.Join(t.TempDir(), "remote.git")
+	if out, err := exec.Command("git", "init", "--bare", bare).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %v\n%s", err, out)
+	}
+
+	// Clone from bare into clone1 and clone2.
+	parentDir := t.TempDir()
+	clone1 := filepath.Join(parentDir, "clone1")
+	clone2 := filepath.Join(parentDir, "clone2")
+
+	for _, dir := range []string{clone1, clone2} {
+		if out, err := exec.Command("git", "clone", bare, dir).CombinedOutput(); err != nil {
+			t.Fatalf("git clone: %v\n%s", err, out)
+		}
+		for _, args := range [][]string{
+			{"-C", dir, "config", "user.email", "test@test.com"},
+			{"-C", dir, "config", "user.name", "Test"},
+			{"-C", dir, "config", "commit.gpgsign", "false"},
+		} {
+			if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+				t.Fatalf("git %v: %v\n%s", args, err, out)
+			}
+		}
+	}
+
+	// Make an initial commit in clone1 and push so bare is non-empty.
+	if err := os.WriteFile(filepath.Join(clone1, "init.txt"), []byte("init"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"-C", clone1, "add", "."},
+		{"-C", clone1, "commit", "-m", "initial"},
+		{"-C", clone1, "push", "-u", "origin", "HEAD"},
+	} {
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	// Pull initial commit in clone2 so it has the same base.
+	if out, err := exec.Command("git", "-C", clone2, "pull").CombinedOutput(); err != nil {
+		t.Fatalf("git pull: %v\n%s", err, out)
+	}
+
+	// Push an extra commit from clone1 so clone2 is behind.
+	if err := os.WriteFile(filepath.Join(clone1, "extra.txt"), []byte("extra"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"-C", clone1, "add", "."},
+		{"-C", clone1, "commit", "-m", "extra"},
+		{"-C", clone1, "push"},
+	} {
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	// Make the bare remote's objects dir read-only so push fails but pull can
+	// still read (the server-side receive-pack writes, which will be blocked).
+	objDir := filepath.Join(bare, "objects")
+	if err := os.Chmod(objDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(objDir, 0o755) })
+
+	// Create a file in clone2 to commit.
+	if err := os.WriteFile(filepath.Join(clone2, "new.txt"), []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// gitCommitAndPush: first push fails (behind), pull --rebase succeeds
+	// (fetches), retry push fails (objects dir read-only).
+	err := gitCommitAndPush(clone2, []string{"new.txt"}, "test commit")
+	if err == nil {
+		t.Fatal("expected error from retry push")
+	}
+	if !strings.Contains(err.Error(), "git push (retry)") {
+		t.Errorf("error = %q, want it to mention 'git push (retry)'", err.Error())
+	}
+}
+
+// --- Block 4: idea.go — ideaScaffoldFn error in runIdeaNew ---
+
+func TestIdeaNewScaffoldError(t *testing.T) {
+	root := setupSpecRoot(t)
+	withCwd(t, root)
+	stubLint(t)
+
+	orig := ideaScaffoldFn
+	ideaScaffoldFn = func(_ idea.ScaffoldOptions) ([]byte, error) {
+		return nil, errors.New("injected scaffold error")
+	}
+	t.Cleanup(func() { ideaScaffoldFn = orig })
+
+	_, _, err := runIdea(t, "new", "scaffold-fail")
+	if err == nil {
+		t.Fatal("expected error from ideaScaffoldFn")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "scaffolding idea") {
+		t.Errorf("error = %q, want it to mention 'scaffolding idea'", err.Error())
+	}
+}
+
+// --- Relocate test helpers ---
+// Uses stageRelocateRepo, writeIdeaFile, runIdeaRelocateCLI from
+// idea_relocate_test.go.
+
+// --- Block 5: idea_relocate.go — DiscoverSiblings error in runIdeaRelocate ---
+
+func TestRelocateDiscoverSiblingsError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	// DiscoverSiblings is called twice: once in runPreflight, once in
+	// runIdeaRelocate. We want the first (preflight) to succeed and the
+	// second to fail.
+	callCount := 0
+	orig := idearelocateDiscoverSiblingsFn
+	idearelocateDiscoverSiblingsFn = func(specRoot string) ([]idearelocate.TargetRepo, error) {
+		callCount++
+		if callCount >= 2 {
+			return nil, errors.New("injected discover error")
+		}
+		return idearelocate.DiscoverSiblings(specRoot)
+	}
+	t.Cleanup(func() { idearelocateDiscoverSiblingsFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from DiscoverSiblings")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "discovering sibling repos") {
+		t.Errorf("error = %q, want it to mention 'discovering sibling repos'", err.Error())
+	}
+}
+
+// --- Block 6: idea_relocate.go — filepathRelFn error for source in runIdeaRelocate ---
+
+func TestRelocateSourceRelError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	// filepathRelFn is called twice: once in runPreflight, once in
+	// runIdeaRelocate. Fail on the second call.
+	callCount := 0
+	orig := filepathRelFn
+	filepathRelFn = func(base, target string) (string, error) {
+		callCount++
+		if callCount >= 2 {
+			return "", errors.New("injected rel error")
+		}
+		return filepath.Rel(base, target)
+	}
+	t.Cleanup(func() { filepathRelFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from filepathRelFn")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "computing source repo-relative path") {
+		t.Errorf("error = %q, want it to mention 'computing source repo-relative path'", err.Error())
+	}
+}
+
+// --- Block 7: idea_relocate.go — filepathRelFn error for target in runIdeaRelocate ---
+
+func TestRelocateTargetRelError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	// filepathRelFn is called in runPreflight (1st), in runIdeaRelocate for
+	// source (2nd), and in runIdeaRelocate for target (3rd). Fail on 3rd.
+	callCount := 0
+	orig := filepathRelFn
+	filepathRelFn = func(base, target string) (string, error) {
+		callCount++
+		if callCount >= 3 {
+			return "", errors.New("injected target rel error")
+		}
+		return filepath.Rel(base, target)
+	}
+	t.Cleanup(func() { filepathRelFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from filepathRelFn for target")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "computing artifact target-relative path") {
+		t.Errorf("error = %q, want it to mention 'computing artifact target-relative path'", err.Error())
+	}
+}
+
+// --- Block 8: idea_relocate.go — ExecuteCommitPhase error in runIdeaRelocate ---
+
+func TestRelocateExecuteCommitPhaseError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	orig := idearelocateExecuteCommitPhaseFn
+	idearelocateExecuteCommitPhaseFn = func(_ []idearelocate.RepoChange, _ idearelocate.CommitMode) ([]idearelocate.RepoChange, *idearelocate.CommitFailure, error) {
+		return nil, nil, errors.New("injected commit-phase error")
+	}
+	t.Cleanup(func() { idearelocateExecuteCommitPhaseFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from ExecuteCommitPhase")
+	}
+	if !strings.Contains(err.Error(), "injected commit-phase error") {
+		t.Errorf("error = %q, want it to mention 'injected commit-phase error'", err.Error())
+	}
+}
+
+// --- Block 9: idea_relocate.go — DiscoverSiblings error in runPreflight ---
+
+func TestPreflightDiscoverSiblingsError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	// DiscoverSiblings in runPreflight is the first call — fail it.
+	orig := idearelocateDiscoverSiblingsFn
+	idearelocateDiscoverSiblingsFn = func(_ string) ([]idearelocate.TargetRepo, error) {
+		return nil, errors.New("injected preflight discover error")
+	}
+	t.Cleanup(func() { idearelocateDiscoverSiblingsFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from DiscoverSiblings in preflight")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "discovering sibling repos") {
+		t.Errorf("error = %q, want it to mention 'discovering sibling repos'", err.Error())
+	}
+}
+
+// --- Block 10: idea_relocate.go — filepathRelFn error in runPreflight ---
+
+func TestPreflightSourceRelError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	// filepathRelFn in runPreflight is the first call — fail it.
+	orig := filepathRelFn
+	filepathRelFn = func(_, _ string) (string, error) {
+		return "", errors.New("injected preflight rel error")
+	}
+	t.Cleanup(func() { filepathRelFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from filepathRelFn in preflight")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "computing source relative path") {
+		t.Errorf("error = %q, want it to mention 'computing source relative path'", err.Error())
+	}
+}
+
+// --- Block 11: idea_relocate.go — PreflightSubjectsForRelocate error ---
+
+func TestPreflightSubjectsError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	orig := idearelocatePreflightSubjectsFn
+	idearelocatePreflightSubjectsFn = func(_, _ string, _, _ string, _ []idearelocate.TargetRepo, _ string) ([]idearelocate.PreflightSubject, error) {
+		return nil, errors.New("injected preflight-subjects error")
+	}
+	t.Cleanup(func() { idearelocatePreflightSubjectsFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from PreflightSubjectsForRelocate")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "collecting preflight subjects") {
+		t.Errorf("error = %q, want it to mention 'collecting preflight subjects'", err.Error())
+	}
+}
+
+// --- Block 12: idea_relocate.go — CheckPreflight error ---
+
+func TestPreflightCheckError(t *testing.T) {
+	parent := t.TempDir()
+	source := stageRelocateRepo(t, parent, "src", "src")
+	stageRelocateRepo(t, parent, "tgt", "tgt")
+	writeIdeaFile(t, source, "foo")
+
+	orig := idearelocateCheckPreflightFn
+	idearelocateCheckPreflightFn = func(_ []idearelocate.PreflightSubject) ([]idearelocate.PreflightSubject, error) {
+		return nil, errors.New("injected check-preflight error")
+	}
+	t.Cleanup(func() { idearelocateCheckPreflightFn = orig })
+
+	_, _, err := runIdeaRelocateCLI(t, source, "foo", "--to-repo=tgt")
+	if err == nil {
+		t.Fatal("expected error from CheckPreflight")
+	}
+	if got := exitCodeFromErr(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "preflight check") {
+		t.Errorf("error = %q, want it to mention 'preflight check'", err.Error())
+	}
+}
+
+// --- Block 13: idea_relocate.go — filepathAbsFn fallback in excludeRepoPaths ---
+
+func TestExcludeRepoPathsAbsFallback(t *testing.T) {
+	orig := filepathAbsFn
+	filepathAbsFn = func(_ string) (string, error) {
+		return "", errors.New("injected abs error")
+	}
+	t.Cleanup(func() { filepathAbsFn = orig })
+
+	siblings := []idearelocate.TargetRepo{
+		{Path: "/a/b/c", RepoName: "c"},
+		{Path: "/x/y/z", RepoName: "z"},
+	}
+	// When Abs fails, canon falls back to filepath.Clean(p).
+	// Excluding "/a/b/c" should still work via the Clean fallback.
+	result := excludeRepoPaths(siblings, "/a/b/c")
+	if len(result) != 1 {
+		t.Fatalf("expected 1 sibling after exclude, got %d", len(result))
+	}
+	if result[0].RepoName != "z" {
+		t.Errorf("expected remaining sibling 'z', got %q", result[0].RepoName)
+	}
+}
+
+// --- Block 14: init.go — osGetwdFn error in resolveProjectRootForInit ---
+
+func TestResolveProjectRootForInit_GetwdError(t *testing.T) {
+	orig := osGetwdFn
+	osGetwdFn = func() (string, error) {
+		return "", errors.New("injected getwd error")
+	}
+	t.Cleanup(func() { osGetwdFn = orig })
+
+	_, err := resolveProjectRootForInit("")
+	if err == nil {
+		t.Fatal("expected error from osGetwdFn")
+	}
+	if got := exitCodeOf(err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "cannot determine working directory") {
+		t.Errorf("error = %q, want it to mention 'cannot determine working directory'", err.Error())
+	}
+}
+
+// --- Block 15: issue.go — issueScaffoldFn error in runIssueNew ---
+
+func TestIssueNewScaffoldError(t *testing.T) {
+	root := setupIssueSpecRoot(t)
+	withCwd(t, root)
+	stubLint(t)
+
+	orig := issueScaffoldFn
+	issueScaffoldFn = func(_ issue.ScaffoldOptions) ([]byte, error) {
+		return nil, errors.New("injected issue scaffold error")
+	}
+	t.Cleanup(func() { issueScaffoldFn = orig })
+
+	_, _, err := runIssue(t, "new", "scaffold-fail")
+	if err == nil {
+		t.Fatal("expected error from issueScaffoldFn")
+	}
+	if got := exitCode(t, err); got != exitcode.Unexpected {
+		t.Errorf("exit code = %d, want %d (Unexpected)", got, exitcode.Unexpected)
+	}
+	if !strings.Contains(err.Error(), "scaffolding issue") {
+		t.Errorf("error = %q, want it to mention 'scaffolding issue'", err.Error())
+	}
+}
+
+// --- Block 16: issue.go — issueParseFn error skip in runIssueList ---
+
+func TestIssueListParseErrorSkipped(t *testing.T) {
+	root := setupIssueSpecRoot(t)
+	withCwd(t, root)
+	stubLint(t)
+
+	// Write a valid issue file so DiscoverAll finds something.
+	writeIssueFixture(t, root, "visible-bug", "open", "high", "")
+
+	// Make issueParseFn always fail — the loop should skip the entry.
+	orig := issueParseFn
+	issueParseFn = func(_ string) (*issue.Issue, error) {
+		return nil, errors.New("injected parse error")
+	}
+	t.Cleanup(func() { issueParseFn = orig })
+
+	stdout, _, err := runIssue(t, "list")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// The issue should be skipped (parse error → continue), so no output rows.
+	if strings.Contains(stdout, "visible-bug") {
+		t.Errorf("stdout should not contain 'visible-bug' when parse fails; got:\n%s", stdout)
 	}
 }

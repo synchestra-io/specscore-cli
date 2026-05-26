@@ -298,7 +298,7 @@ func runIdeaNew(cmd *cobra.Command, args []string) error {
 		return exitcode.UnexpectedErrorf("materializing ancestor indexes: %v", err)
 	}
 
-	body, err := idea.Scaffold(opts)
+	body, err := ideaScaffoldFn(opts)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("scaffolding idea: %v", err)
 	}

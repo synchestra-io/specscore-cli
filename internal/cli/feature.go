@@ -627,7 +627,7 @@ func runFeatureRefs(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	refs, err := feature.FindFeatureRefs(featuresDir, featureID)
+	refs, err := featureFindRefsFn(featuresDir, featureID)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("finding references: %v", err)
 	}
@@ -731,7 +731,7 @@ func runFeatureNew(cmd *cobra.Command, _ []string) error {
 
 		relFiles := make([]string, 0, len(result.ChangedFiles))
 		for _, f := range result.ChangedFiles {
-			rel, relErr := filepath.Rel(repoRoot, f)
+			rel, relErr := filepathRelFn(repoRoot, f)
 			if relErr != nil {
 				rel = f
 			}

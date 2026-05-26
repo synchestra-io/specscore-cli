@@ -109,7 +109,7 @@ func runIssueNew(cmd *cobra.Command, args []string) error {
 		AffectedComponent: affectedComponent,
 	}
 
-	body, err := issue.Scaffold(opts)
+	body, err := issueScaffoldFn(opts)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("scaffolding issue: %v", err)
 	}
@@ -383,7 +383,7 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	// Parse each discovered issue and build entries.
 	var entries []issueListEntry
 	for _, d := range discovered {
-		parsed, parseErr := issue.Parse(d.Path)
+		parsed, parseErr := issueParseFn(d.Path)
 		if parseErr != nil {
 			continue
 		}

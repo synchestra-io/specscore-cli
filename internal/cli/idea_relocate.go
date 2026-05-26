@@ -92,7 +92,7 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Discover other siblings (exclude source + target).
-	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
+	allSiblings, err := idearelocateDiscoverSiblingsFn(specRoot)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
 	}
@@ -100,7 +100,7 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 
 	// Source artifact's repo-relative path. ApplyMutation preserves
 	// this as the destination repo-relative path inside target.
-	sourceRel, err := filepath.Rel(specRoot, source.Path)
+	sourceRel, err := filepathRelFn(specRoot, source.Path)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("computing source repo-relative path: %v", err)
 	}
@@ -122,7 +122,7 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	targetRel, err := filepath.Rel(target.Path, mutation.DestinationPath)
+	targetRel, err := filepathRelFn(target.Path, mutation.DestinationPath)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("computing artifact target-relative path: %v", err)
 	}
@@ -146,7 +146,7 @@ func runIdeaRelocate(cmd *cobra.Command, args []string) error {
 		linkUpdates,
 		slug,
 	)
-	executed, fail, err := idearelocate.ExecuteCommitPhase(changes, mode)
+	executed, fail, err := idearelocateExecuteCommitPhaseFn(changes, mode)
 	if err != nil {
 		return err
 	}
@@ -169,13 +169,13 @@ func runPreflight(
 	target idearelocate.TargetRepo,
 	slug string,
 ) error {
-	allSiblings, err := idearelocate.DiscoverSiblings(specRoot)
+	allSiblings, err := idearelocateDiscoverSiblingsFn(specRoot)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("discovering sibling repos: %v", err)
 	}
 	siblings := excludeRepoPaths(allSiblings, specRoot, target.Path)
 
-	sourceRel, err := filepath.Rel(specRoot, source.Path)
+	sourceRel, err := filepathRelFn(specRoot, source.Path)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("computing source relative path: %v", err)
 	}
@@ -183,7 +183,7 @@ func runPreflight(
 	// repo, so target's preflight path equals the source's relative path.
 	targetRel := sourceRel
 
-	subjects, err := idearelocate.PreflightSubjectsForRelocate(
+	subjects, err := idearelocatePreflightSubjectsFn(
 		specRoot, sourceRel,
 		target.Path, targetRel,
 		siblings, slug,
@@ -192,7 +192,7 @@ func runPreflight(
 		return exitcode.UnexpectedErrorf("collecting preflight subjects: %v", err)
 	}
 
-	dirty, err := idearelocate.CheckPreflight(subjects)
+	dirty, err := idearelocateCheckPreflightFn(subjects)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("preflight check: %v", err)
 	}
@@ -205,7 +205,7 @@ func runPreflight(
 // sibling list before scanning for cross-repo references.
 func excludeRepoPaths(siblings []idearelocate.TargetRepo, excludePaths ...string) []idearelocate.TargetRepo {
 	canon := func(p string) string {
-		if abs, err := filepath.Abs(p); err == nil {
+		if abs, err := filepathAbsFn(p); err == nil {
 			if r, err := filepath.EvalSymlinks(abs); err == nil {
 				return filepath.Clean(r)
 			}

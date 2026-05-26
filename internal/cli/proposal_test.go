@@ -131,3 +131,72 @@ func TestProposalNew_ForwardsPhase(t *testing.T) {
 		t.Errorf("phase not forwarded:\n%s", body)
 	}
 }
+
+// Test that proposal new forwards --not-doing flags.
+func TestProposalNew_ForwardsNotDoing(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "billing")
+	withCwd(t, root)
+
+	_, _, err := runProposal(t, "new", "billing", "add-discounts",
+		"--not-doing", "thing one — reason",
+	)
+	if err != nil {
+		t.Fatalf("command failed: %v", err)
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "spec", "features", "billing", "proposals", "add-discounts.md"))
+	if !strings.Contains(string(body), "- thing one — reason") {
+		t.Errorf("not-doing not forwarded:\n%s", body)
+	}
+}
+
+// Test that proposal new forwards --force to overwrite an existing proposal.
+func TestProposalNew_ForwardsForce(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "billing")
+	withCwd(t, root)
+
+	// Create the first proposal.
+	_, _, err := runProposal(t, "new", "billing", "add-coupons", "--title", "First")
+	if err != nil {
+		t.Fatalf("first run: %v", err)
+	}
+
+	// Second run without --force should fail.
+	_, _, err = runProposal(t, "new", "billing", "add-coupons", "--title", "Second")
+	if err == nil {
+		t.Fatal("expected second run to fail without --force")
+	}
+
+	// With --force, succeeds and overwrites.
+	_, _, err = runProposal(t, "new", "billing", "add-coupons", "--force", "--title", "After Force")
+	if err != nil {
+		t.Fatalf("--force run: %v", err)
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "spec", "features", "billing", "proposals", "add-coupons.md"))
+	if !strings.Contains(string(body), "# Proposal: After Force") {
+		t.Errorf("expected overwrite, got:\n%s", body)
+	}
+}
+
+// Test that proposal new forwards -i (interactive) flag.
+func TestProposalNew_ForwardsInteractive(t *testing.T) {
+	root := setupSpecRootWithFeature(t, "billing")
+	withCwd(t, root)
+
+	cmd := proposalCommand()
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	// Provide interactive input for all idea-new prompts:
+	// title, owner, hmw, context, recommended-direction, mvp, not-doing bullet, blank to end not-doing.
+	cmd.SetIn(strings.NewReader("Interactive Title\nalice\nHow might we?\n\n\n\nthing — reason\n\n"))
+	cmd.SetArgs([]string{"new", "billing", "add-discounts", "-i"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("proposal new -i failed: %v\nstderr=%s", err, errOut.String())
+	}
+
+	path := filepath.Join(root, "spec", "features", "billing", "proposals", "add-discounts.md")
+	body, _ := os.ReadFile(path)
+	if !strings.Contains(string(body), "Interactive Title") {
+		t.Errorf("interactive title not captured:\n%s", body)
+	}
+}
