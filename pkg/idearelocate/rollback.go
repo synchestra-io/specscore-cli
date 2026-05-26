@@ -98,7 +98,7 @@ func ExecutePreCommitPhase(
 func appendCheckoutsForResults(actions []string, results []LinkUpdateResult) []string {
 	for _, r := range results {
 		for _, p := range r.Updated {
-			if !isGitRepo(r.RepoPath) {
+			if !isGitRepoFn(r.RepoPath) {
 				actions = append(actions,
 					fmt.Sprintf("could not revert %s in %s (not a git repo)", p, r.RepoPath))
 				continue

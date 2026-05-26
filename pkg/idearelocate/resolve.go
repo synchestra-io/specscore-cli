@@ -163,7 +163,7 @@ func resolveTargetBySlug(specRoot, slug string) (TargetRepo, error) {
 // `specscore.yaml` parses, plus specRoot itself. Hidden dirs (name
 // starts with ".") and symlinks-out-of-parent are skipped.
 func discoverSiblings(specRoot string) ([]TargetRepo, error) {
-	absSource, err := filepath.Abs(specRoot)
+	absSource, err := filepathAbsFn(specRoot)
 	if err != nil {
 		return nil, exitcode.UnexpectedErrorf("resolving spec root: %v", err)
 	}
@@ -190,7 +190,7 @@ func discoverSiblings(specRoot string) ([]TargetRepo, error) {
 		// itself is a symlink. For regular directories Lstat returns a
 		// normal mode and we proceed. For symlinks we resolve and
 		// require the target to remain a descendant of parent.
-		linfo, err := os.Lstat(fullPath)
+		linfo, err := osLstatFn(fullPath)
 		if err != nil {
 			continue
 		}

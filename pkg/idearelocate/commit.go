@@ -134,7 +134,7 @@ func AssembleRepoChanges(
 func ExecuteCommitPhase(changes []RepoChange, mode CommitMode) ([]RepoChange, *CommitFailure, error) {
 	executed := make([]RepoChange, 0, len(changes))
 	for i, ch := range changes {
-		if !isGitRepo(ch.Repo.Path) {
+		if !isGitRepoFn(ch.Repo.Path) {
 			executed = append(executed, ch)
 			continue
 		}
@@ -257,7 +257,7 @@ func mergePaths(a, b []string) []string {
 // new files, AND deletions. A repo with no .git directory is silently
 // skipped (the verb tolerates non-git project roots).
 func stagePaths(repoRoot string, paths []string) error {
-	if !isGitRepo(repoRoot) || len(paths) == 0 {
+	if !isGitRepoFn(repoRoot) || len(paths) == 0 {
 		return nil
 	}
 	args := append([]string{"-C", repoRoot, "add", "--"}, paths...)
@@ -270,6 +270,15 @@ func stagePaths(repoRoot string, paths []string) error {
 	return nil
 }
 
+// defaultGitRevParseHEAD runs `git rev-parse HEAD` and returns the SHA.
+func defaultGitRevParseHEAD(repoRoot string) (string, error) {
+	out, err := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // commitRepo runs `git -C <repo> commit -m <subject>` and returns the
 // new HEAD SHA on success, or the captured stderr + error on failure.
 func commitRepo(repoRoot, subject string) (string, string, error) {
@@ -279,11 +288,11 @@ func commitRepo(repoRoot, subject string) (string, string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", stderr.String(), err
 	}
-	out, err := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD").Output()
+	sha, err := gitRevParseHEADFn(repoRoot)
 	if err != nil {
-		return "", "", fmt.Errorf("git rev-parse HEAD: %w", err)
+		return "", "", err
 	}
-	return strings.TrimSpace(string(out)), "", nil
+	return sha, "", nil
 }
 
 // shortSHA returns the 7-character abbreviation of a full SHA.

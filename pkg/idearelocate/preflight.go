@@ -22,7 +22,7 @@ import (
 // itself; the commit phase later will fail loudly if commits are
 // requested in such a project.
 func IsPathClean(repoRoot, relPath string) (bool, error) {
-	if !isGitRepo(repoRoot) {
+	if !isGitRepoFn(repoRoot) {
 		return true, nil
 	}
 	cmd := exec.Command("git", "-C", repoRoot, "status", "--porcelain", "--", relPath)
@@ -33,8 +33,8 @@ func IsPathClean(repoRoot, relPath string) (bool, error) {
 	return len(bytes.TrimSpace(out)) == 0, nil
 }
 
-// isGitRepo reports whether repoRoot is inside a git work tree.
-func isGitRepo(repoRoot string) bool {
+// defaultIsGitRepo reports whether repoRoot is inside a git work tree.
+func defaultIsGitRepo(repoRoot string) bool {
 	cmd := exec.Command("git", "-C", repoRoot, "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
 		return false
@@ -70,7 +70,7 @@ func FindReferences(repoRoot, slug string) ([]string, error) {
 	}
 
 	var hits []string
-	err = filepath.Walk(specDir, func(path string, info os.FileInfo, err error) error {
+	err = filepathWalkFn(specDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // skip unreadable entries; not a pre-flight error
 		}
@@ -87,7 +87,7 @@ func FindReferences(repoRoot, slug string) ([]string, error) {
 		if !fileReferencesSlug(body, slug, slugLinkRe, metaPrefixes) {
 			return nil
 		}
-		rel, err := filepath.Rel(repoRoot, path)
+		rel, err := filepathRelFn(repoRoot, path)
 		if err != nil {
 			return nil
 		}
@@ -140,7 +140,7 @@ type PreflightSubject struct {
 func CheckPreflight(subjects []PreflightSubject) ([]PreflightSubject, error) {
 	var dirty []PreflightSubject
 	for _, s := range subjects {
-		clean, err := IsPathClean(s.RepoRoot, s.RelPath)
+		clean, err := isPathCleanFn(s.RepoRoot, s.RelPath)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func PreflightSubjectsForRelocate(
 		{RepoRoot: targetRepoRoot, RelPath: "spec/ideas/README.md"},
 	}
 	for _, sib := range siblings {
-		refs, err := FindReferences(sib.Path, slug)
+		refs, err := findReferencesFn(sib.Path, slug)
 		if err != nil {
 			return nil, err
 		}

@@ -49,7 +49,7 @@ func UpdateCrossRepoLinks(allRepos []TargetRepo, targetRepo TargetRepo, slug str
 
 		var updatedFiles []string
 
-		err := filepath.Walk(specDir, func(path string, info os.FileInfo, err error) error {
+		err := filepathWalkFn(specDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".md") {
 				return nil
 			}

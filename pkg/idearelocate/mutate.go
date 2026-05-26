@@ -33,7 +33,7 @@ type MutationResult struct {
 // destination-collision case, which is treated as a pre-check and
 // guarantees zero mutations by design.
 func ApplyMutation(sourceRepoRoot string, source SourceArtifact, target TargetRepo) (MutationResult, error) {
-	sourceRel, err := filepath.Rel(sourceRepoRoot, source.Path)
+	sourceRel, err := filepathRelFn(sourceRepoRoot, source.Path)
 	if err != nil {
 		return MutationResult{}, exitcode.UnexpectedErrorf(
 			"computing source relative path: %v", err)
