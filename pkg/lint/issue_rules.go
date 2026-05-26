@@ -18,6 +18,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// issueDiscoverAll is injectable; tests may replace it to simulate errors.
+var issueDiscoverAll = issue.DiscoverAll
+
+// issueParseFn is injectable; tests may replace it to simulate parse errors.
+var issueParseFn = issue.Parse
+
+// osMkdirAllFn is injectable; tests may replace it to simulate errors.
+var osMkdirAllFn = os.MkdirAll
+
 // issueRequiredKeys names the five always-required frontmatter fields
 // for an `issue` artifact (rule I-001).
 var issueRequiredKeys = []string{
@@ -163,13 +172,13 @@ func (c *issueRulesChecker) check(specRoot string) ([]Violation, error) {
 // because column drift usually signals a different schema choice and
 // silently rewriting it would destroy authorial intent.
 func (c *issueRulesChecker) fix(specRoot string) error {
-	discovered, err := issue.DiscoverAll(specRoot)
+	discovered, err := issueDiscoverAll(specRoot)
 	if err != nil {
 		return fmt.Errorf("discovering issue artifacts: %w", err)
 	}
 	missing := missingIndexPaths(specRoot, discovered)
 	for _, m := range missing {
-		if err := os.MkdirAll(filepath.Dir(m.absPath), 0o755); err != nil {
+		if err := osMkdirAllFn(filepath.Dir(m.absPath), 0o755); err != nil {
 			return fmt.Errorf("creating directory for %s: %w", m.relPath, err)
 		}
 		content := issueIndexTemplate(m.h1)
@@ -493,7 +502,7 @@ func lintI009(specRoot string, discovered []issue.Discovered) []Violation {
 func lintI001AndI002(specRoot string, discovered []issue.Discovered) []Violation {
 	var out []Violation
 	for _, d := range discovered {
-		iss, err := issue.Parse(d.Path)
+		iss, err := issueParseFn(d.Path)
 		if err != nil || iss == nil {
 			continue
 		}

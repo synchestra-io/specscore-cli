@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,5 +39,35 @@ func TestDiscoverAll_WalkError(t *testing.T) {
 	_, err := DiscoverAll(specRoot)
 	if err == nil {
 		t.Error("expected error for unreadable subdir during walk")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DiscoverAll — filepath.Rel error path (lines 71-73 in discover.go)
+// Overrides fpRel to return an error so the nil-return branch is covered.
+// ---------------------------------------------------------------------------
+
+func TestDiscoverAll_FpRelError(t *testing.T) {
+	specRoot := t.TempDir()
+	issuesDir := filepath.Join(specRoot, "issues")
+	if err := os.MkdirAll(issuesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(issuesDir, "rel-err.md"), []byte(minimalIssue("rel-err")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	orig := fpRel
+	fpRel = func(basepath, targpath string) (string, error) {
+		return "", errors.New("injected Rel error")
+	}
+	t.Cleanup(func() { fpRel = orig })
+
+	got, err := DiscoverAll(specRoot)
+	if err != nil {
+		t.Fatalf("DiscoverAll should not propagate fpRel errors: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("DiscoverAll should skip files where fpRel errors, found %d", len(got))
 	}
 }

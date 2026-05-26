@@ -11,6 +11,9 @@ import (
 	"github.com/specscore/specscore-cli/pkg/projectdef"
 )
 
+// gitremoteParseFn is injectable; tests may replace it to simulate parse results.
+var gitremoteParseFn = gitremote.Parse
+
 // studioToolbarChecker implements the studio-toolbar lint rule defined
 // by the studio-toolbar Feature. The rule validates that file position 3
 // of every feature README is a byte-exact canonical toolbar line, given
@@ -117,7 +120,7 @@ func resolveProjectIdentity(cfg projectdef.SpecConfig, projectRoot string) (host
 	if err != nil {
 		return "", "", "", false
 	}
-	r, parsed := gitremote.Parse(originURL)
+	r, parsed := gitremoteParseFn(originURL)
 	if !parsed {
 		return "", "", "", false
 	}

@@ -28,6 +28,12 @@ type Exec struct {
 // Deliver document the same value.
 const execSIGTERMGrace = 100 * time.Millisecond
 
+// cmdStdinPipeFn is a testable indirection for cmd.StdinPipe. Tests can
+// replace it to simulate pipe-creation failures.
+var cmdStdinPipeFn = func(cmd *exec.Cmd) (io.WriteCloser, error) {
+	return cmd.StdinPipe()
+}
+
 // NewExec constructs an Exec subscriber. argv[0] is the executable and
 // argv[1:] are positional arguments. env may be nil. timeout is the wall-clock
 // budget for the child; the config-loader (task 6) enforces the [100, 30000]
@@ -73,7 +79,7 @@ func (x *Exec) Deliver(ctx context.Context, e Event) error {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = os.Stderr
 
-	stdin, err := cmd.StdinPipe()
+	stdin, err := cmdStdinPipeFn(cmd)
 	if err != nil {
 		return fmt.Errorf("exec: stdin pipe: %w", err)
 	}

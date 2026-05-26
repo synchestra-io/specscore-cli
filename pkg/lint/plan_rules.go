@@ -12,6 +12,9 @@ import (
 	"github.com/specscore/specscore-cli/pkg/plan"
 )
 
+// parseFeatureACsMaxBuf is the scanner max-token size; tests may shrink it.
+var parseFeatureACsMaxBuf = 1 << 20
+
 // planRulesChecker implements the SpecStudio plan-Feature lint rules P-001
 // through P-004 plus the parser-side validations they piggyback on
 // (`**Mode:**` and `**Status:**` token validity covered by P-004). One
@@ -452,7 +455,7 @@ func parseFeatureACs(path string) (map[string]int, error) {
 
 	out := make(map[string]int)
 	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	scanner.Buffer(make([]byte, 0, 64*1024), parseFeatureACsMaxBuf)
 	inACs := false
 	lineNum := 0
 	for scanner.Scan() {

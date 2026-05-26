@@ -36,6 +36,9 @@ func (c *dogfoodVersionChecker) severity() string { return "warning" }
 // (no `v` prefix, no quotes).
 var pinPattern = regexp.MustCompile(`SPECSCORE_VERSION:\s*"?v?(\d+\.\d+\.\d+)"?`)
 
+// parseSemverFn is the injectable semver parser; tests may replace it.
+var parseSemverFn = parseSemver
+
 func (c *dogfoodVersionChecker) check(specRoot string) ([]Violation, error) {
 	cli, ok := parseSemver(c.cliVersion)
 	if !ok {
@@ -86,7 +89,7 @@ func (c *dogfoodVersionChecker) check(specRoot string) ([]Violation, error) {
 				// when-pin-unparseable, silently skip.
 				continue
 			}
-			pinned, ok := parseSemver(m[1])
+			pinned, ok := parseSemverFn(m[1])
 			if !ok {
 				continue
 			}

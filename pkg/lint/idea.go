@@ -12,6 +12,12 @@ import (
 	"github.com/specscore/specscore-cli/pkg/idea"
 )
 
+// ideaDiscoverFn is the injectable discovery function; tests may replace it.
+var ideaDiscoverFn = idea.Discover
+
+// featureParseStatusFn is the injectable feature-status parser; tests may replace it.
+var featureParseStatusFn = feature.ParseFeatureStatus
+
 // ideaChecker is a dispatch checker that runs all idea-* rules in one pass
 // per file so parsing is shared.
 type ideaChecker struct {
@@ -105,7 +111,7 @@ func CheckIdeas(specRoot string, fix bool) ([]Violation, error) {
 	}
 
 	// 3. Discover and parse idea files.
-	discovered, err := idea.Discover(specRoot)
+	discovered, err := ideaDiscoverFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -710,7 +716,7 @@ func ideaSyncRules(specRoot string, parsed map[string]*idea.Idea, archivedMap ma
 			return st
 		}
 		readme := filepath.Join(specRoot, "features", featureSlug, "README.md")
-		st, err := feature.ParseFeatureStatus(readme)
+		st, err := featureParseStatusFn(readme)
 		if err != nil {
 			st = ""
 		}

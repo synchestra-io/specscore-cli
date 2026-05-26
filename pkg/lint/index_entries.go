@@ -19,6 +19,9 @@ import (
 	"github.com/specscore/specscore-cli/pkg/feature"
 )
 
+// osReadDir is the injectable ReadDir; tests may replace it to simulate errors.
+var osReadDir = os.ReadDir
+
 // indexEntriesChecker verifies that feature README indices match actual child directories.
 type indexEntriesChecker struct{}
 
@@ -52,7 +55,7 @@ func (c *indexEntriesChecker) check(specRoot string) ([]Violation, error) {
 		}
 
 		// Get actual child directories (excluding hidden and _args convention dirs).
-		entries, readErr := os.ReadDir(path)
+		entries, readErr := osReadDir(path)
 		if readErr != nil {
 			return nil
 		}
@@ -147,7 +150,7 @@ func (c *indexEntriesChecker) fix(specRoot string) error {
 		}
 
 		// Collect actual child dirs (those with their own README — i.e., features).
-		entries, readErr := os.ReadDir(path)
+		entries, readErr := osReadDir(path)
 		if readErr != nil {
 			return nil
 		}

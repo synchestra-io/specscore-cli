@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -223,6 +224,112 @@ func TestExecCancelledContext(t *testing.T) {
 	// The error should mention exec in some form.
 	if !strings.Contains(err.Error(), "exec") {
 		t.Errorf("error = %q, want to contain 'exec'", err.Error())
+	}
+}
+
+// fakeWriteCloser is a WriteCloser whose Write and Close behaviors are
+// controlled by the caller for seam-injection tests.
+type fakeWriteCloser struct {
+	writeErr error
+	closeErr error
+}
+
+func (f *fakeWriteCloser) Write(p []byte) (int, error) {
+	if f.writeErr != nil {
+		return 0, f.writeErr
+	}
+	return len(p), nil
+}
+
+func (f *fakeWriteCloser) Close() error { return f.closeErr }
+
+// TestExecStdinPipeError exercises the StdinPipe failure path (lines 77-79)
+// by injecting a fake cmdStdinPipeFn that always returns an error.
+func TestExecStdinPipeError(t *testing.T) {
+	orig := cmdStdinPipeFn
+	t.Cleanup(func() { cmdStdinPipeFn = orig })
+	cmdStdinPipeFn = func(cmd *exec.Cmd) (io.WriteCloser, error) {
+		return nil, errors.New("pipe: injected failure")
+	}
+
+	sub := NewExec([]string{"cat"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error from StdinPipe failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "exec: stdin pipe") {
+		t.Errorf("error = %q, want to contain 'exec: stdin pipe'", err.Error())
+	}
+}
+
+// TestExecWriteErrorWithWaitError exercises the write-error → cmd.Wait()
+// returns error path (lines 97-99) by injecting a WriteCloser that fails on
+// Write while the child exits non-zero so Wait also returns an error.
+func TestExecWriteErrorWithWaitError(t *testing.T) {
+	orig := cmdStdinPipeFn
+	t.Cleanup(func() { cmdStdinPipeFn = orig })
+	cmdStdinPipeFn = func(cmd *exec.Cmd) (io.WriteCloser, error) {
+		return &fakeWriteCloser{writeErr: errors.New("write: injected failure")}, nil
+	}
+
+	// Child exits non-zero so cmd.Wait() returns an error.
+	sub := NewExec([]string{"sh", "-c", "exit 5"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var exitErr *ExecExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error type = %T (%v), want *ExecExitError", err, err)
+	}
+	if exitErr.ExitCode != 5 {
+		t.Fatalf("ExitCode = %d, want 5", exitErr.ExitCode)
+	}
+}
+
+// TestExecCloseErrorWithWaitError exercises the stdin.Close() error → cmd.Wait()
+// returns error path (lines 103-105) by injecting a WriteCloser that succeeds
+// on Write but fails on Close while the child exits non-zero.
+func TestExecCloseErrorWithWaitError(t *testing.T) {
+	orig := cmdStdinPipeFn
+	t.Cleanup(func() { cmdStdinPipeFn = orig })
+	cmdStdinPipeFn = func(cmd *exec.Cmd) (io.WriteCloser, error) {
+		return &fakeWriteCloser{closeErr: errors.New("close: injected failure")}, nil
+	}
+
+	// Child exits non-zero so cmd.Wait() returns an error.
+	sub := NewExec([]string{"sh", "-c", "exit 6"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var exitErr *ExecExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error type = %T (%v), want *ExecExitError", err, err)
+	}
+	if exitErr.ExitCode != 6 {
+		t.Fatalf("ExitCode = %d, want 6", exitErr.ExitCode)
+	}
+}
+
+// TestExecCloseErrorWithWaitSuccess exercises the stdin.Close() error → return
+// close error path (line 106) by injecting a WriteCloser that succeeds on
+// Write but fails on Close while the child exits zero so Wait returns nil.
+func TestExecCloseErrorWithWaitSuccess(t *testing.T) {
+	orig := cmdStdinPipeFn
+	t.Cleanup(func() { cmdStdinPipeFn = orig })
+	cmdStdinPipeFn = func(cmd *exec.Cmd) (io.WriteCloser, error) {
+		return &fakeWriteCloser{closeErr: errors.New("close: injected failure")}, nil
+	}
+
+	// Child exits zero so cmd.Wait() returns nil; close error surfaces.
+	sub := NewExec([]string{"sh", "-c", "exit 0"}, nil, 2*time.Second)
+	err := sub.Deliver(context.Background(), execSampleEvent(t))
+	if err == nil {
+		t.Fatal("expected error from Close failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "exec: close stdin") {
+		t.Errorf("error = %q, want to contain 'exec: close stdin'", err.Error())
 	}
 }
 

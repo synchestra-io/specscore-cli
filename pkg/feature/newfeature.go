@@ -104,7 +104,7 @@ func New(featuresDir string, opts NewOptions) (*NewResult, error) {
 
 	readme := GenerateReadme(opts.Title, status, opts.Description, opts.DependsOn)
 	readmePath := filepath.Join(featureDir, "README.md")
-	if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil {
+	if err := osWriteFile(readmePath, []byte(readme), 0o644); err != nil {
 		return nil, exitcode.UnexpectedErrorf("writing README.md: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func New(featuresDir string, opts NewOptions) (*NewResult, error) {
 	}
 
 	// Build info for the result.
-	sections, err := ParseSections(readmePath)
+	sections, err := parseSectionsFn(readmePath)
 	if err != nil {
 		return nil, exitcode.UnexpectedErrorf("parsing sections: %v", err)
 	}

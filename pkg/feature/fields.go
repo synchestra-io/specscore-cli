@@ -127,7 +127,7 @@ func ResolveFields(featuresDir, featureID string, fields []string) (*EnrichedFea
 			}
 		case "plans":
 			specRoot := filepath.Dir(featuresDir)
-			p, err := FindLinkedPlans(filepath.Dir(specRoot), featureID)
+			p, err := findLinkedPlansFn(filepath.Dir(specRoot), featureID)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("plans: %v", err))
 			} else {

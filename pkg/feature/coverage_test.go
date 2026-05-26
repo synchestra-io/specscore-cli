@@ -3376,7 +3376,7 @@ func TestIsTableSeparatorRow_EmptyCells(t *testing.T) {
 func TestParseDependencies_EmptyItem(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "README.md")
-	// "- " with trailing space → item is "" after trimming
+	// "- " with trailing space → item is "" after trimming (lines 235-236)
 	content := "# Feature: X\n\n## Dependencies\n\n-  \n- []()\n- real-dep\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -3385,5 +3385,76 @@ func TestParseDependencies_EmptyItem(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseDependencies: %v", err)
 	}
-	_ = deps
+	// Only real-dep should be returned; the empty item and empty link are skipped.
+	if len(deps) != 1 || deps[0] != "real-dep" {
+		t.Errorf("deps = %v, want [real-dep]", deps)
+	}
+}
+
+// =============================================================================
+// fields.go — ResolveFields: "plans" case where FindLinkedPlans errors
+// =============================================================================
+
+func TestResolveFields_PlansError(t *testing.T) {
+	featDir := setupTestFeatures(t, map[string]string{
+		"auth": "# Feature: Auth\n\n**Status:** Draft\n",
+	})
+	orig := findLinkedPlansFn
+	findLinkedPlansFn = func(repoRoot, featureID string) ([]string, error) {
+		return nil, fmt.Errorf("injected plans error")
+	}
+	t.Cleanup(func() { findLinkedPlansFn = orig })
+
+	ef, err := ResolveFields(featDir, "auth", []string{"plans"})
+	if err == nil {
+		t.Fatal("expected error from injected plans failure")
+	}
+	if ef == nil || ef.Path != "auth" {
+		t.Errorf("expected partial result with path=auth, got %v", ef)
+	}
+	if !strings.Contains(err.Error(), "plans") {
+		t.Errorf("error = %v, want mention of plans", err)
+	}
+}
+
+// =============================================================================
+// newfeature.go — New: os.WriteFile failure (lines 107-109)
+// =============================================================================
+
+func TestNew_WriteFileFailure(t *testing.T) {
+	featDir := t.TempDir()
+	orig := osWriteFile
+	osWriteFile = func(name string, data []byte, perm os.FileMode) error {
+		return fmt.Errorf("injected write error")
+	}
+	t.Cleanup(func() { osWriteFile = orig })
+
+	_, err := New(featDir, NewOptions{Title: "Write Fail"})
+	if err == nil {
+		t.Fatal("expected error from injected WriteFile failure")
+	}
+	if !strings.Contains(err.Error(), "writing README.md") {
+		t.Errorf("error = %v, want mention of writing README.md", err)
+	}
+}
+
+// =============================================================================
+// newfeature.go — New: ParseSections failure (lines 139-141)
+// =============================================================================
+
+func TestNew_ParseSectionsFailure(t *testing.T) {
+	featDir := t.TempDir()
+	orig := parseSectionsFn
+	parseSectionsFn = func(path string) ([]SectionInfo, error) {
+		return nil, fmt.Errorf("injected sections error")
+	}
+	t.Cleanup(func() { parseSectionsFn = orig })
+
+	_, err := New(featDir, NewOptions{Title: "Sections Fail"})
+	if err == nil {
+		t.Fatal("expected error from injected ParseSections failure")
+	}
+	if !strings.Contains(err.Error(), "parsing sections") {
+		t.Errorf("error = %v, want mention of parsing sections", err)
+	}
 }

@@ -230,8 +230,8 @@ func ParseDependencies(readmePath string) ([]string, error) {
 		if inDeps && strings.HasPrefix(trimmed, "## ") {
 			break
 		}
-		if inDeps && strings.HasPrefix(trimmed, "- ") {
-			item := strings.TrimSpace(strings.TrimPrefix(trimmed, "- "))
+		if inDeps && strings.HasPrefix(line, "- ") {
+			item := strings.TrimSpace(strings.TrimPrefix(line, "- "))
 			if item == "" {
 				continue
 			}

@@ -1,6 +1,9 @@
 package feature
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
+)
 
 // info_stubs.go provides var-based seams for injecting failures in tests.
 // Production code calls these vars; tests replace them with closures
@@ -14,4 +17,5 @@ var (
 	findLinkedPlansFn       = FindLinkedPlans
 	parseSectionsFn         = ParseSections
 	filepathAbsFn           = filepath.Abs
+	osWriteFile             = os.WriteFile
 )

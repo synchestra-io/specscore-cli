@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// fpRel is filepath.Rel; tests can replace it to simulate Rel failures.
+var fpRel = filepath.Rel
+
 // Discovered summarizes one file that declares `type: issue` in its
 // YAML frontmatter, regardless of whether its path matches PathPatterns.
 type Discovered struct {
@@ -67,7 +70,7 @@ func DiscoverAll(specRoot string) ([]Discovered, error) {
 		if iss.Type != TypeValue {
 			return nil
 		}
-		rel, relErr := filepath.Rel(specRoot, path)
+		rel, relErr := fpRel(specRoot, path)
 		if relErr != nil {
 			return nil
 		}

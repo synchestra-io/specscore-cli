@@ -146,6 +146,9 @@ func FindIdeaDirectories(specRoot string) ([]string, error) {
 // sourceIdeasRe extracts the value portion of the **Source Ideas:** line.
 var sourceIdeasRe = regexp.MustCompile(`^\*\*Source Ideas:\*\*\s*(.*)$`)
 
+// fpRel is a testable indirection for filepath.Rel used in FeatureSourceIdeas.
+var fpRel = filepath.Rel
+
 // FeatureSourceIdeas scans every `spec/features/**/README.md` and returns a
 // map of feature slug -> []idea-slug based on the **Source Ideas:** header.
 // Features without the field are omitted. The slug is the feature's path
@@ -182,7 +185,7 @@ func FeatureSourceIdeas(specRoot string) (map[string][]string, error) {
 		if err != nil || len(ideas) == 0 {
 			return nil
 		}
-		slug, err := filepath.Rel(featuresDir, path)
+		slug, err := fpRel(featuresDir, path)
 		if err != nil {
 			return nil
 		}

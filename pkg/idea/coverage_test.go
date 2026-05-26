@@ -1175,3 +1175,107 @@ func TestSplitCSVSlugs_EdgeCases(t *testing.T) {
 		}
 	}
 }
+
+// =============================================================================
+// discover.go — Discover proposals ReadDir error (line 88-89)
+// =============================================================================
+
+// TestDiscover_UnreadableProposalsDir covers the branch where os.ReadDir on a
+// proposals/ subdirectory fails. The directory passes os.Stat (exists, IsDir),
+// but ReadDir is blocked by missing read permission.
+func TestDiscover_UnreadableProposalsDir(t *testing.T) {
+	root := t.TempDir()
+	specRoot := filepath.Join(root, "spec")
+	if err := os.MkdirAll(filepath.Join(specRoot, "ideas"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	proposalsDir := filepath.Join(specRoot, "features", "auth", "proposals")
+	if err := os.MkdirAll(proposalsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(proposalsDir, "idea.md"), []byte("# Proposal\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Remove read permission so os.ReadDir fails, but os.Stat still succeeds.
+	if err := os.Chmod(proposalsDir, 0o100); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	defer func() { _ = os.Chmod(proposalsDir, 0o755) }()
+
+	got, err := Discover(specRoot)
+	// The code does `continue` on ReadDir error, so no error is returned
+	// and the proposal is simply skipped.
+	if err != nil {
+		t.Fatalf("Discover: unexpected error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 discovered (proposal skipped), got %d: %+v", len(got), got)
+	}
+}
+
+// =============================================================================
+// discover.go — FeatureSourceIdeas fpRel error (lines 186-188)
+// =============================================================================
+
+// TestFeatureSourceIdeas_FpRelError covers the branch where fpRel (filepath.Rel)
+// returns an error. This is injected via the package-level fpRel seam.
+func TestFeatureSourceIdeas_FpRelError(t *testing.T) {
+	root := t.TempDir()
+	featuresDir := filepath.Join(root, "features")
+	featureDir := filepath.Join(featuresDir, "my-feat")
+	if err := os.MkdirAll(featureDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "# Feature: My Feat\n\n**Status:** Draft\n**Source Ideas:** alpha\n\n## Summary\n\nTest.\n"
+	if err := os.WriteFile(filepath.Join(featureDir, "README.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := fpRel
+	fpRel = func(basepath, targpath string) (string, error) {
+		return "", os.ErrInvalid
+	}
+	t.Cleanup(func() { fpRel = old })
+
+	got, err := FeatureSourceIdeas(root)
+	if err != nil {
+		t.Fatalf("FeatureSourceIdeas: unexpected error: %v", err)
+	}
+	// The slug is skipped (return nil in the walk func), so map is empty.
+	if len(got) != 0 {
+		t.Errorf("expected empty map when fpRel fails, got %v", got)
+	}
+}
+
+// =============================================================================
+// transitions.go — os.Stat on activePath returns non-ENOENT error (line 135)
+// =============================================================================
+
+// TestChangeStatus_StatActivePathPermissionDenied covers the branch where
+// os.Stat on the active idea path returns a non-NotExist error (e.g. permission
+// denied). Achieved by making the parent directory non-executable so that the
+// kernel cannot resolve the path.
+func TestChangeStatus_StatActivePathPermissionDenied(t *testing.T) {
+	root := stageIdeaTree(t, "perm-denied", "Draft")
+	ideasDir := filepath.Join(root, "spec", "ideas")
+	// Remove execute permission from the parent so os.Stat on the file returns
+	// permission denied (not ENOENT).
+	if err := os.Chmod(ideasDir, 0o600); err != nil {
+		t.Skip("cannot change permissions")
+	}
+	t.Cleanup(func() { _ = os.Chmod(ideasDir, 0o755) })
+
+	_, err := ChangeStatus(ChangeStatusOptions{
+		SpecRoot:     root,
+		Slug:         "perm-denied",
+		To:           lifecycle.IdeaApproved,
+		PostMutation: noopLint,
+	})
+	if err == nil {
+		t.Fatal("expected error for permission-denied stat on active path")
+	}
+	assertExitCode(t, err, exitcode.Unexpected)
+	if !strings.Contains(err.Error(), "stat") {
+		t.Errorf("error should mention 'stat', got: %v", err)
+	}
+}
