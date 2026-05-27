@@ -168,6 +168,13 @@ var allRuleNames = map[string]bool{
 	"D-archived-location":                 true,
 	"D-superseded-requires-successor":     true,
 	"D-affected-features-target-exists":   true,
+	// Decisions-index lint rules (decisions-index Feature). Implemented by decisionsIndexChecker.
+	"DI-list-section-heading":         true,
+	"DI-index-columns":                true,
+	"DI-status-excludes-archived":     true,
+	"DI-numeric-ordering":             true,
+	"DI-archived-index-chronological": true,
+	"DI-completeness":                 true,
 	// Issue lint rules (cli/spec/lint/issue-rules Feature). All 15 IDs are
 	// registered up-front so `--rules I-NNN` and the default suite both
 	// resolve every ID even while individual rule bodies land
