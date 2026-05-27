@@ -18,6 +18,7 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 
 | Directory | Description |
 |---|---|
+| [agent/](agent/README.md) | AI coding agent integration — generate agent-specific instruction files (`CLAUDE.md`, `.cursorrules`, etc.) for SpecScore projects |
 | [code/](code/README.md) | Source-code → SpecScore relationship queries |
 | [entity/](entity/README.md) | Entity Doc-Kind: lint enforcement, managed-section rendering, `specscore entity list/refs/tree` |
 | [feature/](feature/README.md) | Feature tree queries and scaffolding |
@@ -29,6 +30,10 @@ Commands that grew inside the codebase without written specs accrete inconsisten
 | [spec/](spec/README.md) | Specification-tree validation and search |
 | [task/](task/README.md) | Task board management |
 | [version/](version/README.md) | CLI version reporting |
+
+### agent
+
+Configures AI coding agents (Claude Code, Codex, GitHub Copilot, Cursor, Antigravity, Pi, OpenCode) for SpecScore-managed projects. `agent setup` generates agent-specific instruction/rules files that teach each agent about the spec tree, CLI commands, `--caller` telemetry flag, and available plugins.
 
 ### code
 
