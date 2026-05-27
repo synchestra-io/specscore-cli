@@ -2,4 +2,7 @@
 
 project:
   title: SpecScore CLI
+  host: github.com
+  org: specscore
+  repo: specscore-cli
 

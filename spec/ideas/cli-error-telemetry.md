@@ -1,6 +1,6 @@
 # Idea: CLI Error Telemetry
 
-**Status:** Implementing
+**Status:** Implemented
 **Date:** 2026-05-21
 **Owner:** alexandertrakhimenok
 **Promotes To:** cli/telemetry/errors-telemetry

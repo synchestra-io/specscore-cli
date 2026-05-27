@@ -4,7 +4,7 @@
 >
 > **AI skill:** _planned_ — a `skills/idea/references/change-status.md` reference in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping this verb; the skill invokes `specscore idea change-status` directly per the [lifecycle-transitions](../../lifecycle-transitions/README.md) contract.
 
-**Status:** Approved
+**Status:** Stable
 **Source Ideas:** lifecycle-verbs-for-idea-and-feature
 
 ## Summary
