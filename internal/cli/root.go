@@ -36,6 +36,7 @@ func Run(args []string) error {
 
 	rootCmd.AddCommand(
 		versionCommand(),
+		agentCommand(),
 		codeCommand(),
 		entityCommand(),
 		featureCommand(),

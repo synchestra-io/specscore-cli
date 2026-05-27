@@ -6,6 +6,7 @@ Pre-spec one-pagers for the `specscore` CLI. Each Idea refines a vague concept i
 
 | Idea | Status | Date | Owner | Promotes To |
 |------|--------|------|-------|-------------|
+| [ai-agent-configuration-cli](ai-agent-configuration-cli.md) | Implementing | 2026-05-27 | alexander.trakhimenok | cli/agent, cli/agent/setup |
 | [audit-lint-rules-for-parallel-bugs](audit-lint-rules-for-parallel-bugs.md) | Draft | 2026-05-18 | alexander.trakhimenok | — |
 | [cli-error-telemetry](cli-error-telemetry.md) | Implementing | 2026-05-21 | alexandertrakhimenok | cli/telemetry/errors-telemetry |
 | [cli-telemetry](cli-telemetry.md) | Implementing | 2026-05-21 | alexandertrakhimenok | cli/telemetry, cli/telemetry/usage-telemetry |
