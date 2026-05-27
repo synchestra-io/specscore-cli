@@ -168,6 +168,9 @@ var allRuleNames = map[string]bool{
 	"D-archived-location":                 true,
 	"D-superseded-requires-successor":     true,
 	"D-affected-features-target-exists":   true,
+	// Decision immutability rules.
+	"D-immutability-once-accepted":        true,
+	"D-observed-consequences-append-only": true,
 	// Decisions-index lint rules (decisions-index Feature). Implemented by decisionsIndexChecker.
 	"DI-list-section-heading":         true,
 	"DI-index-columns":                true,

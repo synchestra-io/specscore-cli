@@ -77,6 +77,12 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = dc
 	}
 
+	// Register decision immutability checker.
+	dimm := newDecisionImmutabilityChecker()
+	for _, n := range decisionImmutabilityRuleIDs {
+		l.ruleSet[n] = dimm
+	}
+
 	// Register decisions-index checker under all DI-* rule IDs.
 	dic := newDecisionsIndexChecker()
 	dic.autofix = opts.Fix
