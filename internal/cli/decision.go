@@ -72,7 +72,7 @@ func runDecisionNew(cmd *cobra.Command, args []string) error {
 
 	specSub := filepath.Join(specRoot, "spec")
 
-	nextNum, err := decision.NextNumber(specSub)
+	nextNum, err := decisionNextNumberFn(specSub)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("determining next number: %v", err)
 	}

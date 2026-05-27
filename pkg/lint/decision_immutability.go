@@ -3,7 +3,6 @@ package lint
 import (
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -67,7 +66,7 @@ func checkDecisionImmutability(specRoot string) ([]Violation, error) {
 		}
 
 		// Get the committed version from HEAD
-		relToRepo, err := filepath.Rel(repoRoot, d.path)
+		relToRepo, err := filepathRelDecisionImmutability(repoRoot, d.path)
 		if err != nil {
 			continue
 		}

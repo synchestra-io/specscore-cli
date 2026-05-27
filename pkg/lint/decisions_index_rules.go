@@ -99,7 +99,7 @@ func checkActiveDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violatio
 	var vs []Violation
 	rel, _ := filepath.Rel(specRoot, indexPath)
 
-	data, err := os.ReadFile(indexPath)
+	data, err := osReadFileDecisionIndex(indexPath)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func checkArchivedDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violat
 	var vs []Violation
 	rel, _ := filepath.Rel(specRoot, indexPath)
 
-	data, err := os.ReadFile(indexPath)
+	data, err := osReadFileDecisionIndex(indexPath)
 	if err != nil {
 		return nil, err
 	}
@@ -445,11 +445,11 @@ func rewriteDecisionsIndexTable(path string, lines []string, decisionsHeadingIdx
 		result = append(result, lines[dataEnd:]...)
 	}
 
-	return os.WriteFile(path, []byte(strings.Join(result, "\n")), 0o644)
+	return osWriteFileDecisionIndex(path, []byte(strings.Join(result, "\n")), 0o644)
 }
 
 func rewriteArchivedDecisionsIndex(path string, entries []archivedDecisionEntry) error {
-	data, err := os.ReadFile(path)
+	data, err := osReadFileDecisionIndex(path)
 	if err != nil {
 		return err
 	}
@@ -483,5 +483,5 @@ func rewriteArchivedDecisionsIndex(path string, entries []archivedDecisionEntry)
 	result = append(result, newEntryLines...)
 	result = append(result, lines[entryEnd:]...)
 
-	return os.WriteFile(path, []byte(strings.Join(result, "\n")), 0o644)
+	return osWriteFileDecisionIndex(path, []byte(strings.Join(result, "\n")), 0o644)
 }

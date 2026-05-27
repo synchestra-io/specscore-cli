@@ -30,7 +30,7 @@ None at this time.
 func TestDecisionsIndexListSectionHeading(t *testing.T) {
 	t.Run("valid heading passes", func(t *testing.T) {
 		root := setupDecisionTestTree(t, map[string]string{
-			"decisions/README.md":   validDecisionsIndex(),
+			"decisions/README.md":    validDecisionsIndex(),
 			"decisions/0001-test.md": acceptedDecisionContent(),
 		})
 		vs, err := checkDecisionsIndex(root, false)
@@ -135,7 +135,7 @@ func TestDecisionsIndexNumericOrdering(t *testing.T) {
 None.
 `
 		root := setupDecisionTestTree(t, map[string]string{
-			"decisions/README.md":    content,
+			"decisions/README.md":      content,
 			"decisions/0001-first.md":  acceptedDecisionContent(),
 			"decisions/0002-second.md": validDecisionContent(),
 		})
@@ -163,7 +163,7 @@ None.
 None.
 `
 		root := setupDecisionTestTree(t, map[string]string{
-			"decisions/README.md":    content,
+			"decisions/README.md":      content,
 			"decisions/0001-first.md":  acceptedDecisionContent(),
 			"decisions/0002-second.md": validDecisionContent(),
 		})
@@ -203,7 +203,7 @@ func TestDecisionsIndexCompleteness(t *testing.T) {
 None.
 `
 		root := setupDecisionTestTree(t, map[string]string{
-			"decisions/README.md":   content,
+			"decisions/README.md":    content,
 			"decisions/0001-test.md": validDecisionContent(),
 		})
 		vs, err := checkDecisionsIndex(root, false)
@@ -271,8 +271,8 @@ None at this time.
 *This document follows the https://specscore.md/decision-specification*
 `
 		root := setupDecisionTestTree(t, map[string]string{
-			"decisions/README.md":              content,
-			"decisions/archived/0001-old.md":   archivedContent,
+			"decisions/README.md":            content,
+			"decisions/archived/0001-old.md": archivedContent,
 		})
 		vs, err := checkDecisionsIndex(root, false)
 		if err != nil {

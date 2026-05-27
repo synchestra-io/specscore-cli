@@ -1245,7 +1245,7 @@ None at this time.
 `
 		root := setupDecisionTestTree(t, map[string]string{
 			"decisions/0001-test.md": content,
-			"ideas/my-idea.md":      "# Idea: My Idea\n",
+			"ideas/my-idea.md":       "# Idea: My Idea\n",
 		})
 		vs, err := checkDecisions(root)
 		if err != nil {

@@ -205,7 +205,7 @@ func discoverDecisionFiles(specRoot string) ([]*parsedDecision, error) {
 	var decisions []*parsedDecision
 
 	// Walk top-level decisions (active)
-	entries, err := os.ReadDir(decisionsDir)
+	entries, err := osReadDirDecision(decisionsDir)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func discoverDecisionFiles(specRoot string) ([]*parsedDecision, error) {
 	// Walk archived decisions
 	archivedDir := filepath.Join(decisionsDir, "archived")
 	if info, err := os.Stat(archivedDir); err == nil && info.IsDir() {
-		entries, err := os.ReadDir(archivedDir)
+		entries, err := osReadDirDecision(archivedDir)
 		if err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func checkDecisionDirectories(specRoot string) []Violation {
 	var vs []Violation
 	decisionsDir := filepath.Join(specRoot, "decisions")
 
-	entries, err := os.ReadDir(decisionsDir)
+	entries, err := osReadDirDecision(decisionsDir)
 	if err != nil {
 		return nil
 	}
@@ -317,7 +317,7 @@ func checkDecisionDirectories(specRoot string) []Violation {
 
 	// Also check archived/
 	archivedDir := filepath.Join(decisionsDir, "archived")
-	entries, err = os.ReadDir(archivedDir)
+	entries, err = osReadDirDecision(archivedDir)
 	if err != nil {
 		return vs
 	}
@@ -726,7 +726,7 @@ func walkDecisionFiles(specRoot string, fn func(path string, content []byte)) er
 	}
 
 	// Active decisions
-	entries, err := os.ReadDir(decisionsDir)
+	entries, err := osReadDirDecision(decisionsDir)
 	if err != nil {
 		return err
 	}
@@ -735,7 +735,7 @@ func walkDecisionFiles(specRoot string, fn func(path string, content []byte)) er
 			continue
 		}
 		path := filepath.Join(decisionsDir, e.Name())
-		content, err := os.ReadFile(path)
+		content, err := osReadFileDecision(path)
 		if err != nil {
 			continue
 		}
@@ -745,7 +745,7 @@ func walkDecisionFiles(specRoot string, fn func(path string, content []byte)) er
 	// Archived decisions
 	archivedDir := filepath.Join(decisionsDir, "archived")
 	if info, err := os.Stat(archivedDir); err == nil && info.IsDir() {
-		entries, err := os.ReadDir(archivedDir)
+		entries, err := osReadDirDecision(archivedDir)
 		if err != nil {
 			return err
 		}
@@ -754,7 +754,7 @@ func walkDecisionFiles(specRoot string, fn func(path string, content []byte)) er
 				continue
 			}
 			path := filepath.Join(archivedDir, e.Name())
-			content, err := os.ReadFile(path)
+			content, err := osReadFileDecision(path)
 			if err != nil {
 				continue
 			}
