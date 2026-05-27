@@ -1,6 +1,6 @@
 # Feature: Entity (CLI)
 
-> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=explore) | [Edit](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=edit) | [Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=ask) | [Request change](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=request-change) |
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/entity?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/entity?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/entity?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/entity?op=request-change) |
 >
 > **AI skill:** _planned_ — `skills/entity/references/*.md` references in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping these verbs.
 
