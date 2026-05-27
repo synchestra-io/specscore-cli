@@ -152,6 +152,22 @@ var allRuleNames = map[string]bool{
 	"P-002": true,
 	"P-003": true,
 	"P-004": true,
+	// Decision lint rules (decision Feature). Implemented by decisionRulesChecker.
+	"D-title-format":                      true,
+	"D-header-fields":                     true,
+	"D-status-values":                     true,
+	"D-filename-format":                   true,
+	"D-number-assignment":                 true,
+	"D-single-file":                       true,
+	"D-required-sections":                 true,
+	"D-declined-alternatives-non-empty":   true,
+	"D-observed-consequences-placeholder": true,
+	"D-source-idea-optional":              true,
+	"D-supersedes-target-exists":          true,
+	"D-supersedes-bidirectional":          true,
+	"D-archived-location":                 true,
+	"D-superseded-requires-successor":     true,
+	"D-affected-features-target-exists":   true,
 	// Issue lint rules (cli/spec/lint/issue-rules Feature). All 15 IDs are
 	// registered up-front so `--rules I-NNN` and the default suite both
 	// resolve every ID even while individual rule bodies land

@@ -71,6 +71,12 @@ func newLinter(opts Options) *linter {
 		l.ruleSet[n] = pc
 	}
 
+	// Register decision-rules checker under all D-* rule IDs.
+	dc := newDecisionRulesChecker()
+	for _, n := range decisionRuleIDs {
+		l.ruleSet[n] = dc
+	}
+
 	// Register issue-rules checker under all 15 rule IDs (I-001..I-015).
 	// Same pattern as plan-rules: one checker, many rule IDs; per-rule
 	// filtering happens via the Violation.Rule field in lint().

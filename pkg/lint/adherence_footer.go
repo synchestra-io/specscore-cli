@@ -81,6 +81,18 @@ var docTypeTargets = []docTypeTarget{
 		severity:    "warn",
 		walk:        walkScenariosIndexes,
 	},
+	{
+		description: "Decision file",
+		url:         "https://specscore.md/decision-specification",
+		severity:    "error",
+		walk:        walkDecisionFiles,
+	},
+	{
+		description: "decisions-index README",
+		url:         "https://specscore.md/decisions-index-specification",
+		severity:    "warn",
+		walk:        walkDecisionsIndex,
+	},
 }
 
 // adherenceFooterChecker verifies that every SpecScore document of a
