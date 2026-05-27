@@ -372,13 +372,13 @@ func TestResolveProjectIdentity_ParsedButEmptyRepo(t *testing.T) {
 
 func TestIdeaFileRules_TitleOKButEmptyName(t *testing.T) {
 	p := &idea.Idea{
-		Slug:        "valid-slug",
-		HasTitle:    true,
-		TitleOK:     true,
-		TitleName:   "",   // empty after TrimSpace — triggers the guard
-		TitleLine:   1,
-		TitlePrefix: "Idea",
-		FieldByName: map[string]idea.HeaderField{},
+		Slug:           "valid-slug",
+		HasTitle:       true,
+		TitleOK:        true,
+		TitleName:      "", // empty after TrimSpace — triggers the guard
+		TitleLine:      1,
+		TitlePrefix:    "Idea",
+		FieldByName:    map[string]idea.HeaderField{},
 		SectionByTitle: map[string]*idea.Section{},
 	}
 	vs := ideaFileRules(p, "ideas/valid-slug.md", false, false, "", t.TempDir(), map[string]*idea.Idea{}, map[string]bool{})
@@ -436,9 +436,9 @@ func TestIdeaIndexRules_ActiveFixFailedWithDrift(t *testing.T) {
 	// Index has "Draft" for drifted-idea but the actual file says "Approved".
 	idxContent := "# SpecScore Ideas\n\n## Index\n\n| Idea | Status | Date | Owner | Promotes To |\n|------|--------|------|-------|-------------|\n| [drifted-idea](drifted-idea.md) | Draft | 2026-04-10 | alice | — |\n\n## Open Questions\n\nNone at this time.\n"
 	root := writeSpec(t, map[string]string{
-		"ideas/README.md":      idxContent,
+		"ideas/README.md":          idxContent,
 		"ideas/archived/README.md": archivedIndex,
-		"ideas/drifted-idea.md": validIdeaBody("Drifted Idea", "Approved", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
+		"ideas/drifted-idea.md":    validIdeaBody("Drifted Idea", "Approved", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
 	})
 	// Make the active index read-only so fix fails.
 	indexPath := filepath.Join(root, "ideas", "README.md")

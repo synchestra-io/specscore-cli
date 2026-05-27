@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"testing/iotest"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/specscore/specscore-cli/internal/telemetry"
 	"github.com/specscore/specscore-cli/pkg/exitcode"

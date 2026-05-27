@@ -244,12 +244,12 @@ func runIssueChangeStatus(cmd *cobra.Command, args []string) error {
 
 	specSub := filepath.Join(specRoot, "spec")
 	result, err := issue.ChangeStatus(issue.ChangeStatusOptions{
-		SpecRoot:  specRoot,
-		Slug:      slug,
-		To:        to,
-		Severity:  severity,
-		Reason:    reason,
-		Notes:     notes,
+		SpecRoot:     specRoot,
+		Slug:         slug,
+		To:           to,
+		Severity:     severity,
+		Reason:       reason,
+		Notes:        notes,
 		PostMutation: issueLintPostMutationHook(specSub, slug),
 	})
 	if err != nil {

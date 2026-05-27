@@ -247,7 +247,7 @@ func rewriteFrontmatter(content string, opts ChangeStatusOptions) string {
 
 	// Reassemble.
 	var result []string
-	result = append(result, lines[0])       // opening ---
+	result = append(result, lines[0])        // opening ---
 	result = append(result, fmLines...)      // frontmatter body
 	result = append(result, lines[closeIdx]) // closing ---
 	result = append(result, lines[closeIdx+1:]...)

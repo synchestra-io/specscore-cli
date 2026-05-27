@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/entity"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
@@ -200,7 +200,7 @@ func runEntityRefs(cmd *cobra.Command, args []string) error {
 	}
 
 	targetPath := bySlug[id]
-	absTarget, err := filepath.Abs(targetPath)
+	absTarget, err := filepathAbsCLI(targetPath)
 	if err != nil {
 		absTarget = targetPath
 	}
@@ -217,7 +217,7 @@ func runEntityRefs(cmd *cobra.Command, args []string) error {
 		if doc.Frontmatter == nil || doc.Frontmatter.Inherits == "" {
 			continue
 		}
-		resolved, _, resolveErr := entity.ResolveInherits(specDir, d.Path, doc.Frontmatter.Inherits)
+		resolved, _, resolveErr := entityResolveInheritsCLI(specDir, d.Path, doc.Frontmatter.Inherits)
 		if resolveErr != nil {
 			// URL or unresolvable refs are silently ignored — they
 			// can't point to a local entity.
@@ -226,7 +226,7 @@ func runEntityRefs(cmd *cobra.Command, args []string) error {
 		if resolved == "" {
 			continue
 		}
-		absResolved, absErr := filepath.Abs(resolved)
+		absResolved, absErr := filepathAbsCLI(resolved)
 		if absErr != nil {
 			absResolved = resolved
 		}
@@ -317,7 +317,7 @@ func runEntityTree(cmd *cobra.Command, _ []string) error {
 	nodes := make(map[string]*node, len(discovered))
 	pathToSlug := make(map[string]string, len(discovered))
 	for _, d := range discovered {
-		abs, absErr := filepath.Abs(d.Path)
+		abs, absErr := filepathAbsCLI(d.Path)
 		if absErr != nil {
 			abs = d.Path
 		}

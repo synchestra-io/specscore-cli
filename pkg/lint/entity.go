@@ -82,7 +82,7 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 	}
 
 	// 2. Detect <slug>.entity directories (entity-single-file).
-	dirs, err := findEntityDirectories(specRoot)
+	dirs, err := findEntityDirectoriesFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 	}
 
 	// 3. Discover and parse entity files under spec/features/**.
-	discovered, err := entity.Discover(specRoot)
+	discovered, err := entityDiscoverFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 	}
 
 	// 4. Discover properties (for ref resolution + properties-table rendering).
-	propsDiscovered, err := property.Discover(specRoot)
+	propsDiscovered, err := propertyDiscoverFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 		if perr != nil {
 			continue
 		}
-		abs, aerr := filepath.Abs(p.Path)
+		abs, aerr := filepathAbsLint(p.Path)
 		if aerr != nil {
 			abs = p.Path
 		}
@@ -228,13 +228,13 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 				}
 			}
 			if src == nil {
-				raw, rerr := os.ReadFile(doc.Path)
+				raw, rerr := osReadFileEntity(doc.Path)
 				if rerr != nil {
 					continue
 				}
 				src = raw
 			}
-			newSrc, changed := rewriteEntityTitle(src, doc.Frontmatter.Singular)
+			newSrc, changed := rewriteEntityTitleFn(src, doc.Frontmatter.Singular)
 			if !changed {
 				continue
 			}
@@ -251,7 +251,7 @@ func (c *entityChecker) check(specRoot string) ([]Violation, error) {
 		}
 		// Phase 2: write every pending edit.
 		for _, e := range edits {
-			if werr := os.WriteFile(e.path, e.content, 0o644); werr != nil {
+			if werr := osWriteFileEntity(e.path, e.content, 0o644); werr != nil {
 				rel, _ := filepath.Rel(specRoot, e.path)
 				violations = append(violations, Violation{
 					File: rel, Severity: "error",
@@ -776,7 +776,7 @@ func renderEntityReferencedBy(doc *entity.Doc, specRoot string, descendants []*e
 	parentDir := filepath.Dir(doc.Path)
 	var lines []string
 	for _, child := range descendants {
-		rel, err := filepath.Rel(parentDir, child.Path)
+		rel, err := filepathRelLint(parentDir, child.Path)
 		if err != nil {
 			rel = child.Path
 		}
@@ -829,7 +829,7 @@ func extractManagedBody(body string) (string, bool) {
 // [cli/entity#req:properties-table-rendered] — only the body between
 // them is replaced.
 func applyManagedRewrites(doc *entity.Doc, propsBody, refsBody string) ([]byte, bool, error) {
-	raw, err := os.ReadFile(doc.Path)
+	raw, err := osReadFileEntity(doc.Path)
 	if err != nil {
 		return nil, false, err
 	}
@@ -919,7 +919,7 @@ func applyIDEqualsSlugFix(doc *entity.Doc) ([]byte, bool, error) {
 	if doc.FmRaw == nil {
 		return nil, false, nil
 	}
-	raw, err := os.ReadFile(doc.Path)
+	raw, err := osReadFileEntity(doc.Path)
 	if err != nil {
 		return nil, false, err
 	}
@@ -972,7 +972,7 @@ func applyIDEqualsSlugFix(doc *entity.Doc) ([]byte, bool, error) {
 	if !changed {
 		return nil, false, nil
 	}
-	out, err := yaml.Marshal(doc.FmRaw)
+	out, err := yamlMarshalEntity(doc.FmRaw)
 	if err != nil {
 		return nil, false, err
 	}

@@ -241,6 +241,11 @@ func decodeFrontmatter(node *yaml.Node) *Frontmatter {
 	return fm
 }
 
+// yamlNodeDecodeFn is the seam used by decodeChecks. Tests swap it to
+// inject a Decode failure that the real yaml.Node API does not surface
+// for the shape we always pass.
+var yamlNodeDecodeFn = func(n *yaml.Node, out interface{}) error { return n.Decode(out) }
+
 // decodeChecks turns a YAML mapping node into a map[string]any. Non-mapping
 // values (including the `checks: ~` shorthand) yield an empty, non-nil map
 // so callers can distinguish "missing key" (Frontmatter == nil) from
@@ -250,7 +255,7 @@ func decodeChecks(node *yaml.Node) map[string]any {
 	if node == nil || node.Kind != yaml.MappingNode {
 		return out
 	}
-	if err := node.Decode(&out); err != nil {
+	if err := yamlNodeDecodeFn(node, &out); err != nil {
 		return map[string]any{}
 	}
 	return out

@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// Test seams — package-level vars wrapping stdlib calls so tests may
+// inject errors without preparing impossible filesystem state.
+var (
+	filepathAbsFn = filepath.Abs
+	filepathRelFn = filepath.Rel
+)
+
 // ResolveRef takes a property item's `ref:` value (relative path or URL)
 // and returns the absolute path of the referenced .property.md file,
 // plus a boolean indicating whether the path resolved within specRoot.
@@ -41,15 +48,15 @@ func resolveRelativeOrURL(specRoot, entityPath, value string) (string, bool, err
 	// Resolve relative to the entity file's directory.
 	base := filepath.Dir(entityPath)
 	resolved := filepath.Clean(filepath.Join(base, value))
-	absResolved, err := filepath.Abs(resolved)
+	absResolved, err := filepathAbsFn(resolved)
 	if err != nil {
 		return resolved, false, err
 	}
-	absRoot, err := filepath.Abs(specRoot)
+	absRoot, err := filepathAbsFn(specRoot)
 	if err != nil {
 		return absResolved, false, err
 	}
-	rel, relErr := filepath.Rel(absRoot, absResolved)
+	rel, relErr := filepathRelFn(absRoot, absResolved)
 	if relErr != nil {
 		return absResolved, false, nil
 	}

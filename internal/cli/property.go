@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/spf13/cobra"
 	"github.com/specscore/specscore-cli/pkg/entity"
 	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"github.com/specscore/specscore-cli/pkg/property"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,7 +100,7 @@ func runPropertyList(cmd *cobra.Command, _ []string) error {
 	repoRoot := filepath.Dir(specRoot)
 	entries := make([]propertyListEntry, 0, len(props))
 	for _, p := range props {
-		rel, relErr := filepath.Rel(repoRoot, p.Path)
+		rel, relErr := filepathRelFn(repoRoot, p.Path)
 		if relErr != nil {
 			rel = p.Path
 		}
@@ -210,7 +210,7 @@ func runPropertyRefs(cmd *cobra.Command, args []string) error {
 	var targetPath string
 	for _, p := range props {
 		if p.Slug == propertyID {
-			absTarget, absErr := filepath.Abs(p.Path)
+			absTarget, absErr := filepathAbsCLI(p.Path)
 			if absErr != nil {
 				absTarget = p.Path
 			}
@@ -226,7 +226,7 @@ func runPropertyRefs(cmd *cobra.Command, args []string) error {
 	// any ref: resolves (via entity.ResolveRef) to targetPath. De-dupe
 	// entities whose frontmatter references the same property under
 	// multiple names.
-	entities, err := entity.Discover(specRoot)
+	entities, err := entityDiscoverCLI(specRoot)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("discovering entities: %v", err)
 	}
@@ -254,7 +254,7 @@ func runPropertyRefs(cmd *cobra.Command, args []string) error {
 			if resErr != nil || !isLocal {
 				continue
 			}
-			absResolved, absErr := filepath.Abs(resolved)
+			absResolved, absErr := filepathAbsCLI(resolved)
 			if absErr != nil {
 				absResolved = resolved
 			}

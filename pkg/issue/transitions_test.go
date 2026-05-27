@@ -323,10 +323,10 @@ func TestChangeStatus_SeverityOverride(t *testing.T) {
 	root := setupIssueProject(t, "override-sev", "open", "low")
 
 	result, err := ChangeStatus(ChangeStatusOptions{
-		SpecRoot:  root,
-		Slug:      "override-sev",
-		To:        "investigating",
-		Severity:  "critical",
+		SpecRoot: root,
+		Slug:     "override-sev",
+		To:       "investigating",
+		Severity: "critical",
 	})
 	if err != nil {
 		t.Fatalf("ChangeStatus: %v", err)
@@ -1012,10 +1012,10 @@ func TestChangeStatus_SeverityProvidedWhenMissing(t *testing.T) {
 	root := setupIssueProject(t, "fill-severity", "open", "")
 
 	result, err := ChangeStatus(ChangeStatusOptions{
-		SpecRoot:  root,
-		Slug:      "fill-severity",
-		To:        "investigating",
-		Severity:  "high",
+		SpecRoot: root,
+		Slug:     "fill-severity",
+		To:       "investigating",
+		Severity: "high",
 	})
 	if err != nil {
 		t.Fatalf("ChangeStatus: %v", err)

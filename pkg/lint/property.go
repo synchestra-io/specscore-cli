@@ -69,7 +69,7 @@ func checkProperties(specRoot string, fix bool) ([]Violation, error) {
 	var violations []Violation
 
 	// Per-misplacement / per-directory rules first; they don't need parses.
-	misplaced, err := findMisplacedPropertyFiles(specRoot)
+	misplaced, err := findMisplacedPropertyFilesFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func checkProperties(specRoot string, fix bool) ([]Violation, error) {
 		})
 	}
 
-	dirs, err := findPropertyDirectories(specRoot)
+	dirs, err := findPropertyDirectoriesFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func checkProperties(specRoot string, fix bool) ([]Violation, error) {
 	}
 
 	// Slug-format on filenames (cheap, no parse needed beyond discovery).
-	discovered, err := property.Discover(specRoot)
+	discovered, err := propertyDiscoverFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +108,12 @@ func checkProperties(specRoot string, fix bool) ([]Violation, error) {
 	// Apply autofix BEFORE the violations pass when fix is on.
 	// runPropertyFix re-writes id, title, and managed-section bodies.
 	if fix {
-		if _, err := runPropertyFix(specRoot); err != nil {
+		if _, err := runPropertyFixFn(specRoot); err != nil {
 			return nil, err
 		}
 		// Re-discover (in case anything changed; today files don't move
 		// during fix but this is a defensive pattern).
-		discovered, err = property.Discover(specRoot)
+		discovered, err = propertyDiscoverFn(specRoot)
 		if err != nil {
 			return nil, err
 		}
@@ -538,7 +538,7 @@ func computeReferencedByForAll(specRoot string, discovered []property.Discovered
 		seen[abs] = make(map[string]bool)
 	}
 
-	entities, err := entity.Discover(specRoot)
+	entities, err := entityDiscoverFn(specRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func computeReferencedByForAll(specRoot string, discovered []property.Discovered
 			seen[resolved][entityID] = true
 
 			// Compute path RELATIVE to the property file.
-			rel, relErr := filepath.Rel(filepath.Dir(resolved), e.Path)
+			rel, relErr := filepathRelLint(filepath.Dir(resolved), e.Path)
 			if relErr != nil {
 				rel = e.Path
 			}
@@ -627,7 +627,7 @@ func renderReferencedByBody(consumers []propertyConsumer) string {
 // rewritePropertyFile applies id, title, and managed-section autofixes
 // to a single property file. Returns true if any byte changed.
 func rewritePropertyFile(path, slug, canonicalReferencedBy string) (bool, error) {
-	original, err := os.ReadFile(path)
+	original, err := osReadFileProperty(path)
 	if err != nil {
 		return false, err
 	}
@@ -651,7 +651,7 @@ func rewritePropertyFile(path, slug, canonicalReferencedBy string) (bool, error)
 	if string(updated) == string(original) {
 		return false, nil
 	}
-	return true, os.WriteFile(path, updated, 0o644)
+	return true, osWriteFileProperty(path, updated, 0o644)
 }
 
 // rewritePropertyFrontmatterID rewrites the frontmatter `id` value to
@@ -685,7 +685,7 @@ func rewritePropertyFrontmatterID(content []byte, slug string) ([]byte, bool) {
 	fmContent := strings.Join(lines[first+1:end], "\n")
 
 	var node yaml.Node
-	if err := yaml.Unmarshal([]byte(fmContent), &node); err != nil {
+	if err := yamlUnmarshalProperty([]byte(fmContent), &node); err != nil {
 		return content, false
 	}
 	root := &node
@@ -714,7 +714,7 @@ func rewritePropertyFrontmatterID(content []byte, slug string) ([]byte, bool) {
 	if !changed {
 		return content, false
 	}
-	out, err := yaml.Marshal(&node)
+	out, err := yamlMarshalProperty(&node)
 	if err != nil {
 		return content, false
 	}

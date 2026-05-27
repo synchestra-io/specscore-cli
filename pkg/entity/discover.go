@@ -51,7 +51,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 		if !strings.HasSuffix(info.Name(), EntitySuffix) {
 			return nil
 		}
-		abs, absErr := filepath.Abs(path)
+		abs, absErr := filepathAbsFn(path)
 		if absErr != nil {
 			abs = path
 		}
