@@ -10,8 +10,8 @@ import (
 	"sort"
 
 	"github.com/spf13/cobra"
-	"github.com/synchestra-io/specscore-cli/pkg/entity"
-	"github.com/synchestra-io/specscore-cli/pkg/exitcode"
+	"github.com/specscore/specscore-cli/pkg/entity"
+	"github.com/specscore/specscore-cli/pkg/exitcode"
 	"gopkg.in/yaml.v3"
 )
 

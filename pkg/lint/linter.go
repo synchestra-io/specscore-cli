@@ -99,10 +99,10 @@ func newLinter(opts Options) *linter {
 	}
 
 	// Register property checker under every property-* rule name.
-	pc := newPropertyChecker()
-	pc.autofix = opts.Fix
+	prc := newPropertyChecker()
+	prc.autofix = opts.Fix
 	for _, n := range propertyRuleNames {
-		l.ruleSet[n] = pc
+		l.ruleSet[n] = prc
 	}
 
 	// Register entity checker under every entity-* rule name.

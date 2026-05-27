@@ -1,6 +1,6 @@
 # Feature: CLI
 
-> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli?op=request-change) |
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli?op=explore) | [Edit](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli?op=edit) | [Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli?op=ask) | [Request change](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli?op=request-change) |
 
 **Status:** Implementing
 
@@ -36,7 +36,7 @@ Queries relationships from source files to SpecScore resources. Scans `specscore
 
 ### entity
 
-CLI surface for the Entity Doc-Kind. Hosts the `entity-*` lint rules (frontmatter shape, additive-only inheritance, managed-section rendering for `## Properties` and `## Referenced by`) and three navigation verbs: `specscore entity list`, `specscore entity refs <id>`, `specscore entity tree`. Authoritative entity Doc-Kind contract lives in the meta-spec [entity Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md); this CLI Feature is the implementation surface.
+CLI surface for the Entity Doc-Kind. Hosts the `entity-*` lint rules (frontmatter shape, additive-only inheritance, managed-section rendering for `## Properties` and `## Referenced by`) and three navigation verbs: `specscore entity list`, `specscore entity refs <id>`, `specscore entity tree`. Authoritative entity Doc-Kind contract lives in the meta-spec [entity Feature](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md); this CLI Feature is the implementation surface.
 
 ### feature
 
@@ -60,7 +60,7 @@ Not a command group — has no CLI surface of its own. Defines the shared cross-
 
 ### property
 
-CLI surface for the Property Doc-Kind. Hosts the `property-*` lint rules (frontmatter shape, `data_type` enumeration, check-key applicability, managed-section rendering for `## Referenced by`) and two navigation verbs: `specscore property list`, `specscore property refs <id>`. Authoritative property Doc-Kind contract lives in the meta-spec [property Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md); this CLI Feature is the implementation surface.
+CLI surface for the Property Doc-Kind. Hosts the `property-*` lint rules (frontmatter shape, `data_type` enumeration, check-key applicability, managed-section rendering for `## Referenced by`) and two navigation verbs: `specscore property list`, `specscore property refs <id>`. Authoritative property Doc-Kind contract lives in the meta-spec [property Feature](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md); this CLI Feature is the implementation surface.
 
 ### spec
 

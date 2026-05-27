@@ -1,9 +1,9 @@
 # Idea: Entity and Property CLI Support
 
-**Status:** Approved
+**Status:** Specified
 **Date:** 2026-05-18
 **Owner:** alexander.trakhimenok
-**Promotes To:** —
+**Promotes To:** cli/entity, cli/property
 **Supersedes:** —
 **Related Ideas:** —
 

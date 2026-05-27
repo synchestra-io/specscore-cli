@@ -1,17 +1,17 @@
 # Feature: Property (CLI)
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fproperty) — graph, discussions, approvals
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/property?op=explore) | [Edit](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/property?op=edit) | [Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/property?op=ask) | [Request change](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/property?op=request-change) |
 >
-> **AI skill:** _planned_ — `skills/property/references/*.md` references in [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) will follow shipping these verbs.
+> **AI skill:** _planned_ — `skills/property/references/*.md` references in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping these verbs.
 
 **Status:** Approved
 **Source Ideas:** entity-and-property-cli-support
 
 ## Summary
 
-The `specscore property` command group is the `specscore-cli` surface for the upstream [property Doc-Kind](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md). It owns three responsibilities: **lint enforcement** (every `property-*` rule that validates `*.property.md` files), **managed-section rendering** (rewriting the `## Referenced by` section under `spec lint --fix`), and **navigation verbs** (`specscore property list`, `specscore property refs <id>`).
+The `specscore property` command group is the `specscore-cli` surface for the upstream [property Doc-Kind](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md). It owns three responsibilities: **lint enforcement** (every `property-*` rule that validates `*.property.md` files), **managed-section rendering** (rewriting the `## Referenced by` section under `spec lint --fix`), and **navigation verbs** (`specscore property list`, `specscore property refs <id>`).
 
-This Feature is the CLI's implementation contract for the meta-spec [property Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md) — the meta-spec defines what a property is; this Feature defines how the CLI validates, renders, and queries property files. Every `property-*` rule name listed below corresponds to one or more `REQ:` items in the upstream Feature.
+This Feature is the CLI's implementation contract for the meta-spec [property Feature](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md) — the meta-spec defines what a property is; this Feature defines how the CLI validates, renders, and queries property files. Every `property-*` rule name listed below corresponds to one or more `REQ:` items in the upstream Feature.
 
 ## Synopsis
 
@@ -30,21 +30,21 @@ The CLI implements three loosely-coupled surfaces backed by a single `pkg/proper
 
 ### Lint enforcement
 
-The CLI registers a family of `property-*` rules in `pkg/lint`. Each rule corresponds to one or more REQs in the upstream [property Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md) and is runnable via `specscore spec lint --rules <rule>`.
+The CLI registers a family of `property-*` rules in `pkg/lint`. Each rule corresponds to one or more REQs in the upstream [property Feature](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md) and is runnable via `specscore spec lint --rules <rule>`.
 
 | Rule name | Upstream REQ | Severity | `--fix` |
 |---|---|---|---|
-| `property-location` | [property#req:property-location](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-property-location) | error | no |
-| `property-slug-format` | [property#req:slug-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-slug-format) | error | no |
-| `property-single-file` | [property#req:single-file](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-single-file) | error | no |
-| `property-frontmatter-required` | [property#req:frontmatter-required](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required) | error | no |
-| `property-frontmatter-required-fields` | [property#req:frontmatter-required-fields](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required-fields) | error | no |
-| `property-id-equals-slug` | [property#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug) | error | yes — rewrite `id` from filename |
-| `property-data-type-values` | [property#req:data-type-values](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-data-type-values) | error | no |
-| `property-checks-shape` | [property#req:checks-shape](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-checks-shape) | error (inapplicable check), warning (unknown key) | no |
-| `property-title-format` | [property#req:title-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-title-format) | error | yes — rewrite from frontmatter `id` |
-| `property-required-sections` | [property#req:required-sections](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-required-sections) | error | no |
-| `property-referenced-by-managed` | [property#req:referenced-by-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-referenced-by-managed) | error | yes — see [REQ: referenced-by-from-entities](#req-referenced-by-from-entities) |
+| `property-location` | [property#req:property-location](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-property-location) | error | no |
+| `property-slug-format` | [property#req:slug-format](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-slug-format) | error | no |
+| `property-single-file` | [property#req:single-file](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-single-file) | error | no |
+| `property-frontmatter-required` | [property#req:frontmatter-required](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required) | error | no |
+| `property-frontmatter-required-fields` | [property#req:frontmatter-required-fields](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required-fields) | error | no |
+| `property-id-equals-slug` | [property#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug) | error | yes — rewrite `id` from filename |
+| `property-data-type-values` | [property#req:data-type-values](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-data-type-values) | error | no |
+| `property-checks-shape` | [property#req:checks-shape](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-checks-shape) | error (inapplicable check), warning (unknown key) | no |
+| `property-title-format` | [property#req:title-format](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-title-format) | error | yes — rewrite from frontmatter `id` |
+| `property-required-sections` | [property#req:required-sections](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-required-sections) | error | no |
+| `property-referenced-by-managed` | [property#req:referenced-by-managed](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-referenced-by-managed) | error | yes — see [REQ: referenced-by-from-entities](#req-referenced-by-from-entities) |
 
 Adherence-footer enforcement for `*.property.md` files reuses the shared `adherence-footer` rule (see [REQ: adherence-footer-target-registered](#req-adherence-footer-target-registered)); there is NO kind-specific `property-adherence-footer` rule name.
 
@@ -60,7 +60,7 @@ The CLI's shared `adherence-footer` checker MUST recognise `*.property.md` consu
 
 #### REQ: id-equals-slug-autofix
 
-When `spec lint --fix` runs over a property file whose frontmatter `id` does not equal the filename slug, the fixer MUST rewrite `id` to match the filename. The filename is authoritative per [property#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug). The rewrite MUST preserve YAML comments, key order, and surrounding formatting (via `gopkg.in/yaml.v3`'s `yaml.Node` round-trip).
+When `spec lint --fix` runs over a property file whose frontmatter `id` does not equal the filename slug, the fixer MUST rewrite `id` to match the filename. The filename is authoritative per [property#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug). The rewrite MUST preserve YAML comments, key order, and surrounding formatting (via `gopkg.in/yaml.v3`'s `yaml.Node` round-trip).
 
 #### REQ: title-format-autofix
 
@@ -68,7 +68,7 @@ When `spec lint --fix` runs over a property file whose `# Property: <name>` titl
 
 #### REQ: checks-shape-applicability
 
-The `property-checks-shape` rule MUST validate that every key in the `checks` mapping is applicable to the declared `data_type`. The applicability matrix is defined by [property#req:checks-shape](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-checks-shape):
+The `property-checks-shape` rule MUST validate that every key in the `checks` mapping is applicable to the declared `data_type`. The applicability matrix is defined by [property#req:checks-shape](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-checks-shape):
 
 - `required`, `enum` are valid for every `data_type`.
 - `min`, `max` are valid only for `integer`, `number`, `date`, `datetime`.
@@ -154,7 +154,7 @@ See [REQ: verb-exit-codes](#req-verb-exit-codes). The lint surface obeys the lin
 
 | Feature | Interaction |
 |---|---|
-| [Property (meta-spec)](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md) | Authoritative source of the property Doc-Kind contract. Every `property-*` rule here implements one or more REQs in that spec. |
+| [Property (meta-spec)](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md) | Authoritative source of the property Doc-Kind contract. Every `property-*` rule here implements one or more REQs in that spec. |
 | [Entity (CLI)](../entity/README.md) | Sibling Feature. The cross-Doc-Kind `entity-ref-target-exists` rule (on the entity side) resolves `properties[].ref:` against discovered `*.property.md` files. The property side does NOT carry a duplicate rule. The `fix-write-ordering` contract is shared. |
 | [spec lint](../spec/lint/README.md) | Hosts the rule registry and `--fix` flow. Adding the `property-*` rule family is the principal contract change in this cycle; see [cli/spec/lint#req:entity-and-property-rules-registered](../spec/lint/README.md#req-entity-and-property-rules-registered). |
 | [adherence-footer](../../adherence-footer/README.md) | Defines the shared adherence-footer mechanism. The property URL `https://specscore.md/property-specification` is registered against the `*.property.md` consumer path so the shared `adherence-footer` rule covers property files. |
@@ -241,7 +241,7 @@ Given a property file `email.property.md` and an entity that has an INLINE `emai
 
 Running any `specscore property` verb in a directory tree with no `specscore.yaml` in any ancestor exits `3` with an explanatory stderr message that names `specscore.yaml` as the project anchor.
 
-## Outstanding Questions
+## Open Questions
 
 - **Severity escalation for `property-adherence-footer`** (via the shared `adherence-footer` rule) — same posture as the entity side: ships at `warn` during MVP rollout, escalates to `error` after a clean release cycle. Lock in via a follow-on Idea.
 - **`property refs <id>` shape when a future feature → property link source lands** — the verb currently shows only entity consumers. When the feature-level `consumes:` / `produces:` mechanism lands, should `property refs` start showing feature consumers transparently (one merged list) or behind a `--include-features` flag? Lean: merged list, with the `entity:` / `feature:` prefix disambiguating.

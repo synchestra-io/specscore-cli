@@ -20,7 +20,7 @@ The [entity-and-property-cli-support Idea](../../ideas/entity-and-property-cli-s
 
 The work mirrors the lifecycle-verbs-implementation plan's subagent-driven parallelism but at a larger scope — three concurrent windows instead of two, eight tasks instead of five. Foundation tasks (T1 `pkg/entity/`, T2 `pkg/property/`, T3 Consumer Path parser) are independent and form Window 1. Consumer tasks split into two parallel families: lint enforcement + managed-section rendering (T4 entity dispatch checker, T5 property dispatch checker) and CLI navigation verbs (T6 `internal/cli/entity.go`, T7 `internal/cli/property.go`); all four run in parallel during Window 2 after T1+T2 land. T8 — the meta-spec integration smoke test — is the final acceptance gate.
 
-The Feature READMEs are the authoritative contract. Every `#### REQ:` and `### AC:` in the three approved Features maps to test coverage. No implementation work begins on a task until the source REQs the task satisfies are read end-to-end. Per the Idea, the upstream meta-spec [entity](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md), [property](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md), and [document-types-registry](https://github.com/synchestra-io/specscore/blob/main/spec/features/document-types-registry/README.md) Features define the meaning of the Doc-Kinds and the multi-glob `Consumer Path` form; the CLI Features define how this repo's code enforces them.
+The Feature READMEs are the authoritative contract. Every `#### REQ:` and `### AC:` in the three approved Features maps to test coverage. No implementation work begins on a task until the source REQs the task satisfies are read end-to-end. Per the Idea, the upstream meta-spec [entity](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md), [property](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md), and [document-types-registry](https://github.com/specscore/specscore/blob/main/spec/features/document-types-registry/README.md) Features define the meaning of the Doc-Kinds and the multi-glob `Consumer Path` form; the CLI Features define how this repo's code enforces them.
 
 ## Acceptance criteria
 
@@ -33,7 +33,7 @@ The Feature READMEs are the authoritative contract. Every `#### REQ:` and `### A
 - The `*.entity.md` and `*.property.md` consumer paths are registered in `pkg/lint/adherence_footer.go`'s `docTypeTargets` map with URLs `https://specscore.md/entity-specification` and `https://specscore.md/property-specification`, satisfying [cli/entity#req:adherence-footer-target-registered](../../features/cli/entity/README.md#req-adherence-footer-target-registered) and [cli/property#req:adherence-footer-target-registered](../../features/cli/property/README.md#req-adherence-footer-target-registered).
 - The Consumer Path parser tolerates the comma-separated form per [cli/spec/lint#req:consumer-path-multi-glob](../../features/cli/spec/lint/README.md#req-consumer-path-multi-glob) and [AC: consumer-path-multi-glob-parsed](../../features/cli/spec/lint/README.md#ac-consumer-path-multi-glob-parsed).
 - Every `### AC:` block in [cli/entity](../../features/cli/entity/README.md), [cli/property](../../features/cli/property/README.md), and the new ACs in [cli/spec/lint](../../features/cli/spec/lint/README.md) (`entity-and-property-rules-selectable`, `managed-section-fix-idempotent`, `consumer-path-multi-glob-parsed`) is covered by at least one Go unit test (`*_test.go`) that exercises the surface against a tmp-dir spec tree fixture. All tests pass.
-- `specscore spec lint --project <meta-spec checkout>` returns `0 violations found` against `github.com/synchestra-io/specscore` at HEAD; `specscore entity list` surfaces the meta-spec's `user` fixture; `specscore property list` surfaces the meta-spec's `email` fixture. (T8 integration test.)
+- `specscore spec lint --project <meta-spec checkout>` returns `0 violations found` against `github.com/specscore/specscore` at HEAD; `specscore entity list` surfaces the meta-spec's `user` fixture; `specscore property list` surfaces the meta-spec's `email` fixture. (T8 integration test.)
 - The build (`go build ./...`) and full test suite (`go test ./...`) pass on the implementer's branch before merging.
 - Existing CLI features (`feature list/info/tree/deps/refs/new/change-status`, `idea new/change-status`, `spec lint`, `init`, etc.) and existing lint rules are unchanged in behavior. No regression.
 - Out of scope per the source Idea: the feature-level `**Consumes:**` / `**Produces:**` back-reference source (a separate Idea); cross-repo `@import` for entity/property `ref:`; override semantics for inherited properties; lifecycle verbs for entity/property; code generation from entities; an `entity diff` / `entity validate` / `entity graph` verb; i18n in `singular`/`plural`/`description`; promotion of `pkg/yamlfront/` (defer until a second non-trivial caller exists); plugin (`ai-plugin-specscore`) skill files (separate follow-on Idea or docs-only PR).
@@ -179,7 +179,7 @@ func ResolveInherits(specRoot, entityPath, inherits string) (resolvedPath string
 
 Internal helpers MAY include `parseFrontmatter`, `extractManagedBody`, and `splitTrailingFrontmatterFromBody`. The managed-section marker regex MUST match the canonical `<!-- managed-by: specscore lint --fix -->` / `<!-- end-managed -->` form used elsewhere in the tree (e.g., `pkg/lint/idea_index.go`).
 
-**Tests first.** Write `pkg/entity/discover_test.go`, `pkg/entity/parse_test.go`, `pkg/entity/walk_test.go` BEFORE the implementation, drawing fixtures from the meta-spec failure-mode catalogue at [`spec/features/entity/_tests/`](https://github.com/synchestra-io/specscore/tree/main/spec/features/entity/_tests). Suggested fixture files under `pkg/entity/_testdata/`:
+**Tests first.** Write `pkg/entity/discover_test.go`, `pkg/entity/parse_test.go`, `pkg/entity/walk_test.go` BEFORE the implementation, drawing fixtures from the meta-spec failure-mode catalogue at [`spec/features/entity/_tests/`](https://github.com/specscore/specscore/tree/main/spec/features/entity/_tests). Suggested fixture files under `pkg/entity/_testdata/`:
 
 - `valid-minimal.entity.md` — frontmatter with the five required keys, empty properties list, every required section.
 - `valid-with-inherits.entity.md` — frontmatter declares `inherits: ./parent.entity.md`.
@@ -293,7 +293,7 @@ func Walk(specRoot string, fn func(*Doc) error) error
 func ValidateSlug(slug string) error
 ```
 
-**Tests first.** Suggested fixtures under `pkg/property/_testdata/`, drawn from the meta-spec catalogue at [`spec/features/property/_tests/`](https://github.com/synchestra-io/specscore/tree/main/spec/features/property/_tests):
+**Tests first.** Suggested fixtures under `pkg/property/_testdata/`, drawn from the meta-spec catalogue at [`spec/features/property/_tests/`](https://github.com/specscore/specscore/tree/main/spec/features/property/_tests):
 
 - `valid-minimal.property.md` — `kind: property`, `id: email`, `data_type: string`, `checks: {}`.
 - `valid-with-checks.property.md` — `data_type: string`, `checks: { required: true, max_length: 320, pattern: ... }`.
@@ -321,7 +321,7 @@ func ValidateSlug(slug string) error
 
 ### 3. Build the multi-glob `Consumer Path` parser
 
-The upstream [document-types-registry#req:consumer-path-per-kind](https://github.com/synchestra-io/specscore/blob/main/spec/features/document-types-registry/README.md#req-consumer-path-per-kind) relaxes the `Consumer Path` column to accept a comma-separated list of globs. Today, lint walkers consume the single-glob form via hard-coded `walk*` helpers in `pkg/lint/adherence_footer.go`. The relaxed form needs a one-call parser that lint rules can drop into wherever they consume a registry cell.
+The upstream [document-types-registry#req:consumer-path-per-kind](https://github.com/specscore/specscore/blob/main/spec/features/document-types-registry/README.md#req-consumer-path-per-kind) relaxes the `Consumer Path` column to accept a comma-separated list of globs. Today, lint walkers consume the single-glob form via hard-coded `walk*` helpers in `pkg/lint/adherence_footer.go`. The relaxed form needs a one-call parser that lint rules can drop into wherever they consume a registry cell.
 
 Per the Idea's "Should-be-true" assumption (audit every reader of the `Consumer Path` cell before changing the parser), the parser ships package-private to `pkg/lint/` in MVP — the [outstanding question on promoting to `pkg/projectdef`](../../features/cli/spec/lint/README.md#outstanding-questions) is deferred until a second caller emerges.
 
@@ -438,21 +438,21 @@ And add every name in `entityRuleNames` to `allRuleNames` in `pkg/lint/lint.go`.
 
 | Rule | REQ | Test fixture (positive + negative) |
 |---|---|---|
-| `entity-location` | [entity#req:entity-location](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-entity-location) | misplaced `spec/entities/foo.entity.md` |
-| `entity-slug-format` | [entity#req:slug-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-slug-format) | `Foo.entity.md` (uppercase), `foo_bar.entity.md` (underscore) |
-| `entity-single-file` | [entity#req:single-file](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-single-file) | directory at `user.entity/` |
-| `entity-frontmatter-required` | [entity#req:frontmatter-required](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required) | `missing-frontmatter.entity.md` |
-| `entity-frontmatter-required-fields` | [entity#req:frontmatter-required-fields](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required-fields) | `frontmatter-missing-required-fields.entity.md` |
-| `entity-id-equals-slug` | [entity#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug) | `id-mismatch-slug.entity.md`; autofix rewrites `id` |
-| `entity-properties-list-shape` | [entity#req:properties-list-shape](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-properties-list-shape) | `duplicate-property-name.entity.md`; missing `name:` |
-| `entity-ref-target-exists` | [entity#req:ref-target-exists](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-ref-target-exists) | `ref:` pointing at non-existent `email.property.md` |
-| `entity-inherits-additive-only` | [entity#req:inherits-additive-only](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-additive-only) | child redefines a parent's `name:` |
-| `entity-inherits-target-exists` | [entity#req:inherits-target-exists](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-target-exists) | `inherits:` points at non-existent `.entity.md` |
-| `entity-inherits-acyclic` | [entity#req:inherits-acyclic](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-acyclic) | `A → B → A` cycle; lint terminates without infinite recursion |
-| `entity-title-format` | [entity#req:title-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-title-format) | `title-mismatch-singular.entity.md`; autofix rewrites title |
-| `entity-required-sections` | [entity#req:required-sections](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-required-sections) | missing `## Properties` section |
-| `entity-properties-table-managed` | [entity#req:properties-table-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-properties-table-managed) | hand-edited `## Properties` body; autofix rewrites |
-| `entity-referenced-by-managed` | [entity#req:referenced-by-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed) | hand-edited `## Referenced by` body; autofix rewrites |
+| `entity-location` | [entity#req:entity-location](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-entity-location) | misplaced `spec/entities/foo.entity.md` |
+| `entity-slug-format` | [entity#req:slug-format](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-slug-format) | `Foo.entity.md` (uppercase), `foo_bar.entity.md` (underscore) |
+| `entity-single-file` | [entity#req:single-file](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-single-file) | directory at `user.entity/` |
+| `entity-frontmatter-required` | [entity#req:frontmatter-required](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required) | `missing-frontmatter.entity.md` |
+| `entity-frontmatter-required-fields` | [entity#req:frontmatter-required-fields](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required-fields) | `frontmatter-missing-required-fields.entity.md` |
+| `entity-id-equals-slug` | [entity#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug) | `id-mismatch-slug.entity.md`; autofix rewrites `id` |
+| `entity-properties-list-shape` | [entity#req:properties-list-shape](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-properties-list-shape) | `duplicate-property-name.entity.md`; missing `name:` |
+| `entity-ref-target-exists` | [entity#req:ref-target-exists](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-ref-target-exists) | `ref:` pointing at non-existent `email.property.md` |
+| `entity-inherits-additive-only` | [entity#req:inherits-additive-only](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-additive-only) | child redefines a parent's `name:` |
+| `entity-inherits-target-exists` | [entity#req:inherits-target-exists](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-target-exists) | `inherits:` points at non-existent `.entity.md` |
+| `entity-inherits-acyclic` | [entity#req:inherits-acyclic](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-acyclic) | `A → B → A` cycle; lint terminates without infinite recursion |
+| `entity-title-format` | [entity#req:title-format](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-title-format) | `title-mismatch-singular.entity.md`; autofix rewrites title |
+| `entity-required-sections` | [entity#req:required-sections](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-required-sections) | missing `## Properties` section |
+| `entity-properties-table-managed` | [entity#req:properties-table-managed](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-properties-table-managed) | hand-edited `## Properties` body; autofix rewrites |
+| `entity-referenced-by-managed` | [entity#req:referenced-by-managed](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed) | hand-edited `## Referenced by` body; autofix rewrites |
 
 **Adherence-footer registration.** Add an entry to `docTypeTargets` in `pkg/lint/adherence_footer.go`:
 
@@ -594,17 +594,17 @@ Add every name in `propertyRuleNames` to `allRuleNames` in `pkg/lint/lint.go`.
 
 | Rule | REQ | Test fixture (positive + negative) |
 |---|---|---|
-| `property-location` | [property#req:property-location](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-property-location) | misplaced `spec/properties/foo.property.md` |
-| `property-slug-format` | [property#req:slug-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-slug-format) | `Email.property.md` (uppercase) |
-| `property-single-file` | [property#req:single-file](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-single-file) | directory at `email.property/` |
-| `property-frontmatter-required` | [property#req:frontmatter-required](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required) | `missing-frontmatter.property.md` |
-| `property-frontmatter-required-fields` | [property#req:frontmatter-required-fields](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required-fields) | `frontmatter-missing-required-fields.property.md` |
-| `property-id-equals-slug` | [property#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug) | `id-mismatch-slug.property.md`; autofix rewrites `id` |
-| `property-data-type-values` | [property#req:data-type-values](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-data-type-values) | `invalid-data-type.property.md` (`data_type: blob`) |
-| `property-checks-shape` | [property#req:checks-shape](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-checks-shape) + [cli/property#req:checks-shape-applicability](../../features/cli/property/README.md#req-checks-shape-applicability) | `inapplicable-check-pattern-on-integer.property.md` (error); `unknown-check-key.property.md` (warning) |
-| `property-title-format` | [property#req:title-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-title-format) | title `# Property: Email` when frontmatter `id: email`; autofix rewrites |
-| `property-required-sections` | [property#req:required-sections](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-required-sections) | missing `## Referenced by` |
-| `property-referenced-by-managed` | [property#req:referenced-by-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md#req-referenced-by-managed) | hand-edited `## Referenced by` body; autofix rewrites |
+| `property-location` | [property#req:property-location](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-property-location) | misplaced `spec/properties/foo.property.md` |
+| `property-slug-format` | [property#req:slug-format](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-slug-format) | `Email.property.md` (uppercase) |
+| `property-single-file` | [property#req:single-file](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-single-file) | directory at `email.property/` |
+| `property-frontmatter-required` | [property#req:frontmatter-required](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required) | `missing-frontmatter.property.md` |
+| `property-frontmatter-required-fields` | [property#req:frontmatter-required-fields](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-frontmatter-required-fields) | `frontmatter-missing-required-fields.property.md` |
+| `property-id-equals-slug` | [property#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-id-equals-slug) | `id-mismatch-slug.property.md`; autofix rewrites `id` |
+| `property-data-type-values` | [property#req:data-type-values](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-data-type-values) | `invalid-data-type.property.md` (`data_type: blob`) |
+| `property-checks-shape` | [property#req:checks-shape](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-checks-shape) + [cli/property#req:checks-shape-applicability](../../features/cli/property/README.md#req-checks-shape-applicability) | `inapplicable-check-pattern-on-integer.property.md` (error); `unknown-check-key.property.md` (warning) |
+| `property-title-format` | [property#req:title-format](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-title-format) | title `# Property: Email` when frontmatter `id: email`; autofix rewrites |
+| `property-required-sections` | [property#req:required-sections](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-required-sections) | missing `## Referenced by` |
+| `property-referenced-by-managed` | [property#req:referenced-by-managed](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md#req-referenced-by-managed) | hand-edited `## Referenced by` body; autofix rewrites |
 
 **Severity nuance for `property-checks-shape`.** Per [cli/property#req:checks-shape-applicability](../../features/cli/property/README.md#req-checks-shape-applicability):
 - Inapplicable check key on a known `data_type` → severity `error`.
@@ -861,7 +861,7 @@ Add `propertyCommand()` to `rootCmd.AddCommand(...)` in `internal/cli/root.go` a
 
 ### 8. Meta-spec integration smoke-test
 
-Author a single integration test that exercises the full CLI surface against a real spec tree — the [`synchestra-io/specscore`](https://github.com/synchestra-io/specscore) meta-spec repository at HEAD. Final acceptance gate: if the test passes, the plan is done.
+Author a single integration test that exercises the full CLI surface against a real spec tree — the [`specscore/specscore`](https://github.com/specscore/specscore) meta-spec repository at HEAD. Final acceptance gate: if the test passes, the plan is done.
 
 Per the Idea ("a successful `specscore spec lint` over the meta-spec repo at the head of `main` MUST report `0 violations` after this work ships, AND the two fixture files MUST be recognized and visible to `specscore entity list` / `specscore property list`"), the test SHOULD live at `internal/cli/entity_property_integration_test.go` — sibling of the existing `internal/cli/lifecycle_integration_test.go`.
 
@@ -877,7 +877,7 @@ func TestEntityPropertyMetaSpecIntegration(t *testing.T) {
 
     // 1. Clone the meta-spec at HEAD.
     out, err := exec.Command("git", "clone", "--depth=1",
-        "https://github.com/synchestra-io/specscore", cloneDir).CombinedOutput()
+        "https://github.com/specscore/specscore", cloneDir).CombinedOutput()
     if err != nil {
         t.Fatalf("git clone failed: %v: %s", err, out)
     }
@@ -968,8 +968,8 @@ For the implementer driving this plan:
 
 **Window 1 (parallel — single message, three Agent tool calls):**
 
-- Agent A: Task 1 (`pkg/entity/`). Prompt hands over: the upstream [meta-spec entity Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md), this plan's Task 1 API sketch, and the existing `pkg/idea/discover.go` + `pkg/idea/parse.go` as the canonical pattern. Tell the agent: tests first, no `internal/cli/` imports, write fixtures explicitly named after their failure mode.
-- Agent B: Task 2 (`pkg/property/`). Same shape; hands over the [meta-spec property Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/property/README.md). Independent of Agent A.
+- Agent A: Task 1 (`pkg/entity/`). Prompt hands over: the upstream [meta-spec entity Feature](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md), this plan's Task 1 API sketch, and the existing `pkg/idea/discover.go` + `pkg/idea/parse.go` as the canonical pattern. Tell the agent: tests first, no `internal/cli/` imports, write fixtures explicitly named after their failure mode.
+- Agent B: Task 2 (`pkg/property/`). Same shape; hands over the [meta-spec property Feature](https://github.com/specscore/specscore/blob/main/spec/features/property/README.md). Independent of Agent A.
 - Agent C: Task 3 (`pkg/lint/registry.go`). Smallest task. Hands over the cell table from this plan's Task 3 and [cli/spec/lint#req:consumer-path-multi-glob](../../features/cli/spec/lint/README.md#req-consumer-path-multi-glob). Independent of Agents A and B.
 
 Wait for all three to return success. If any fails, fix and re-dispatch only the failing agent.
@@ -1004,13 +1004,13 @@ After Agent H returns success, the human implementer (or `claude` directly) runs
 | Date | Git Hash | Action | Comment |
 |---|---|---|---|
 
-## Outstanding Questions
+## Open Questions
 
 - Should `pkg/lint/parseConsumerPath` be promoted to a public helper in `pkg/projectdef` once Task 8 lands a second caller (e.g., a future `every-feature-registered` rule that cross-checks every registry row)? Current position per [cli/spec/lint#outstanding-questions](../../features/cli/spec/lint/README.md#outstanding-questions): package-private until a second caller emerges.
 - Should the `lint-rule-table-completeness` rule (which would fire when a Doc-Kind's CLI Feature's rule table drifts from `pkg/lint`'s `allRuleNames`) land in a follow-on plan immediately after this one merges, or be batched into a broader "spec-vs-code drift" cleanup? Lean: separate follow-on plan; the rule is independent of the entity/property work and applies to every Doc-Kind family.
 - Should `entity tree --format json` ship in MVP or wait for a downstream consumer to request it? Per [cli/entity#outstanding-questions](../../features/cli/entity/README.md#outstanding-questions): wait. Plan keeps `tree` text-only.
 - Severity escalation policy for `adherence-footer` on entity / property files. Per the policy in `pkg/lint/adherence_footer.go`, new consumer-layer Kinds ship at `warn` during MVP. When do they escalate to `error`? Locked in via a follow-on Idea after a release cycle of clean runs.
-- AI plugin skill references (`skills/entity/references/*.md` and `skills/property/references/*.md` in [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore)). Deferred per the source Idea's Not Doing list — track as a follow-on docs-only PR or a separate Idea once these verbs ship.
+- AI plugin skill references (`skills/entity/references/*.md` and `skills/property/references/*.md` in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore)). Deferred per the source Idea's Not Doing list — track as a follow-on docs-only PR or a separate Idea once these verbs ship.
 
 ---
 *This document follows the https://specscore.md/plan-specification*

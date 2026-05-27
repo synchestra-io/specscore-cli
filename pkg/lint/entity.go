@@ -9,8 +9,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/synchestra-io/specscore-cli/pkg/entity"
-	"github.com/synchestra-io/specscore-cli/pkg/property"
+	"github.com/specscore/specscore-cli/pkg/entity"
+	"github.com/specscore/specscore-cli/pkg/property"
 )
 
 // entityChecker is a dispatch checker that runs every entity-* rule in

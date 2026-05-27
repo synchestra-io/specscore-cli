@@ -6,7 +6,7 @@ Status: Implementation green. Upstream meta-spec drift documented for follow-on.
 
 The Task 8 smoke test (`internal/cli/entity_property_integration_test.go`)
 exercises the entity/property CLI surface against the upstream
-[`synchestra-io/specscore`](https://github.com/synchestra-io/specscore)
+[`specscore/specscore`](https://github.com/specscore/specscore)
 meta-spec at HEAD of `main` (commit `43df1f7` at the time of writing).
 
 All four navigation-verb assertions pass cleanly:
@@ -93,7 +93,7 @@ fail the test.
 
 ## Follow-on action (upstream)
 
-A one-line PR against `synchestra-io/specscore` to run
+A one-line PR against `specscore/specscore` to run
 `specscore spec lint --fix` and commit the resulting one-line diff to
 `spec/features/idea/email.property.md` would close this drift at HEAD.
 That work is outside the scope of this CLI plan.

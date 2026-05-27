@@ -1,17 +1,17 @@
 # Feature: Entity (CLI)
 
-> [View in SpecStudio](https://specstudio.synchestra.io/project/features?id=specscore-cli@synchestra-io@github.com&path=spec%2Ffeatures%2Fcli%2Fentity) — graph, discussions, approvals
+> [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=explore) | [Edit](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=edit) | [Ask question](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=ask) | [Request change](https://specscore.studio/app/github.com/synchestra-io/specscore-cli/spec/features/cli/entity?op=request-change) |
 >
-> **AI skill:** _planned_ — `skills/entity/references/*.md` references in [`ai-plugin-specscore`](https://github.com/synchestra-io/ai-plugin-specscore) will follow shipping these verbs.
+> **AI skill:** _planned_ — `skills/entity/references/*.md` references in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping these verbs.
 
 **Status:** Approved
 **Source Ideas:** entity-and-property-cli-support
 
 ## Summary
 
-The `specscore entity` command group is the `specscore-cli` surface for the upstream [entity Doc-Kind](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md). It owns three responsibilities: **lint enforcement** (every `entity-*` rule that validates `*.entity.md` files), **managed-section rendering** (rewriting the `## Properties` table and `## Referenced by` section under `spec lint --fix`), and **navigation verbs** (`specscore entity list`, `specscore entity refs <id>`, `specscore entity tree`).
+The `specscore entity` command group is the `specscore-cli` surface for the upstream [entity Doc-Kind](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md). It owns three responsibilities: **lint enforcement** (every `entity-*` rule that validates `*.entity.md` files), **managed-section rendering** (rewriting the `## Properties` table and `## Referenced by` section under `spec lint --fix`), and **navigation verbs** (`specscore entity list`, `specscore entity refs <id>`, `specscore entity tree`).
 
-This Feature is the CLI's implementation contract for the meta-spec [entity Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md) — the meta-spec defines what an entity is; this Feature defines how the CLI validates, renders, and queries entity files. Every `entity-*` rule name listed below corresponds to one or more `REQ:` items in the upstream Feature.
+This Feature is the CLI's implementation contract for the meta-spec [entity Feature](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md) — the meta-spec defines what an entity is; this Feature defines how the CLI validates, renders, and queries entity files. Every `entity-*` rule name listed below corresponds to one or more `REQ:` items in the upstream Feature.
 
 ## Synopsis
 
@@ -31,25 +31,25 @@ The CLI implements three loosely-coupled surfaces backed by a single `pkg/entity
 
 ### Lint enforcement
 
-The CLI registers a family of `entity-*` rules in `pkg/lint`. Each rule corresponds to one or more REQs in the upstream [entity Feature](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md) and is runnable via `specscore spec lint --rules <rule>`.
+The CLI registers a family of `entity-*` rules in `pkg/lint`. Each rule corresponds to one or more REQs in the upstream [entity Feature](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md) and is runnable via `specscore spec lint --rules <rule>`.
 
 | Rule name | Upstream REQ | Severity | `--fix` |
 |---|---|---|---|
-| `entity-location` | [entity#req:entity-location](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-entity-location) | error | no |
-| `entity-slug-format` | [entity#req:slug-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-slug-format) | error | no |
-| `entity-single-file` | [entity#req:single-file](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-single-file) | error | no |
-| `entity-frontmatter-required` | [entity#req:frontmatter-required](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required) | error | no |
-| `entity-frontmatter-required-fields` | [entity#req:frontmatter-required-fields](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required-fields) | error | no |
-| `entity-id-equals-slug` | [entity#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug) | error | yes — rewrite `id` from filename |
-| `entity-properties-list-shape` | [entity#req:properties-list-shape](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-properties-list-shape) | error | no |
-| `entity-ref-target-exists` | [entity#req:ref-target-exists](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-ref-target-exists) | error | no |
-| `entity-inherits-additive-only` | [entity#req:inherits-additive-only](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-additive-only) | error | no |
-| `entity-inherits-target-exists` | [entity#req:inherits-target-exists](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-target-exists) | error | no |
-| `entity-inherits-acyclic` | [entity#req:inherits-acyclic](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-inherits-acyclic) | error | no |
-| `entity-title-format` | [entity#req:title-format](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-title-format) | error | yes — rewrite from frontmatter `singular` |
-| `entity-required-sections` | [entity#req:required-sections](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-required-sections) | error | no |
-| `entity-properties-table-managed` | [entity#req:properties-table-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-properties-table-managed) | error | yes — see [REQ: properties-table-rendered](#req-properties-table-rendered) |
-| `entity-referenced-by-managed` | [entity#req:referenced-by-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed) | error | yes — see [REQ: referenced-by-from-inheritance](#req-referenced-by-from-inheritance) |
+| `entity-location` | [entity#req:entity-location](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-entity-location) | error | no |
+| `entity-slug-format` | [entity#req:slug-format](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-slug-format) | error | no |
+| `entity-single-file` | [entity#req:single-file](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-single-file) | error | no |
+| `entity-frontmatter-required` | [entity#req:frontmatter-required](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required) | error | no |
+| `entity-frontmatter-required-fields` | [entity#req:frontmatter-required-fields](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-frontmatter-required-fields) | error | no |
+| `entity-id-equals-slug` | [entity#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug) | error | yes — rewrite `id` from filename |
+| `entity-properties-list-shape` | [entity#req:properties-list-shape](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-properties-list-shape) | error | no |
+| `entity-ref-target-exists` | [entity#req:ref-target-exists](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-ref-target-exists) | error | no |
+| `entity-inherits-additive-only` | [entity#req:inherits-additive-only](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-additive-only) | error | no |
+| `entity-inherits-target-exists` | [entity#req:inherits-target-exists](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-target-exists) | error | no |
+| `entity-inherits-acyclic` | [entity#req:inherits-acyclic](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-inherits-acyclic) | error | no |
+| `entity-title-format` | [entity#req:title-format](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-title-format) | error | yes — rewrite from frontmatter `singular` |
+| `entity-required-sections` | [entity#req:required-sections](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-required-sections) | error | no |
+| `entity-properties-table-managed` | [entity#req:properties-table-managed](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-properties-table-managed) | error | yes — see [REQ: properties-table-rendered](#req-properties-table-rendered) |
+| `entity-referenced-by-managed` | [entity#req:referenced-by-managed](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed) | error | yes — see [REQ: referenced-by-from-inheritance](#req-referenced-by-from-inheritance) |
 
 Adherence-footer enforcement for `*.entity.md` files reuses the shared `adherence-footer` rule (see [REQ: adherence-footer-target-registered](#req-adherence-footer-target-registered)); it does NOT get a kind-specific `entity-adherence-footer` rule name.
 
@@ -63,7 +63,7 @@ The CLI's shared `adherence-footer` checker MUST recognise `*.entity.md` consume
 
 #### REQ: id-equals-slug-autofix
 
-When `spec lint --fix` runs over an entity file whose frontmatter `id` does not equal the filename slug, the fixer MUST rewrite `id` to match the filename. The filename is authoritative — renaming a file is more visible than editing frontmatter, per [entity#req:id-equals-slug](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug). The rewrite MUST preserve YAML comments, key order, and surrounding formatting (via `gopkg.in/yaml.v3`'s `yaml.Node` round-trip).
+When `spec lint --fix` runs over an entity file whose frontmatter `id` does not equal the filename slug, the fixer MUST rewrite `id` to match the filename. The filename is authoritative — renaming a file is more visible than editing frontmatter, per [entity#req:id-equals-slug](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-id-equals-slug). The rewrite MUST preserve YAML comments, key order, and surrounding formatting (via `gopkg.in/yaml.v3`'s `yaml.Node` round-trip).
 
 #### REQ: title-format-autofix
 
@@ -98,7 +98,7 @@ The feature-to-entity back-reference source (a forthcoming `**Consumes:**` / `**
 
 #### REQ: referenced-by-no-references-fallback
 
-When no entity inherits from this entity and no other back-reference source is wired, the managed body MUST be exactly the single line `- _No references yet._`. The managed body MUST NOT be empty (an empty managed body is itself a lint error per [entity#req:referenced-by-managed](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed)).
+When no entity inherits from this entity and no other back-reference source is wired, the managed body MUST be exactly the single line `- _No references yet._`. The managed body MUST NOT be empty (an empty managed body is itself a lint error per [entity#req:referenced-by-managed](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md#req-referenced-by-managed)).
 
 #### REQ: managed-section-fix-is-idempotent
 
@@ -162,7 +162,7 @@ See [REQ: verb-exit-codes](#req-verb-exit-codes). The lint surface obeys the lin
 
 | Feature | Interaction |
 |---|---|
-| [Entity (meta-spec)](https://github.com/synchestra-io/specscore/blob/main/spec/features/entity/README.md) | Authoritative source of the entity Doc-Kind contract. Every `entity-*` rule here implements one or more REQs in that spec. |
+| [Entity (meta-spec)](https://github.com/specscore/specscore/blob/main/spec/features/entity/README.md) | Authoritative source of the entity Doc-Kind contract. Every `entity-*` rule here implements one or more REQs in that spec. |
 | [Property (CLI)](../property/README.md) | Sibling Feature. The `entity-ref-target-exists` rule resolves `ref:` targets against discovered `*.property.md` files. The `## Properties` rendered table reads each referenced property's `data_type` from its frontmatter. |
 | [spec lint](../spec/lint/README.md) | Hosts the rule registry and `--fix` flow. Adding the `entity-*` rule family is the principal contract change in this cycle; see [cli/spec/lint#req:entity-and-property-rules-registered](../spec/lint/README.md#req-entity-and-property-rules-registered). |
 | [adherence-footer](../../adherence-footer/README.md) | Defines the shared adherence-footer mechanism. The entity URL `https://specscore.md/entity-specification` is registered against the `*.entity.md` consumer path so the shared `adherence-footer` rule covers entity files. |
@@ -255,7 +255,7 @@ parent
 
 Running any `specscore entity` verb in a directory tree with no `specscore.yaml` in any ancestor exits `3` with an explanatory stderr message that names `specscore.yaml` as the project anchor.
 
-## Outstanding Questions
+## Open Questions
 
 - **Should `entity refs <id>` surface entity ↔ entity references beyond `inherits:` in MVP** — e.g., when entity A's `properties` list references a property whose `## Referenced by` lists entity B, does `entity refs A` mention B? The MVP says no (only direct `inherits:` consumers); revisit when the back-reference graph proves too thin in practice.
 - **`entity tree --format json` for downstream tooling consumption** — deferred per [REQ: entity-tree](#req-entity-tree). Lock in if any downstream tool (datatug.io, SpecStudio) requests structured tree output.
