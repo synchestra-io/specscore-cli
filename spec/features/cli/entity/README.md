@@ -4,7 +4,7 @@
 >
 > **AI skill:** _planned_ — `skills/entity/references/*.md` references in [`ai-plugin-specscore`](https://github.com/specscore/ai-plugin-specscore) will follow shipping these verbs.
 
-**Status:** Approved
+**Status:** Stable
 **Source Ideas:** entity-and-property-cli-support
 
 ## Summary

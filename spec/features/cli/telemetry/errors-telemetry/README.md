@@ -1,7 +1,7 @@
 # Feature: Errors Telemetry (CLI)
 
 > [SpecScore.**Studio**](https://specscore.studio): | [Explore](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/errors-telemetry?op=explore) | [Edit](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/errors-telemetry?op=edit) | [Ask question](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/errors-telemetry?op=ask) | [Request change](https://specscore.studio/app/github.com/specscore/specscore-cli/spec/features/cli/telemetry/errors-telemetry?op=request-change) |
-**Status:** Implementing
+**Status:** Stable
 **Date:** 2026-05-21
 **Owner:** alexandertrakhimenok
 **Source Ideas:** cli-error-telemetry
