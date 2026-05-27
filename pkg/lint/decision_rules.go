@@ -30,9 +30,7 @@ var decisionRuleIDs = []string{
 	"D-affected-features-target-exists",
 }
 
-type decisionRulesChecker struct {
-	fix bool
-}
+type decisionRulesChecker struct{}
 
 func newDecisionRulesChecker() *decisionRulesChecker {
 	return &decisionRulesChecker{}

@@ -474,8 +474,8 @@ func TestStdinIsTTY(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.Pipe: %v", err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 
 	orig := os.Stdin
 	os.Stdin = r

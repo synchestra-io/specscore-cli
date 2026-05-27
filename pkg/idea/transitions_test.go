@@ -495,9 +495,9 @@ func TestChangeStatus_ArchiveStatReadmeNonENOENT(t *testing.T) {
 	// Remove the archived README so the code takes the os.IsNotExist branch.
 	// Then make the archived dir non-searchable so WriteFile (line 197) fails
 	// because the parent dir has no execute permission.
-	os.Remove(filepath.Join(archivedDir, "README.md"))
-	os.Chmod(archivedDir, 0o600) // read-write but no execute
-	defer os.Chmod(archivedDir, 0o755)
+	_ = os.Remove(filepath.Join(archivedDir, "README.md"))
+	_ = os.Chmod(archivedDir, 0o600) // read-write but no execute
+	defer func() { _ = os.Chmod(archivedDir, 0o755) }()
 
 	_, err := ChangeStatus(ChangeStatusOptions{
 		SpecRoot:     root,

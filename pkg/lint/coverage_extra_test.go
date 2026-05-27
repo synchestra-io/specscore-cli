@@ -840,9 +840,7 @@ func TestPlanRules_ParseError(t *testing.T) {
 	})
 	// Write a file that plan.Parse can't read.
 	badPath := filepath.Join(root, "plans", "unparseable.md")
-	if err := os.Chmod(badPath, 0o000); err != nil {
-		// If we can't change perms, just write unreadable data.
-	}
+	_ = os.Chmod(badPath, 0o000)
 	c := newPlanRulesChecker()
 	_, err := c.check(root)
 	// bad-plan.md has no "# Plan:" title so it's skipped. The check should not error.
@@ -1287,8 +1285,8 @@ func TestSidekickSeed_UnreadableSeedFile(t *testing.T) {
 		"ideas/seeds/unreadable.md": "---\ntype: sidekick-seed\nslug: unreadable\ncaptured_at: 2026-05-18T00:00:00Z\ncaptured_by: user\ncaptured_during: null\ntrigger: user-prompt\nstatus: queued\nsynchestra_task: null\n---\n\n# Unreadable Seed\n",
 	})
 	seedPath := filepath.Join(specRoot, "ideas", "seeds", "unreadable.md")
-	os.Chmod(seedPath, 0o000)
-	defer os.Chmod(seedPath, 0o644)
+	_ = os.Chmod(seedPath, 0o000)
+	defer func() { _ = os.Chmod(seedPath, 0o644) }()
 
 	c := newSidekickSeedChecker()
 	violations, err := c.check(specRoot)
@@ -1315,8 +1313,8 @@ func TestSidekickSeed_ReadDirError(t *testing.T) {
 		"ideas/seeds/ok.md": "---\ntype: sidekick-seed\nslug: ok\ncaptured_at: 2026-05-18T00:00:00Z\ncaptured_by: user\ncaptured_during: null\ntrigger: user-prompt\nstatus: queued\nsynchestra_task: null\n---\n\n# OK Seed\n",
 	})
 	seedsDir := filepath.Join(specRoot, "ideas", "seeds")
-	os.Chmod(seedsDir, 0o000)
-	defer os.Chmod(seedsDir, 0o755)
+	_ = os.Chmod(seedsDir, 0o000)
+	defer func() { _ = os.Chmod(seedsDir, 0o755) }()
 
 	c := newSidekickSeedChecker()
 	_, err := c.check(specRoot)
@@ -1352,8 +1350,8 @@ func TestAdherenceFooterFix_ReadOnlyFile(t *testing.T) {
 	mkdir(t, featDir)
 	readmePath := filepath.Join(featDir, "README.md")
 	writeFile(t, readmePath, "# Feature: Auth\n\n## Open Questions\n\nNone.\n")
-	os.Chmod(readmePath, 0o444)
-	defer os.Chmod(readmePath, 0o644)
+	_ = os.Chmod(readmePath, 0o444)
+	defer func() { _ = os.Chmod(readmePath, 0o644) }()
 
 	c := newAdherenceFooterChecker().(fixer)
 	// fix should handle read-only files gracefully
@@ -1371,10 +1369,10 @@ func TestIndexEntries_UnreadableSubdir(t *testing.T) {
 	})
 	// Create an unreadable subdirectory under features
 	lockedDir := filepath.Join(root, "features", "locked")
-	os.MkdirAll(lockedDir, 0o755)
-	os.WriteFile(filepath.Join(lockedDir, "README.md"), []byte("# Locked\n"), 0o644)
-	os.Chmod(lockedDir, 0o000)
-	defer os.Chmod(lockedDir, 0o755)
+	_ = os.MkdirAll(lockedDir, 0o755)
+	_ = os.WriteFile(filepath.Join(lockedDir, "README.md"), []byte("# Locked\n"), 0o644)
+	_ = os.Chmod(lockedDir, 0o000)
+	defer func() { _ = os.Chmod(lockedDir, 0o755) }()
 
 	c := newIndexEntriesChecker()
 	_, err := c.check(root)
@@ -1453,10 +1451,10 @@ func TestFeatureIndex_UnreadableFeatureDir(t *testing.T) {
 		"features/auth/README.md": "# Feature: Auth\n\n**Status:** Draft\n",
 	})
 	lockedDir := filepath.Join(root, "features", "locked")
-	os.MkdirAll(lockedDir, 0o755)
-	os.WriteFile(filepath.Join(lockedDir, "README.md"), []byte("# Locked\n"), 0o644)
-	os.Chmod(lockedDir, 0o000)
-	defer os.Chmod(lockedDir, 0o755)
+	_ = os.MkdirAll(lockedDir, 0o755)
+	_ = os.WriteFile(filepath.Join(lockedDir, "README.md"), []byte("# Locked\n"), 0o644)
+	_ = os.Chmod(lockedDir, 0o000)
+	defer func() { _ = os.Chmod(lockedDir, 0o755) }()
 
 	c := newFeatureIndexChecker()
 	_, err := c.check(root)

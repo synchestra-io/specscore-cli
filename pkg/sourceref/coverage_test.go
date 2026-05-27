@@ -150,13 +150,13 @@ func TestExtractReference_URLWithTrailingSpace(t *testing.T) {
 func TestExpandGlobPattern_EmptyDefaults(t *testing.T) {
 	// Create a temp dir with some files
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.go"), []byte("// specscore:feature/x\n"), 0o644)
-	os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
-	os.WriteFile(filepath.Join(dir, "sub", "b.go"), []byte("code"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "a.go"), []byte("// specscore:feature/x\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "sub", "b.go"), []byte("code"), 0o644)
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	matches, err := ExpandGlobPattern("")
 	if err != nil {
@@ -173,12 +173,12 @@ func TestExpandGlobPattern_EmptyDefaults(t *testing.T) {
 
 func TestExpandGlobPattern_SpecificPattern(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.go"), []byte("code"), 0o644)
-	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("text"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "a.go"), []byte("code"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "b.txt"), []byte("text"), 0o644)
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	matches, err := ExpandGlobPattern("*.go")
 	if err != nil {
@@ -195,13 +195,13 @@ func TestExpandGlobPattern_SpecificPattern(t *testing.T) {
 
 func TestExpandGlobPattern_DoubleStarAlone(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "root.go"), []byte("x"), 0o644)
-	os.MkdirAll(filepath.Join(dir, "nested"), 0o755)
-	os.WriteFile(filepath.Join(dir, "nested", "deep.go"), []byte("x"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "root.go"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(dir, "nested"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "nested", "deep.go"), []byte("x"), 0o644)
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	matches, err := ExpandGlobPattern("**")
 	if err != nil {
@@ -307,7 +307,7 @@ func TestScanFile_DeduplicatesReferences(t *testing.T) {
 // specscore:feature/auth
 // specscore:plan/v2
 `
-	os.WriteFile(path, []byte(content), 0o644)
+	_ = os.WriteFile(path, []byte(content), 0o644)
 
 	refs, err := scanFile(path)
 	if err != nil {
@@ -325,7 +325,7 @@ func TestScanFile_DeduplicatesReferences(t *testing.T) {
 func TestScanFiles_PartialErrors(t *testing.T) {
 	dir := t.TempDir()
 	goodPath := filepath.Join(dir, "good.go")
-	os.WriteFile(goodPath, []byte("// specscore:feature/x\n"), 0o644)
+	_ = os.WriteFile(goodPath, []byte("// specscore:feature/x\n"), 0o644)
 
 	badPath := filepath.Join(dir, "nonexistent.go")
 
@@ -406,11 +406,11 @@ func TestParseReference_RawPath(t *testing.T) {
 
 func TestExpandGlobPattern_InvalidPattern(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.go"), []byte("x"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "a.go"), []byte("x"), 0o644)
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	_, err := ExpandGlobPattern("[invalid")
 	if err == nil {
@@ -499,15 +499,15 @@ func TestFormatOutput_MultiFileNoFilter(t *testing.T) {
 func TestExpandGlobPattern_WalkDirError(t *testing.T) {
 	dir := t.TempDir()
 	subdir := filepath.Join(dir, "locked")
-	os.MkdirAll(subdir, 0o755)
-	os.WriteFile(filepath.Join(subdir, "a.go"), []byte("x"), 0o644)
+	_ = os.MkdirAll(subdir, 0o755)
+	_ = os.WriteFile(filepath.Join(subdir, "a.go"), []byte("x"), 0o644)
 	// Make subdir unreadable after creating files
-	os.Chmod(subdir, 0o000)
-	defer os.Chmod(subdir, 0o755)
+	_ = os.Chmod(subdir, 0o000)
+	defer func() { _ = os.Chmod(subdir, 0o755) }()
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	// Walk should still return matches from readable parts;
 	// unreadable dirs are skipped silently per filepath.Walk convention

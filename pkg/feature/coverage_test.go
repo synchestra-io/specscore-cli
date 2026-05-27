@@ -251,9 +251,10 @@ None.
 	// child-a is in readme, child-b is not
 	var childA, childB *ChildInfo
 	for i := range children {
-		if children[i].Path == "parent/child-a" {
+		switch children[i].Path {
+		case "parent/child-a":
 			childA = &children[i]
-		} else if children[i].Path == "parent/child-b" {
+		case "parent/child-b":
 			childB = &children[i]
 		}
 	}
@@ -3154,10 +3155,10 @@ func TestIsTableSeparatorRow_EmptyCell(t *testing.T) {
 func TestParseFeatureStatus_ScannerError(t *testing.T) {
 	dir := t.TempDir()
 	featDir := filepath.Join(dir, "auth")
-	os.MkdirAll(featDir, 0o755)
+	_ = os.MkdirAll(featDir, 0o755)
 	// Create a README with a single line exceeding the default 64KB scanner buffer
 	huge := strings.Repeat("x", 128*1024) + "\n**Status:** Draft\n"
-	os.WriteFile(filepath.Join(featDir, "README.md"), []byte(huge), 0o644)
+	_ = os.WriteFile(filepath.Join(featDir, "README.md"), []byte(huge), 0o644)
 
 	_, err := ParseFeatureStatus(featDir)
 	// Should hit scanner.Err() since the line is too long
@@ -3181,8 +3182,8 @@ func TestFindLinkedPlans_UnreadablePlan(t *testing.T) {
 	)
 	// Make the plan README unreadable
 	planReadme := filepath.Join(root, "spec", "plans", "my-plan", "README.md")
-	os.Chmod(planReadme, 0o000)
-	defer os.Chmod(planReadme, 0o644)
+	_ = os.Chmod(planReadme, 0o000)
+	defer func() { _ = os.Chmod(planReadme, 0o644) }()
 
 	// Should not error — just return no linked plans
 	plans, err := FindLinkedPlans(root, "auth")
@@ -3205,8 +3206,8 @@ func TestDiscoverChildFeatures_UnreadableDir(t *testing.T) {
 		nil,
 	)
 	lockedDir := filepath.Join(featDir, "auth", "locked")
-	os.Chmod(lockedDir, 0o000)
-	defer os.Chmod(lockedDir, 0o755)
+	_ = os.Chmod(lockedDir, 0o000)
+	defer func() { _ = os.Chmod(lockedDir, 0o755) }()
 
 	readmePath := filepath.Join(featDir, "auth", "README.md")
 	children, err := DiscoverChildFeatures(featDir, "auth", readmePath)

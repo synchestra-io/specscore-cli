@@ -78,7 +78,7 @@ func Dispatch(ctx context.Context, e Event, subscribers []Subscriber) DispatchRe
 // format. The error message is escaped with quoteError so embedded double
 // quotes and backslashes are preserved unambiguously.
 func writeFailureLine(w io.Writer, subscriberName, eventName string, err error) {
-	fmt.Fprintf(
+	_, _ = fmt.Fprintf(
 		w,
 		"event-dispatch failure: subscriber=%s event=%s error=\"%s\"\n",
 		subscriberName,

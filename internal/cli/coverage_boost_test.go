@@ -347,7 +347,7 @@ func TestWriteEnrichedTextNode_Cycle(t *testing.T) {
 	cycle := true
 	ef := &feature.EnrichedFeature{Path: "auth", Cycle: &cycle}
 	writeEnrichedTextNode(bw, ef, nil, 0)
-	bw.Flush()
+	_ = bw.Flush()
 	if got := buf.String(); got != "auth (cycle)\n" {
 		t.Errorf("cycle output = %q, want %q", got, "auth (cycle)\n")
 	}
@@ -359,7 +359,7 @@ func TestWriteEnrichedTextNode_Focus(t *testing.T) {
 	focus := true
 	ef := &feature.EnrichedFeature{Path: "auth", Focus: &focus}
 	writeEnrichedTextNode(bw, ef, nil, 0)
-	bw.Flush()
+	_ = bw.Flush()
 	if got := buf.String(); got != "* auth\n" {
 		t.Errorf("focus output = %q, want %q", got, "* auth\n")
 	}
@@ -382,7 +382,7 @@ func TestWriteEnrichedTextNode_AllFields(t *testing.T) {
 	}
 	fields := []string{"title", "status", "oq", "questions", "deps", "refs", "plans", "proposals"}
 	writeEnrichedTextNode(bw, ef, fields, 0)
-	bw.Flush()
+	_ = bw.Flush()
 	out := buf.String()
 	for _, want := range []string{
 		`title="Billing System"`,
@@ -405,7 +405,7 @@ func TestWriteEnrichedTextNode_WithDepth(t *testing.T) {
 	bw := bufio.NewWriter(&buf)
 	ef := &feature.EnrichedFeature{Path: "child"}
 	writeEnrichedTextNode(bw, ef, nil, 2)
-	bw.Flush()
+	_ = bw.Flush()
 	if got := buf.String(); got != "\t\tchild\n" {
 		t.Errorf("depth=2 output = %q, want %q", got, "\t\tchild\n")
 	}
@@ -422,7 +422,7 @@ func TestWriteEnrichedTextNode_WithChildren(t *testing.T) {
 		},
 	}
 	writeEnrichedTextNode(bw, ef, nil, 0)
-	bw.Flush()
+	_ = bw.Flush()
 	out := buf.String()
 	if !strings.Contains(out, "parent\n") {
 		t.Errorf("output = %q, missing 'parent'", out)
@@ -1792,7 +1792,7 @@ func TestWriteEnrichedTextNode_EmptyFields(t *testing.T) {
 	// Pass all field names but the feature has no values for them.
 	fields := []string{"title", "status", "oq", "questions", "deps", "refs", "plans", "proposals"}
 	writeEnrichedTextNode(bw, ef, fields, 0)
-	bw.Flush()
+	_ = bw.Flush()
 	// Only the path should appear (no metadata suffix).
 	if got := strings.TrimSpace(buf.String()); got != "simple" {
 		t.Errorf("output = %q, want just 'simple'", got)
@@ -1848,7 +1848,7 @@ func TestPreRun_InvalidStateFile(t *testing.T) {
 func TestPreRun_FirstRunNotice(t *testing.T) {
 	home := withTempHomeForCLI(t)
 	// Ensure NO install_id exists so justCreated=true.
-	os.RemoveAll(filepath.Join(home, ".specscore"))
+	_ = os.RemoveAll(filepath.Join(home, ".specscore"))
 
 	invocation = runtimeState{}
 	root := &cobra.Command{Use: "specscore"}
@@ -3490,7 +3490,7 @@ func TestIsTerminal_WithFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	// A temp file is not a terminal device.
 	if isTerminal(f) {
 		t.Error("expected false for temp file")
@@ -5192,7 +5192,7 @@ func TestFeatureChangeStatus_PostFixLintError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Remove the features/README.md entirely so post-fix lint can't read it.
-	os.Remove(filepath.Join(root, "spec", "features", "README.md"))
+	_ = os.Remove(filepath.Join(root, "spec", "features", "README.md"))
 	_, _, err := runFeature(t, "change-status", "auth", "--to=Under Review")
 	// This exercises the post-fix lint error path.
 	_ = err
@@ -6280,7 +6280,7 @@ func TestInit_StatErrorNonENOENT(t *testing.T) {
 	// Actually, this takes the `statErr == nil` path since Stat succeeds on a dir.
 	// To trigger the `!os.IsNotExist(statErr)` path, we need Stat to fail with non-ENOENT.
 	// Make the parent dir non-executable so Stat can't traverse.
-	os.RemoveAll(configDir)
+	_ = os.RemoveAll(configDir)
 	// Create a symlink that points to nothing (creates ENOENT), that won't help.
 	// Instead, create a scenario where the path's parent has restricted perms.
 	subDir := filepath.Join(root, "project")
@@ -6293,9 +6293,9 @@ func TestInit_StatErrorNonENOENT(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Remove the file, then restrict the dir so Stat fails with EACCES
-	os.Remove(configPath)
-	os.Chmod(subDir, 0o000)
-	defer os.Chmod(subDir, 0o755)
+	_ = os.Remove(configPath)
+	_ = os.Chmod(subDir, 0o000)
+	defer func() { _ = os.Chmod(subDir, 0o755) }()
 
 	_, _, err := runInitCmd(t, nil, "--project", subDir)
 	if err == nil {
@@ -6811,7 +6811,7 @@ func TestIsTerminal_StatError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create temp: %v", err)
 	}
-	f.Close() // Stat will now fail with "file already closed"
+	_ = f.Close() // Stat will now fail with "file already closed"
 
 	got := isTerminal(f)
 	if got {

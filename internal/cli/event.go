@@ -317,7 +317,7 @@ func runEventEmit(cmd *cobra.Command, _ []string) error {
 
 	result := event.Dispatch(cmd.Context(), e, subscribers)
 	if result.ValidationError != nil {
-		fmt.Fprintln(cmd.ErrOrStderr(), result.ValidationError.Error())
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), result.ValidationError.Error())
 		return exitcode.InvalidArgsErrorf("envelope validation failed")
 	}
 

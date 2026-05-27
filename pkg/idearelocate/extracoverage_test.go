@@ -126,13 +126,13 @@ func TestCommitRepo_RevParseHEADError(t *testing.T) {
 
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Stage a new file so git commit succeeds.
-	os.WriteFile(filepath.Join(repoRoot, "spec", "y.md"), []byte("y"), 0o644)
-	stagePaths(repoRoot, []string{"spec/y.md"})
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "y.md"), []byte("y"), 0o644)
+	_ = stagePaths(repoRoot, []string{"spec/y.md"})
 
 	sha, _, err := commitRepo(repoRoot, "test commit")
 	if err == nil {
@@ -240,8 +240,8 @@ func TestFindReferences_FilepathRelError(t *testing.T) {
 
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
-	os.WriteFile(filepath.Join(specDir, "ref.md"), []byte("**Source Ideas:** test-slug\n"), 0o644)
+	_ = os.MkdirAll(specDir, 0o755)
+	_ = os.WriteFile(filepath.Join(specDir, "ref.md"), []byte("**Source Ideas:** test-slug\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "test-slug")
 	if err != nil {
@@ -265,7 +265,7 @@ func TestFindReferences_WalkReturnsError(t *testing.T) {
 	t.Cleanup(func() { filepathWalkFn = orig })
 
 	tmp := t.TempDir()
-	os.MkdirAll(filepath.Join(tmp, "spec"), 0o755)
+	_ = os.MkdirAll(filepath.Join(tmp, "spec"), 0o755)
 
 	_, err := FindReferences(tmp, "any-slug")
 	if err == nil {

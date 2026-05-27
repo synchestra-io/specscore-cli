@@ -173,7 +173,7 @@ func checkActiveDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violatio
 				continue
 			}
 			num := 0
-			fmt.Sscanf(m[1], "%d", &num)
+			_, _ = fmt.Sscanf(m[1], "%d", &num)
 			slug := strings.TrimSuffix(m[2], ".md")
 			if strings.HasSuffix(m[2], ".md") {
 				slug = strings.TrimSuffix(filepath.Base(m[2]), ".md")
@@ -370,7 +370,6 @@ func checkArchivedDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violat
 type archivedDecisionEntry struct {
 	date   string
 	slug   string
-	status string
 	reason string
 	raw    string
 }

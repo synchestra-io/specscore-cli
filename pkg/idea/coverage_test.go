@@ -418,7 +418,7 @@ func TestChangeStatus_ArchiveCreatesArchivedDirAndReadme(t *testing.T) {
 	root := stageIdeaTree(t, "bar", "Approved")
 	// Remove the archived dir to test creation path
 	archivedDir := filepath.Join(root, "spec", "ideas", "archived")
-	os.RemoveAll(archivedDir)
+	_ = os.RemoveAll(archivedDir)
 
 	_, err := ChangeStatus(ChangeStatusOptions{
 		SpecRoot:     root,
@@ -487,7 +487,7 @@ func TestChangeStatus_ArchiveRollsBackCreatedReadme(t *testing.T) {
 	root := stageIdeaTree(t, "rollback-test", "Approved")
 	// Remove the archived dir entirely
 	archivedDir := filepath.Join(root, "spec", "ideas", "archived")
-	os.RemoveAll(archivedDir)
+	_ = os.RemoveAll(archivedDir)
 
 	// Archive with failing lint — should rollback the entire archived dir creation
 	simulatedErr := exitcode.UnexpectedErrorf("lint failed")

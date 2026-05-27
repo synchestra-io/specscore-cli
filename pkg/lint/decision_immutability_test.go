@@ -51,7 +51,7 @@ func TestImmutabilityFrozenSectionModified(t *testing.T) {
 
 	// Modify a frozen section
 	modified := strings.Replace(original, "Some context.", "Modified context.", 1)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestImmutabilityTitleModified(t *testing.T) {
 	})
 
 	modified := strings.Replace(original, "# Decision: Accepted Decision", "# Decision: Changed Title", 1)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {
@@ -89,7 +89,7 @@ func TestImmutabilityFieldModified(t *testing.T) {
 	})
 
 	modified := strings.Replace(original, "**Owner:** test@example.com", "**Owner:** other@example.com", 1)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestImmutabilityStatusChangeAllowed(t *testing.T) {
 	// Change Status and Superseded By — these are allowed
 	modified := strings.Replace(original, "**Status:** Accepted", "**Status:** Superseded", 1)
 	modified = strings.Replace(modified, "**Superseded By:** —", "**Superseded By:** 0002-new", 1)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestImmutabilityObservedConsequencesAppendOnly(t *testing.T) {
 		})
 
 		modified := strings.Replace(original, "None observed yet.", "None observed yet.\n\n2026-05-27 — Something was observed.", 1)
-		os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+		_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 		vs, err := checkDecisionImmutability(root)
 		if err != nil {
@@ -202,7 +202,7 @@ None at this time.
 
 		// Modify an existing observation
 		modified := strings.Replace(content, "2026-05-22 — First observation.", "2026-05-22 — Modified first observation.", 1)
-		os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+		_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 		vs, err := checkDecisionImmutability(root)
 		if err != nil {
@@ -264,7 +264,7 @@ None at this time.
 
 		// Remove an observation
 		modified := strings.Replace(content, "2026-05-22 — First observation.\n", "", 1)
-		os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+		_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 		vs, err := checkDecisionImmutability(root)
 		if err != nil {
@@ -283,7 +283,7 @@ func TestImmutabilityProposedNotChecked(t *testing.T) {
 
 	// Modify the Proposed decision — should not trigger immutability
 	modified := strings.Replace(validDecisionContent(), "Some context here.", "Completely rewritten context.", 1)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {
@@ -297,13 +297,13 @@ func TestImmutabilityProposedNotChecked(t *testing.T) {
 func TestImmutabilityNewFileNotChecked(t *testing.T) {
 	// File not yet committed — should not be checked
 	root := t.TempDir()
-	os.MkdirAll(filepath.Join(root, "decisions"), 0o755)
-	os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(acceptedDecisionContent()), 0o644)
+	_ = os.MkdirAll(filepath.Join(root, "decisions"), 0o755)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(acceptedDecisionContent()), 0o644)
 
 	// Init git but don't commit
 	cmd := exec.Command("git", "init")
 	cmd.Dir = root
-	cmd.Run()
+	_ = cmd.Run()
 
 	vs, err := checkDecisionImmutability(root)
 	if err != nil {

@@ -38,7 +38,7 @@ func TestFatal_TypedExitCode(t *testing.T) {
 	Fatal(exitcode.NotFoundErrorf("missing thing"))
 	_ = w.Close()
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 
 	if gotCode != exitcode.NotFound {
 		t.Errorf("exit code = %d, want %d (NotFound)", gotCode, exitcode.NotFound)

@@ -2242,19 +2242,10 @@ func TestIndexEntries_PhantomRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Should detect ghost as phantom or unlisted
-	if len(violations) > 0 {
-		hasGhost := false
-		for _, v := range violations {
-			if strings.Contains(v.Message, "ghost") {
-				hasGhost = true
-				break
-			}
-		}
-		if !hasGhost {
-			// That's OK - may detect different issues
-		}
-	}
+	// Should detect ghost as phantom or unlisted. The exact violation kind is
+	// not asserted — different rule paths may flag this as phantom or unlisted
+	// — we just exercise the code path here.
+	_ = violations
 }
 
 // =============================================================================

@@ -65,7 +65,7 @@ func (w *JsonlWriter) Deliver(_ context.Context, e Event) error {
 	if err != nil {
 		return fmt.Errorf("open jsonl file %s: %w", w.path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.Write(append(line, '\n')); err != nil {
 		return fmt.Errorf("append jsonl line: %w", err)

@@ -630,7 +630,7 @@ func TestAppendIfPartialDest_RemovesExistingFile(t *testing.T) {
 func TestAppendIfPartialDest_SkipsDirectory(t *testing.T) {
 	tmp := t.TempDir()
 	dir := filepath.Join(tmp, "subdir")
-	os.MkdirAll(dir, 0o755)
+	_ = os.MkdirAll(dir, 0o755)
 	actions := appendIfPartialDest(nil, dir)
 	if len(actions) != 0 {
 		t.Errorf("directory: expected no actions, got %v", actions)
@@ -741,12 +741,12 @@ func TestAppendCheckoutsForResults_GitRepoRevertsFile(t *testing.T) {
 	// Set up a real git repo with a committed file, then modify it
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("original"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("original"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Modify the file
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("modified"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("modified"), 0o644)
 
 	results := []LinkUpdateResult{
 		{RepoPath: repoRoot, Updated: []string{"spec/ideas/foo.md"}},
@@ -791,12 +791,12 @@ func TestExecuteCommitPhase_NonGitRepoPassesThrough(t *testing.T) {
 func TestExecuteCommitPhase_CommitNoStagesOnly(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Add a new file to stage
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "new.md"), []byte("new"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "new.md"), []byte("new"), 0o644)
 
 	changes := []RepoChange{
 		{
@@ -831,12 +831,12 @@ func TestExecuteCommitPhase_CommitNoStagesOnly(t *testing.T) {
 func TestExecuteCommitPhase_CommitAutoCreatesCommit(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Add a new file to commit
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "bar.md"), []byte("bar"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "bar.md"), []byte("bar"), 0o644)
 
 	changes := []RepoChange{
 		{
@@ -877,22 +877,22 @@ func TestExecuteCommitPhase_FailureMidFlight(t *testing.T) {
 	tmp := t.TempDir()
 	// First repo: will succeed
 	repo1 := filepath.Join(tmp, "repo1")
-	os.MkdirAll(filepath.Join(repo1, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repo1, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repo1, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repo1, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
 	initGitRepo(t, repo1)
-	os.WriteFile(filepath.Join(repo1, "spec", "ideas", "new.md"), []byte("new1"), 0o644)
+	_ = os.WriteFile(filepath.Join(repo1, "spec", "ideas", "new.md"), []byte("new1"), 0o644)
 
 	// Second repo: commit will fail because nothing to commit (paths don't exist)
 	repo2 := filepath.Join(tmp, "repo2")
-	os.MkdirAll(filepath.Join(repo2, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repo2, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repo2, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repo2, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
 	initGitRepo(t, repo2)
 	// Don't add a new file — commit will fail "nothing to commit"
 
 	// Third repo: unprocessed
 	repo3 := filepath.Join(tmp, "repo3")
-	os.MkdirAll(filepath.Join(repo3, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repo3, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repo3, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repo3, "spec", "ideas", "foo.md"), []byte("body"), 0o644)
 	initGitRepo(t, repo3)
 
 	changes := []RepoChange{
@@ -953,8 +953,8 @@ func TestStagePaths_NonGitRepoSkipped(t *testing.T) {
 func TestStagePaths_EmptyPathsSkipped(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(repoRoot, 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
+	_ = os.MkdirAll(repoRoot, 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	err := stagePaths(repoRoot, nil)
@@ -966,12 +966,12 @@ func TestStagePaths_EmptyPathsSkipped(t *testing.T) {
 func TestStagePaths_StagesFile(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "init.md"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "init.md"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Add a new file
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "new.md"), []byte("new"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "new.md"), []byte("new"), 0o644)
 	err := stagePaths(repoRoot, []string{"spec/ideas/new.md"})
 	if err != nil {
 		t.Fatalf("stagePaths: %v", err)
@@ -989,13 +989,13 @@ func TestStagePaths_StagesFile(t *testing.T) {
 func TestCommitRepo_Success(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Add and stage a new file
-	os.WriteFile(filepath.Join(repoRoot, "spec", "y.md"), []byte("y"), 0o644)
-	exec.Command("git", "-C", repoRoot, "add", "spec/y.md").Run()
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "y.md"), []byte("y"), 0o644)
+	_ = exec.Command("git", "-C", repoRoot, "add", "spec/y.md").Run()
 
 	sha, stderr, err := commitRepo(repoRoot, "test commit")
 	if err != nil {
@@ -1012,8 +1012,8 @@ func TestCommitRepo_Success(t *testing.T) {
 func TestCommitRepo_FailureNothingToCommit(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(repoRoot, 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "file"), []byte("x"), 0o644)
+	_ = os.MkdirAll(repoRoot, 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "file"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Nothing staged → commit will fail
@@ -1104,8 +1104,8 @@ func TestExecutePreCommitPhase_NonConflictFailureRollback(t *testing.T) {
 	// Unexpected error (not Conflict) during os.ReadFile.
 	sourcePath := filepath.Join(source, "spec", "ideas", "rollback-test.md")
 	// Remove read permissions
-	os.Chmod(sourcePath, 0o000)
-	defer os.Chmod(sourcePath, 0o644)
+	_ = os.Chmod(sourcePath, 0o000)
+	defer func() { _ = os.Chmod(sourcePath, 0o644) }()
 
 	artifact := SourceArtifact{
 		Path: sourcePath,
@@ -1139,8 +1139,8 @@ func TestApplyMutation_SourceFileUnreadable(t *testing.T) {
 
 	writeIdea(t, source, "unreadable", "body")
 	sourcePath := filepath.Join(source, "spec", "ideas", "unreadable.md")
-	os.Chmod(sourcePath, 0o000)
-	defer os.Chmod(sourcePath, 0o644)
+	_ = os.Chmod(sourcePath, 0o000)
+	defer func() { _ = os.Chmod(sourcePath, 0o644) }()
 
 	artifact := SourceArtifact{Path: sourcePath, Kind: KindIdea}
 	targetRepo := TargetRepo{Path: target, RepoName: "tgt", Org: "tgt"}
@@ -1167,8 +1167,8 @@ func TestApplyMutation_DestDirUnwritable(t *testing.T) {
 
 	// Make the target spec/ideas dir unwritable so MkdirAll/WriteFile fails
 	destDir := filepath.Join(target, "spec", "ideas")
-	os.Chmod(destDir, 0o555)
-	defer os.Chmod(destDir, 0o755)
+	_ = os.Chmod(destDir, 0o555)
+	defer func() { _ = os.Chmod(destDir, 0o755) }()
 
 	artifact := SourceArtifact{
 		Path: filepath.Join(source, "spec", "ideas", "unwritable.md"),
@@ -1223,7 +1223,7 @@ func TestDiscoverSiblings_SkipsNonDirs(t *testing.T) {
 	parent := t.TempDir()
 	stageRepo(t, parent, "real", "real")
 	// Create a regular file in parent (not a dir)
-	os.WriteFile(filepath.Join(parent, "just-a-file.txt"), []byte("hi"), 0o644)
+	_ = os.WriteFile(filepath.Join(parent, "just-a-file.txt"), []byte("hi"), 0o644)
 
 	specRoot := filepath.Join(parent, "real")
 	sibs, err := DiscoverSiblings(specRoot)
@@ -1244,8 +1244,8 @@ func TestAppendCheckoutsForResults_GitCheckoutFailure(t *testing.T) {
 	// Create a git repo with a committed file, then try to checkout a non-existent path
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	results := []LinkUpdateResult{
@@ -1265,12 +1265,12 @@ func TestAppendCheckoutsForResults_GitCheckoutFailure(t *testing.T) {
 func TestAppendIfPartialDest_RemoveFailure(t *testing.T) {
 	tmp := t.TempDir()
 	subdir := filepath.Join(tmp, "locked")
-	os.MkdirAll(subdir, 0o755)
+	_ = os.MkdirAll(subdir, 0o755)
 	path := filepath.Join(subdir, "file.md")
-	os.WriteFile(path, []byte("data"), 0o644)
+	_ = os.WriteFile(path, []byte("data"), 0o644)
 	// Remove write permission from parent dir to prevent deletion
-	os.Chmod(subdir, 0o555)
-	defer os.Chmod(subdir, 0o755)
+	_ = os.Chmod(subdir, 0o555)
+	defer func() { _ = os.Chmod(subdir, 0o755) }()
 
 	actions := appendIfPartialDest(nil, path)
 	if len(actions) != 1 {
@@ -1287,9 +1287,9 @@ func TestAppendIfSourceMissing_DirCreationFailure(t *testing.T) {
 	tmp := t.TempDir()
 	// Make the tmp dir read-only so MkdirAll fails for deep path
 	lockedDir := filepath.Join(tmp, "locked")
-	os.MkdirAll(lockedDir, 0o755)
-	os.Chmod(lockedDir, 0o555)
-	defer os.Chmod(lockedDir, 0o755)
+	_ = os.MkdirAll(lockedDir, 0o755)
+	_ = os.Chmod(lockedDir, 0o555)
+	defer func() { _ = os.Chmod(lockedDir, 0o755) }()
 
 	path := filepath.Join(lockedDir, "deep", "nested", "source.md")
 	body := []byte("restore me")
@@ -1308,8 +1308,8 @@ func TestAppendIfSourceMissing_DirCreationFailure(t *testing.T) {
 func TestStagePaths_InvalidPathReturnsError(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(repoRoot, 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
+	_ = os.MkdirAll(repoRoot, 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Staging a path with invalid characters that causes git add to fail
@@ -1356,7 +1356,7 @@ func TestReadSelfAsSibling_NoYaml(t *testing.T) {
 func TestReadSelfAsSibling_MalformedYaml(t *testing.T) {
 	tmp := t.TempDir()
 	// Write malformed yaml
-	os.WriteFile(filepath.Join(tmp, "specscore.yaml"), []byte("{{invalid yaml"), 0o644)
+	_ = os.WriteFile(filepath.Join(tmp, "specscore.yaml"), []byte("{{invalid yaml"), 0o644)
 	result, err := readSelfAsSibling(tmp)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1383,12 +1383,12 @@ func TestExecutePreCommitPhase_LinkUpdateErrorTriggersRollback(t *testing.T) {
 
 	// Create a scanRepo that has an unreadable spec dir to force walk error
 	badRepo := filepath.Join(parent, "bad-repo")
-	os.MkdirAll(filepath.Join(badRepo, "spec"), 0o755)
-	os.WriteFile(filepath.Join(badRepo, "specscore.yaml"), []byte("project:\n  repo: bad\n  org: bad\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(badRepo, "spec"), 0o755)
+	_ = os.WriteFile(filepath.Join(badRepo, "specscore.yaml"), []byte("project:\n  repo: bad\n  org: bad\n"), 0o644)
 
 	// Make the spec dir itself unreadable after staging so Walk returns error
-	os.Chmod(filepath.Join(badRepo, "spec"), 0o000)
-	defer os.Chmod(filepath.Join(badRepo, "spec"), 0o755)
+	_ = os.Chmod(filepath.Join(badRepo, "spec"), 0o000)
+	defer func() { _ = os.Chmod(filepath.Join(badRepo, "spec"), 0o755) }()
 
 	badTarget := TargetRepo{Path: badRepo, RepoName: "bad", Org: "bad"}
 
@@ -1426,8 +1426,8 @@ func TestApplyMutation_SourceRemoveFailure(t *testing.T) {
 	writeIdea(t, source, "rm-fail", "# Idea: rm-fail\n")
 	// Make the source ideas dir unwritable so os.Remove will fail
 	sourceDir := filepath.Join(source, "spec", "ideas")
-	os.Chmod(sourceDir, 0o555)
-	defer os.Chmod(sourceDir, 0o755)
+	_ = os.Chmod(sourceDir, 0o555)
+	defer func() { _ = os.Chmod(sourceDir, 0o755) }()
 
 	artifact := SourceArtifact{
 		Path: filepath.Join(source, "spec", "ideas", "rm-fail.md"),
@@ -1502,19 +1502,19 @@ func TestFindReferences_NoSpecDir(t *testing.T) {
 func TestFindReferences_MatchesLinkAndMetadata(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 
 	// File with a markdown link to the slug
 	linkFile := filepath.Join(specDir, "other.md")
-	os.WriteFile(linkFile, []byte("See [My Idea](my-slug.md) for details.\n"), 0o644)
+	_ = os.WriteFile(linkFile, []byte("See [My Idea](my-slug.md) for details.\n"), 0o644)
 
 	// File with a metadata reference
 	metaFile := filepath.Join(specDir, "meta.md")
-	os.WriteFile(metaFile, []byte("**Source Ideas:** my-slug\n"), 0o644)
+	_ = os.WriteFile(metaFile, []byte("**Source Ideas:** my-slug\n"), 0o644)
 
 	// File without any reference
 	noRef := filepath.Join(specDir, "unrelated.md")
-	os.WriteFile(noRef, []byte("# Nothing here\n"), 0o644)
+	_ = os.WriteFile(noRef, []byte("# Nothing here\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "my-slug")
 	if err != nil {
@@ -1530,10 +1530,10 @@ func TestFindReferences_MatchesLinkAndMetadata(t *testing.T) {
 func TestFindReferences_MetadataEmDashNotAHit(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 
 	file := filepath.Join(specDir, "emdash.md")
-	os.WriteFile(file, []byte("**Source Ideas:** —\n**Related Ideas:**\n"), 0o644)
+	_ = os.WriteFile(file, []byte("**Source Ideas:** —\n**Related Ideas:**\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "something")
 	if err != nil {
@@ -1549,10 +1549,10 @@ func TestFindReferences_MetadataEmDashNotAHit(t *testing.T) {
 func TestFindReferences_MetadataCommaList(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "features")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 
 	file := filepath.Join(specDir, "feature.md")
-	os.WriteFile(file, []byte("**Related Ideas:** alpha, target-slug, beta\n"), 0o644)
+	_ = os.WriteFile(file, []byte("**Related Ideas:** alpha, target-slug, beta\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "target-slug")
 	if err != nil {
@@ -1568,10 +1568,10 @@ func TestFindReferences_MetadataCommaList(t *testing.T) {
 func TestFindReferences_NonMdSkipped(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 
 	txtFile := filepath.Join(specDir, "refs.txt")
-	os.WriteFile(txtFile, []byte("**Source Ideas:** my-slug\n"), 0o644)
+	_ = os.WriteFile(txtFile, []byte("**Source Ideas:** my-slug\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "my-slug")
 	if err != nil {
@@ -1588,13 +1588,13 @@ func TestCheckPreflight_MixedCleanDirty(t *testing.T) {
 	tmp := t.TempDir()
 	// Create a git repo
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "clean.md"), []byte("committed"), 0o644)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "dirty.md"), []byte("committed"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "clean.md"), []byte("committed"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "dirty.md"), []byte("committed"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Make dirty.md dirty
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "dirty.md"), []byte("modified"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "dirty.md"), []byte("modified"), 0o644)
 
 	subjects := []PreflightSubject{
 		{RepoRoot: repoRoot, RelPath: "spec/ideas/clean.md"},
@@ -1652,8 +1652,8 @@ func TestPreflightSubjectsForRelocate_IncludesSiblingRefs(t *testing.T) {
 
 	// Create a file in sib that references the slug
 	specDir := filepath.Join(sib, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
-	os.WriteFile(filepath.Join(specDir, "ref.md"), []byte("**Source Ideas:** my-idea\n"), 0o644)
+	_ = os.MkdirAll(specDir, 0o755)
+	_ = os.WriteFile(filepath.Join(specDir, "ref.md"), []byte("**Source Ideas:** my-idea\n"), 0o644)
 
 	subjects, err := PreflightSubjectsForRelocate(
 		source, "spec/ideas/my-idea.md",
@@ -1688,8 +1688,8 @@ func TestUpdateCrossRepoLinks_InRepoRelativePath(t *testing.T) {
 
 	// Create a file that links to the slug
 	specDir := filepath.Join(repo, "spec", "features")
-	os.MkdirAll(specDir, 0o755)
-	os.WriteFile(filepath.Join(specDir, "feature.md"),
+	_ = os.MkdirAll(specDir, 0o755)
+	_ = os.WriteFile(filepath.Join(specDir, "feature.md"),
 		[]byte("Related: [My Idea](../ideas/old-slug.md)\n"), 0o644)
 
 	targetRepo := TargetRepo{Path: repo, RepoName: "myrepo", Org: "myorg"}
@@ -1722,8 +1722,8 @@ func TestUpdateCrossRepoLinks_CrossRepoGitHubURL(t *testing.T) {
 
 	// Create a file in source that links to the slug
 	specDir := filepath.Join(sourceRepo, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
-	os.WriteFile(filepath.Join(specDir, "other.md"),
+	_ = os.MkdirAll(specDir, 0o755)
+	_ = os.WriteFile(filepath.Join(specDir, "other.md"),
 		[]byte("See [Idea](my-slug.md) for info.\n"), 0o644)
 
 	sourceTarget := TargetRepo{Path: sourceRepo, RepoName: "source", Org: "myorg"}
@@ -1756,9 +1756,9 @@ func TestUpdateCrossRepoLinks_MetadataLinesPreserved(t *testing.T) {
 	repo := stageRepo(t, parent, "repo", "repo")
 
 	specDir := filepath.Join(repo, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 	originalContent := "**Source Ideas:** my-slug\n[Link](my-slug.md)\n"
-	os.WriteFile(filepath.Join(specDir, "mixed.md"), []byte(originalContent), 0o644)
+	_ = os.WriteFile(filepath.Join(specDir, "mixed.md"), []byte(originalContent), 0o644)
 
 	targetRepo := TargetRepo{Path: repo, RepoName: "repo", Org: "org"}
 	results, err := UpdateCrossRepoLinks(
@@ -1783,7 +1783,7 @@ func TestResolveTargetRepo_PathForm_FileNotDir(t *testing.T) {
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	filePath := filepath.Join(parent, "just-a-file")
-	os.WriteFile(filePath, []byte("not a dir"), 0o644)
+	_ = os.WriteFile(filePath, []byte("not a dir"), 0o644)
 
 	_, err := ResolveTargetRepo(source, filePath)
 	if err == nil {
@@ -1803,8 +1803,8 @@ func TestResolveTargetRepo_PathForm_FileNotDir(t *testing.T) {
 func TestExecuteCommitPhase_StagingFailureReturnsError(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(repoRoot, 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
+	_ = os.MkdirAll(repoRoot, 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "dummy"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	changes := []RepoChange{
@@ -1853,8 +1853,8 @@ func TestDiscoverSiblings_MalformedYamlSiblingIgnored(t *testing.T) {
 	stageRepo(t, parent, "good", "good")
 	// Sibling with malformed yaml
 	badDir := filepath.Join(parent, "bad")
-	os.MkdirAll(badDir, 0o755)
-	os.WriteFile(filepath.Join(badDir, "specscore.yaml"), []byte("{{invalid yaml content"), 0o644)
+	_ = os.MkdirAll(badDir, 0o755)
+	_ = os.WriteFile(filepath.Join(badDir, "specscore.yaml"), []byte("{{invalid yaml content"), 0o644)
 
 	specRoot := filepath.Join(parent, "good")
 	sibs, err := DiscoverSiblings(specRoot)
@@ -1919,12 +1919,12 @@ func TestAppendIfSourceMissing_WriteFileFailure(t *testing.T) {
 	tmp := t.TempDir()
 	// Create the parent dir but make it read-only
 	parentDir := filepath.Join(tmp, "readonly")
-	os.MkdirAll(parentDir, 0o755)
+	_ = os.MkdirAll(parentDir, 0o755)
 	path := filepath.Join(parentDir, "source.md")
 	body := []byte("original content")
 	// Remove the dir's write permission so WriteFile fails
-	os.Chmod(parentDir, 0o555)
-	defer os.Chmod(parentDir, 0o755)
+	_ = os.Chmod(parentDir, 0o555)
+	defer func() { _ = os.Chmod(parentDir, 0o755) }()
 
 	actions := appendIfSourceMissing(nil, path, body)
 	if len(actions) != 1 {
@@ -1941,14 +1941,14 @@ func TestIsPathClean_GitStatusError(t *testing.T) {
 	// Create a git repo then make git status fail by corrupting the .git dir
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "x.md"), []byte("x"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	// Corrupt the .git directory by making HEAD unreadable
 	headPath := filepath.Join(repoRoot, ".git", "HEAD")
-	os.Chmod(headPath, 0o000)
-	defer os.Chmod(headPath, 0o644)
+	_ = os.Chmod(headPath, 0o000)
+	defer func() { _ = os.Chmod(headPath, 0o644) }()
 
 	_, err := IsPathClean(repoRoot, "spec/x.md")
 	// This may or may not error depending on how git handles the corruption.
@@ -1973,7 +1973,7 @@ func TestResolveTargetRepo_AbsolutePathForm(t *testing.T) {
 func TestResolveTargetRepo_PathNoYaml(t *testing.T) {
 	parent := t.TempDir()
 	emptyDir := filepath.Join(parent, "empty")
-	os.MkdirAll(emptyDir, 0o755)
+	_ = os.MkdirAll(emptyDir, 0o755)
 
 	_, err := ResolveTargetRepo(parent, emptyDir)
 	if err == nil {
@@ -2023,7 +2023,7 @@ func TestResolveTargetRepo_Empty(t *testing.T) {
 func TestUpdateCrossRepoLinks_NoSpecDirSkipped(t *testing.T) {
 	parent := t.TempDir()
 	noSpecRepo := filepath.Join(parent, "norepo")
-	os.MkdirAll(noSpecRepo, 0o755)
+	_ = os.MkdirAll(noSpecRepo, 0o755)
 
 	targetRepo := TargetRepo{Path: noSpecRepo, RepoName: "norepo", Org: "org"}
 	results, err := UpdateCrossRepoLinks(
@@ -2043,10 +2043,10 @@ func TestUpdateCrossRepoLinks_NoSpecDirSkipped(t *testing.T) {
 func TestFindReferences_LinkWithPathPrefix(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec", "features")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 
 	// Link with a path prefix
-	os.WriteFile(filepath.Join(specDir, "feature.md"),
+	_ = os.WriteFile(filepath.Join(specDir, "feature.md"),
 		[]byte("See [the idea](../ideas/target-slug.md) for context.\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "target-slug")
@@ -2070,8 +2070,8 @@ func TestApplyMutation_StatDestPermissionDenied(t *testing.T) {
 	// Make the target ideas directory unreadable so os.Stat on the dest path
 	// returns a permission error (not IsNotExist).
 	destDir := filepath.Join(target, "spec", "ideas")
-	os.Chmod(destDir, 0o000)
-	defer os.Chmod(destDir, 0o755)
+	_ = os.Chmod(destDir, 0o000)
+	defer func() { _ = os.Chmod(destDir, 0o755) }()
 
 	artifact := SourceArtifact{
 		Path: filepath.Join(source, "spec", "ideas", "perm-test.md"),
@@ -2131,8 +2131,8 @@ func TestResolveTargetRepo_RelativePathForm(t *testing.T) {
 func TestResolveTargetRepo_PathMalformedYaml(t *testing.T) {
 	parent := t.TempDir()
 	badDir := filepath.Join(parent, "bad")
-	os.MkdirAll(badDir, 0o755)
-	os.WriteFile(filepath.Join(badDir, "specscore.yaml"), []byte("{{invalid"), 0o644)
+	_ = os.MkdirAll(badDir, 0o755)
+	_ = os.WriteFile(filepath.Join(badDir, "specscore.yaml"), []byte("{{invalid"), 0o644)
 
 	_, err := ResolveTargetRepo(".", badDir)
 	if err == nil {
@@ -2152,9 +2152,9 @@ func TestResolveTargetRepo_PathMalformedYaml(t *testing.T) {
 func TestCheckPreflight_AllCleanGitRepo(t *testing.T) {
 	tmp := t.TempDir()
 	repoRoot := filepath.Join(tmp, "repo")
-	os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "a.md"), []byte("a"), 0o644)
-	os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "b.md"), []byte("b"), 0o644)
+	_ = os.MkdirAll(filepath.Join(repoRoot, "spec", "ideas"), 0o755)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "a.md"), []byte("a"), 0o644)
+	_ = os.WriteFile(filepath.Join(repoRoot, "spec", "ideas", "b.md"), []byte("b"), 0o644)
 	initGitRepo(t, repoRoot)
 
 	subjects := []PreflightSubject{
@@ -2214,10 +2214,10 @@ func TestUpdateCrossRepoLinks_FileWriteError(t *testing.T) {
 
 	// Create a file with a link reference
 	featureDir := filepath.Join(repo, "spec", "features")
-	os.MkdirAll(featureDir, 0o755)
+	_ = os.MkdirAll(featureDir, 0o755)
 	filePath := filepath.Join(featureDir, "readonly.md")
-	os.WriteFile(filePath, []byte("[Link](my-slug.md)\n"), 0o444)
-	defer os.Chmod(filePath, 0o644)
+	_ = os.WriteFile(filePath, []byte("[Link](my-slug.md)\n"), 0o444)
+	defer func() { _ = os.Chmod(filePath, 0o644) }()
 
 	targetRepo := TargetRepo{Path: repo, RepoName: "repo", Org: "org"}
 	_, err := UpdateCrossRepoLinks(
@@ -2236,8 +2236,8 @@ func TestUpdateCrossRepoLinks_NoMatchingLinks(t *testing.T) {
 	repo := stageRepo(t, parent, "repo", "repo")
 
 	specDir := filepath.Join(repo, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
-	os.WriteFile(filepath.Join(specDir, "no-match.md"),
+	_ = os.MkdirAll(specDir, 0o755)
+	_ = os.WriteFile(filepath.Join(specDir, "no-match.md"),
 		[]byte("No links here. Just text about other-slug.\n"), 0o644)
 
 	targetRepo := TargetRepo{Path: repo, RepoName: "repo", Org: "org"}
@@ -2260,8 +2260,8 @@ func TestUpdateCrossRepoLinks_NoMatchingLinks(t *testing.T) {
 func TestFindReferences_SubdirectoryTraversal(t *testing.T) {
 	tmp := t.TempDir()
 	deepDir := filepath.Join(tmp, "spec", "features", "auth", "sub")
-	os.MkdirAll(deepDir, 0o755)
-	os.WriteFile(filepath.Join(deepDir, "deep.md"),
+	_ = os.MkdirAll(deepDir, 0o755)
+	_ = os.WriteFile(filepath.Join(deepDir, "deep.md"),
 		[]byte("**Promotes To:** deep-slug\n"), 0o644)
 
 	hits, err := FindReferences(tmp, "deep-slug")
@@ -2337,9 +2337,9 @@ func TestResolveTargetRepo_PathStatErrorNonENOENT(t *testing.T) {
 
 	// Create a directory, then make it non-traversable so Stat fails with EACCES
 	targetDir := filepath.Join(parent, "restricted")
-	os.MkdirAll(filepath.Join(targetDir, "inner"), 0o755)
-	os.Chmod(targetDir, 0o000)
-	defer os.Chmod(targetDir, 0o755)
+	_ = os.MkdirAll(filepath.Join(targetDir, "inner"), 0o755)
+	_ = os.Chmod(targetDir, 0o000)
+	defer func() { _ = os.Chmod(targetDir, 0o755) }()
 
 	_, err := ResolveTargetRepo(source, filepath.Join(targetDir, "inner"))
 	if err == nil {
@@ -2363,10 +2363,10 @@ func TestResolveTargetRepo_PathYamlReadError(t *testing.T) {
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	badDir := filepath.Join(parent, "badyaml")
-	os.MkdirAll(badDir, 0o755)
+	_ = os.MkdirAll(badDir, 0o755)
 	// Write a specscore.yaml that exists but is unreadable
 	yamlPath := filepath.Join(badDir, "specscore.yaml")
-	os.WriteFile(yamlPath, []byte("{{malformed"), 0o644)
+	_ = os.WriteFile(yamlPath, []byte("{{malformed"), 0o644)
 
 	_, err := ResolveTargetRepo(source, badDir)
 	if err == nil {
@@ -2381,11 +2381,11 @@ func TestUpdateCrossRepoLinks_UnreadableSpecFile(t *testing.T) {
 	repo := stageRepo(t, parent, "repo", "repo")
 
 	specDir := filepath.Join(repo, "spec", "ideas")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 	unreadable := filepath.Join(specDir, "secret.md")
-	os.WriteFile(unreadable, []byte("[Link](foo.md)"), 0o644)
-	os.Chmod(unreadable, 0o000)
-	defer os.Chmod(unreadable, 0o644)
+	_ = os.WriteFile(unreadable, []byte("[Link](foo.md)"), 0o644)
+	_ = os.Chmod(unreadable, 0o000)
+	defer func() { _ = os.Chmod(unreadable, 0o644) }()
 
 	targetRepo := TargetRepo{Path: repo, RepoName: "repo", Org: "org"}
 	results, err := UpdateCrossRepoLinks(
@@ -2403,13 +2403,13 @@ func TestUpdateCrossRepoLinks_UnreadableSpecFile(t *testing.T) {
 func TestFindReferences_WalkError(t *testing.T) {
 	tmp := t.TempDir()
 	specDir := filepath.Join(tmp, "spec")
-	os.MkdirAll(specDir, 0o755)
+	_ = os.MkdirAll(specDir, 0o755)
 	// Create a subdirectory that's unreadable
 	badSubDir := filepath.Join(specDir, "locked")
-	os.MkdirAll(badSubDir, 0o755)
-	os.WriteFile(filepath.Join(badSubDir, "file.md"), []byte("**Source Ideas:** slug\n"), 0o644)
-	os.Chmod(badSubDir, 0o000)
-	defer os.Chmod(badSubDir, 0o755)
+	_ = os.MkdirAll(badSubDir, 0o755)
+	_ = os.WriteFile(filepath.Join(badSubDir, "file.md"), []byte("**Source Ideas:** slug\n"), 0o644)
+	_ = os.Chmod(badSubDir, 0o000)
+	defer func() { _ = os.Chmod(badSubDir, 0o755) }()
 
 	hits, err := FindReferences(tmp, "slug")
 	// Walk skips unreadable dirs; the func returns nil error
@@ -2430,20 +2430,20 @@ func TestApplyMutation_DestDirCreationError(t *testing.T) {
 
 	// Make the target's spec dir non-writable so MkdirAll for seeds fails
 	seedDir := filepath.Join(target, "spec", "ideas", "seeds")
-	os.RemoveAll(seedDir) // remove seeds dir if it exists
+	_ = os.RemoveAll(seedDir) // remove seeds dir if it exists
 
 	artifact := SourceArtifact{
 		Path: filepath.Join(source, "spec", "ideas", "seeds", "dest-err.md"),
 		Kind: KindSeed,
 	}
 	// Write the seed file
-	os.MkdirAll(filepath.Join(source, "spec", "ideas", "seeds"), 0o755)
-	os.WriteFile(artifact.Path, []byte("# Seed: dest-err\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(source, "spec", "ideas", "seeds"), 0o755)
+	_ = os.WriteFile(artifact.Path, []byte("# Seed: dest-err\n"), 0o644)
 
 	// Make target's ideas dir read-only so seeds dir can't be created
 	targetIdeasDir := filepath.Join(target, "spec", "ideas")
-	os.Chmod(targetIdeasDir, 0o555)
-	defer os.Chmod(targetIdeasDir, 0o755)
+	_ = os.Chmod(targetIdeasDir, 0o555)
+	defer func() { _ = os.Chmod(targetIdeasDir, 0o755) }()
 
 	targetRepo := TargetRepo{Path: target, RepoName: "tgt", Org: "tgt"}
 	_, err := ApplyMutation(source, artifact, targetRepo)

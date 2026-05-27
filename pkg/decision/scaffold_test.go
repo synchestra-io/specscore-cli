@@ -35,7 +35,7 @@ func TestValidateSlug(t *testing.T) {
 func TestNextNumber(t *testing.T) {
 	t.Run("empty dir returns 1", func(t *testing.T) {
 		root := t.TempDir()
-		os.MkdirAll(filepath.Join(root, "decisions"), 0o755)
+		_ = os.MkdirAll(filepath.Join(root, "decisions"), 0o755)
 		n, err := NextNumber(root)
 		if err != nil {
 			t.Fatal(err)
@@ -47,9 +47,9 @@ func TestNextNumber(t *testing.T) {
 
 	t.Run("considers archived", func(t *testing.T) {
 		root := t.TempDir()
-		os.MkdirAll(filepath.Join(root, "decisions", "archived"), 0o755)
-		os.WriteFile(filepath.Join(root, "decisions", "0001-a.md"), []byte("x"), 0o644)
-		os.WriteFile(filepath.Join(root, "decisions", "archived", "0003-c.md"), []byte("x"), 0o644)
+		_ = os.MkdirAll(filepath.Join(root, "decisions", "archived"), 0o755)
+		_ = os.WriteFile(filepath.Join(root, "decisions", "0001-a.md"), []byte("x"), 0o644)
+		_ = os.WriteFile(filepath.Join(root, "decisions", "archived", "0003-c.md"), []byte("x"), 0o644)
 		n, err := NextNumber(root)
 		if err != nil {
 			t.Fatal(err)
