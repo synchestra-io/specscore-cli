@@ -48,6 +48,7 @@ func initLocalGitRepo(t *testing.T, dir, originURL string) {
 		{"init"},
 		{"config", "user.email", "test@example.com"},
 		{"config", "user.name", "Test"},
+		{"config", "commit.gpgsign", "false"},
 	} {
 		c := exec.Command("git", append([]string{"-C", dir}, args...)...)
 		if out, err := c.CombinedOutput(); err != nil {

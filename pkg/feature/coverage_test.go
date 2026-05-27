@@ -2362,6 +2362,9 @@ func TestFindFeatureRefs_DiscoverError(t *testing.T) {
 }
 
 func TestFindLinkedPlans_WalkError2(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root, _ := setupSpecRepo(t, map[string]string{
 		"auth": "# Auth\n**Status:** Approved\n",
 	}, map[string]string{
@@ -2529,6 +2532,9 @@ func TestParseDependencies_EmptyBulletItem(t *testing.T) {
 // =============================================================================
 
 func TestFindFeatureRefs_UnreadableFeature(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := setupTestFeatures(t, map[string]string{
 		"auth": "# Auth\n\n**Status:** Approved\n\n## Dependencies\n\n## Open Questions\n\nNone.\n",
 		"bad":  "# Bad\n\n**Status:** Draft\n\n## Dependencies\n\n- auth\n\n## Open Questions\n\nNone.\n",
@@ -2593,6 +2599,9 @@ func TestUpdateFeatureIndex_EmptyStatus(t *testing.T) {
 // =============================================================================
 
 func TestDiscoverChildFeatures_UnreadableReadme(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := setupTestFeatures(t, map[string]string{
 		"parent":       "# Feature: Parent\n\n**Status:** Draft\n",
 		"parent/child": "# Feature: Child\n\n**Status:** Draft\n",
@@ -2700,6 +2709,9 @@ func TestGetInfo_SectionsError(t *testing.T) {
 }
 
 func TestGetInfo_StatusError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	_, featDir := setupSpecRepo(t, map[string]string{
 		"unreadable": "# Feature: Unreadable\n\n**Status:** Draft\n",
 	}, nil)
@@ -2734,6 +2746,9 @@ func TestGetInfo_DependenciesError(t *testing.T) {
 }
 
 func TestResolveFields_RefsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	// Create a features dir that causes FindFeatureRefs → Discover to fail.
 	featDir := t.TempDir()
 	authDir := filepath.Join(featDir, "auth")
@@ -2763,6 +2778,9 @@ func TestResolveFields_RefsError(t *testing.T) {
 }
 
 func TestResolveFields_QuestionsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := t.TempDir()
 	// Create a feature with unreadable README for questions parsing
 	authDir := filepath.Join(featDir, "auth")
@@ -2838,6 +2856,9 @@ func TestFindLinkedPlans_PlansRootReadmeAndNonReadme(t *testing.T) {
 // =============================================================================
 
 func TestNew_MkdirAllError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := t.TempDir()
 	// Make the features dir read-only so MkdirAll fails.
 	if err := os.Chmod(featDir, 0o555); err != nil {
@@ -2877,6 +2898,9 @@ func TestNew_WriteFileError(t *testing.T) {
 // =============================================================================
 
 func TestNew_UpdateParentContentsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := setupTestFeatures(t, map[string]string{
 		"parent": "# Feature: Parent\n\n**Status:** Stable\n\n## Summary\n\nParent.\n",
 	})
@@ -2901,6 +2925,9 @@ func TestNew_UpdateParentContentsError(t *testing.T) {
 // =============================================================================
 
 func TestNew_UpdateFeatureIndexError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := t.TempDir()
 	// Create an unreadable features index.
 	indexPath := filepath.Join(featDir, "README.md")
@@ -2949,6 +2976,9 @@ func TestNew_ParseSectionsError(t *testing.T) {
 // =============================================================================
 
 func TestUpdateParentContents_WriteFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "README.md")
 	if err := os.WriteFile(path, []byte("# Feature: Parent\n\n## Summary\n\nA parent.\n"), 0o644); err != nil {
@@ -2971,6 +3001,9 @@ func TestUpdateParentContents_WriteFileError(t *testing.T) {
 // =============================================================================
 
 func TestUpdateFeatureIndex_WriteFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	dir := t.TempDir()
 	indexPath := filepath.Join(dir, "README.md")
 	content := "# Features\n\n| Feature | Status |\n|---|---|\n"
@@ -2994,6 +3027,9 @@ func TestUpdateFeatureIndex_WriteFileError(t *testing.T) {
 // =============================================================================
 
 func TestDiscover_UnreadableDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	featDir := filepath.Join(root, "features")
 	if err := os.MkdirAll(featDir, 0o755); err != nil {
@@ -3016,6 +3052,9 @@ func TestDiscover_UnreadableDir(t *testing.T) {
 // =============================================================================
 
 func TestDiscover_UnreadableSubdir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := t.TempDir()
 	authDir := filepath.Join(featDir, "auth")
 	if err := os.MkdirAll(authDir, 0o755); err != nil {
@@ -3100,6 +3139,9 @@ func TestParseContentsTable_NonexistentFile(t *testing.T) {
 // =============================================================================
 
 func TestNew_WriteFileErrorViaDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	featDir := t.TempDir()
 	// We need MkdirAll to succeed but WriteFile to fail.
 	// Create the target dir first, then make it read-only before New runs.

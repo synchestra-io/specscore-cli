@@ -10,6 +10,9 @@ import (
 // fpRel is filepath.Rel; tests can replace it to simulate Rel failures.
 var fpRel = filepath.Rel
 
+// filepathWalkFn is a testable indirection for filepath.Walk.
+var filepathWalkFn = filepath.Walk
+
 // Discovered summarizes one file that declares `type: issue` in its
 // YAML frontmatter, regardless of whether its path matches PathPatterns.
 type Discovered struct {
@@ -44,7 +47,7 @@ func DiscoverAll(specRoot string) ([]Discovered, error) {
 	}
 
 	var out []Discovered
-	walkErr := filepath.Walk(specRoot, func(path string, info os.FileInfo, walkErr error) error {
+	walkErr := filepathWalkFn(specRoot, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}

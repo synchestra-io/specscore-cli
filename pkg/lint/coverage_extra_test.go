@@ -668,6 +668,9 @@ func TestIdeaRules_IdeaMissingHMW(t *testing.T) {
 // =============================================================================
 
 func TestCheckIdeas_FindIdeaDirsError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -690,6 +693,9 @@ func TestCheckIdeas_FindIdeaDirsError(t *testing.T) {
 // =============================================================================
 
 func TestCheckIdeas_MisplacedIdeaWalkError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -716,6 +722,9 @@ func TestCheckIdeas_MisplacedIdeaWalkError(t *testing.T) {
 // =============================================================================
 
 func TestCheckIdeas_DiscoverError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -750,6 +759,9 @@ func TestCheckIdeas_DiscoverError(t *testing.T) {
 // =============================================================================
 
 func TestCheckIdeas_ParseErrorPermission(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := writeSpec(t, map[string]string{
 		"ideas/README.md":     activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/unreadable.md": "# Idea: Unreadable\n",
@@ -817,6 +829,9 @@ func TestIdeaRules_ArchiveReasonWithField(t *testing.T) {
 // =============================================================================
 
 func TestPlanRules_ReadDirError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	plansDir := filepath.Join(root, "plans")
 	if err := os.MkdirAll(plansDir, 0o755); err != nil {
@@ -948,6 +963,9 @@ func TestIdeaRules_SectionOrderWithExtraSection(t *testing.T) {
 // =============================================================================
 
 func TestCheckIdeas_FeatureSourceIdeasWalkError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := writeSpec(t, map[string]string{
 		"ideas/README.md": activeIndex + "\n## Open Questions\n\nNone at this time.\n\n---\n*This document follows the https://specscore.md/ideas-index-specification*\n",
 		"ideas/good.md":   validIdeaBody("Good", "Draft", nil) + "\n---\n*This document follows the https://specscore.md/idea-specification*\n",
@@ -1006,6 +1024,9 @@ Step 1.
 // =============================================================================
 
 func TestPlanRules_ParseFeatureACsUnreadable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	featureDir := filepath.Join(t.TempDir(), "features", "broken")
 	if err := os.MkdirAll(featureDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -1064,6 +1085,9 @@ Step 2.
 // =============================================================================
 
 func TestPlanRules_UnreadablePlanFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := setupSpecTree(t, map[string]string{
 		"plans/readable.md": "# Plan: Readable\n\n**Source Feature:** x\n\n## Tasks\n\n### Task 1\n\n**Verifies:** x#ac:a\n\nStep.\n",
 	})
@@ -1250,6 +1274,9 @@ func TestLint_NonExistentSpecRoot(t *testing.T) {
 // =============================================================================
 
 func TestWalkSpecDirs_WalkError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	badDir := filepath.Join(root, "bad")
 	if err := os.MkdirAll(badDir, 0o755); err != nil {
@@ -1281,6 +1308,9 @@ func TestWalkSpecDirs_WalkError(t *testing.T) {
 // =============================================================================
 
 func TestSidekickSeed_UnreadableSeedFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	specRoot := writeSpec(t, map[string]string{
 		"ideas/seeds/unreadable.md": "---\ntype: sidekick-seed\nslug: unreadable\ncaptured_at: 2026-05-18T00:00:00Z\ncaptured_by: user\ncaptured_during: null\ntrigger: user-prompt\nstatus: queued\nsynchestra_task: null\n---\n\n# Unreadable Seed\n",
 	})
@@ -1309,6 +1339,9 @@ func TestSidekickSeed_UnreadableSeedFile(t *testing.T) {
 // =============================================================================
 
 func TestSidekickSeed_ReadDirError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	specRoot := writeSpec(t, map[string]string{
 		"ideas/seeds/ok.md": "---\ntype: sidekick-seed\nslug: ok\ncaptured_at: 2026-05-18T00:00:00Z\ncaptured_by: user\ncaptured_during: null\ntrigger: user-prompt\nstatus: queued\nsynchestra_task: null\n---\n\n# OK Seed\n",
 	})

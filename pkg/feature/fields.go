@@ -87,7 +87,7 @@ func ResolveFields(featuresDir, featureID string, fields []string) (*EnrichedFea
 				ef.OQ = &n
 			}
 		case "questions":
-			qs, err := ExtractOpenQuestions(readmePath)
+			qs, err := extractOpenQuestionsFn(readmePath)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("questions: %v", err))
 			} else {
@@ -108,7 +108,7 @@ func ResolveFields(featuresDir, featureID string, fields []string) (*EnrichedFea
 				ef.Deps = d
 			}
 		case "refs":
-			r, err := FindFeatureRefs(featuresDir, featureID)
+			r, err := findFeatureRefsFn(featuresDir, featureID)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("refs: %v", err))
 			} else {

@@ -351,6 +351,9 @@ func TestChangeStatus_NoStatusLine(t *testing.T) {
 
 // Rewrite error (line 100-102) — read-only directory prevents atomic write.
 func TestChangeStatus_RewriteError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	featDir := filepath.Join(root, "spec", "features")
 	authDir := filepath.Join(featDir, "auth")

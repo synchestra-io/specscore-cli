@@ -23,8 +23,9 @@ import (
 
 // Testable indirections for file I/O.
 var (
-	readFile  = os.ReadFile
-	writeFile = os.WriteFile
+	readFile      = os.ReadFile
+	writeFile     = os.WriteFile
+	discoverAllFn = DiscoverAll
 )
 
 // PostMutationHook is called after a successful status rewrite.
@@ -115,7 +116,7 @@ func ChangeStatus(opts ChangeStatusOptions) (ChangeStatusResult, error) {
 
 	// (1) Find the issue file by slug.
 	specDir := filepath.Join(opts.SpecRoot, "spec")
-	discovered, err := DiscoverAll(specDir)
+	discovered, err := discoverAllFn(specDir)
 	if err != nil {
 		return ChangeStatusResult{}, exitcode.UnexpectedErrorf("discovering issues: %v", err)
 	}

@@ -98,7 +98,7 @@ func New(featuresDir string, opts NewOptions) (*NewResult, error) {
 	}
 
 	// Create feature directory and README.
-	if err := os.MkdirAll(featureDir, 0o755); err != nil {
+	if err := osMkdirAll(featureDir, 0o755); err != nil {
 		return nil, exitcode.UnexpectedErrorf("creating feature directory: %v", err)
 	}
 
@@ -240,7 +240,7 @@ func UpdateParentContents(parentReadmePath, childSlug, description string) (bool
 	}
 
 	result := strings.Join(lines, "\n")
-	if err := os.WriteFile(parentReadmePath, []byte(result), 0o644); err != nil {
+	if err := osWriteFile(parentReadmePath, []byte(result), 0o644); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -258,7 +258,7 @@ func UpdateParentContents(parentReadmePath, childSlug, description string) (bool
 // to a 4-cell `Feature | Status | Kind | Description` row — the historical
 // default emitted by `specscore feature new`.
 func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool, error) {
-	content, err := os.ReadFile(indexPath)
+	content, err := osReadFileFn(indexPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -305,7 +305,7 @@ func UpdateFeatureIndex(indexPath, featureID, status, description string) (bool,
 	}
 
 	result := strings.Join(lines, "\n")
-	if err := os.WriteFile(indexPath, []byte(result), 0o644); err != nil {
+	if err := osWriteFile(indexPath, []byte(result), 0o644); err != nil {
 		return false, err
 	}
 	return true, nil

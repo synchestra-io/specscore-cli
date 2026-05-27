@@ -76,7 +76,7 @@ func (c *planROIChecker) check(specRoot string) ([]Violation, error) {
 // scanROIMetadata reads the header of a plan README (lines before the first ## heading)
 // and validates Effort/Impact values if present.
 func scanROIMetadata(readmePath, relPath string) ([]Violation, error) {
-	file, err := os.Open(readmePath)
+	file, err := osOpenPlanROI(readmePath)
 	if err != nil {
 		return nil, err
 	}

@@ -39,7 +39,7 @@ func (c *planRulesChecker) check(specRoot string) ([]Violation, error) {
 		return nil, nil
 	}
 
-	entries, err := os.ReadDir(plansDir)
+	entries, err := osReadDirPlanRules(plansDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading plans dir: %w", err)
 	}
@@ -56,7 +56,7 @@ func (c *planRulesChecker) check(specRoot string) ([]Violation, error) {
 			continue
 		}
 		planPath := filepath.Join(plansDir, name)
-		p, parseErr := plan.Parse(planPath)
+		p, parseErr := planParseFn(planPath)
 		if parseErr != nil {
 			return nil, fmt.Errorf("parsing plan %s: %w", planPath, parseErr)
 		}

@@ -58,7 +58,7 @@ func runCodeDeps(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	result, err := sourceref.ScanFiles(files)
+	result, err := sourcerefScanFilesFn(files)
 	if err != nil {
 		return exitcode.UnexpectedErrorf("scanning files: %v", err)
 	}

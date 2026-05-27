@@ -316,6 +316,9 @@ func TestParseStateBytes_TypeErrorYieldsInvalidReason(t *testing.T) {
 // TestReadState_PermissionDenied covers the I/O error path where the file
 // exists but is not readable.
 func TestReadState_PermissionDenied(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root (chmod 0 has no effect as root)")
+	}
 	home := withTempHome(t)
 	dir := filepath.Join(home, ".specscore")
 	if err := os.MkdirAll(dir, installIDDirMode); err != nil {
@@ -330,6 +333,28 @@ func TestReadState_PermissionDenied(t *testing.T) {
 	_, err := ReadState()
 	if err == nil {
 		t.Error("expected error for permission-denied file")
+	}
+}
+
+// TestReadState_FileIsDirectory covers the I/O error path where the state
+// file path exists as a directory instead of a regular file. os.ReadFile
+// on a directory returns a non-ErrNotExist error, which exercises line 102.
+// This test works even when running as root.
+func TestReadState_FileIsDirectory(t *testing.T) {
+	home := withTempHome(t)
+	dir := filepath.Join(home, ".specscore")
+	if err := os.MkdirAll(dir, installIDDirMode); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Create the telemetry.yaml path as a directory instead of a file.
+	path := filepath.Join(dir, stateFilename)
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir telemetry.yaml as dir: %v", err)
+	}
+
+	_, err := ReadState()
+	if err == nil {
+		t.Error("expected error when telemetry.yaml is a directory")
 	}
 }
 
@@ -693,6 +718,9 @@ func TestEmit_SkipsNilTransmitFunc(t *testing.T) {
 // TestAtomicWriteFile_ReadOnlyDir covers the CreateTemp failure when the
 // directory is read-only.
 func TestAtomicWriteFile_ReadOnlyDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o500); err != nil {
 		t.Fatalf("chmod: %v", err)

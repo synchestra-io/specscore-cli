@@ -108,6 +108,9 @@ func TestReadSpecConfig_InvalidYAML(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWriteSpecConfig_NonWritableDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o500); err != nil {
 		t.Fatalf("chmod: %v", err)

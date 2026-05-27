@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+// osReadDirFn is a testable indirection for os.ReadDir.
+var osReadDirFn = os.ReadDir
+
+// filepathWalkFn is a testable indirection for filepath.Walk.
+var filepathWalkFn = filepath.Walk
+
 // Discovered is a summary of an Idea file found during discovery.
 type Discovered struct {
 	Slug       string
@@ -29,7 +35,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 
 	var out []Discovered
 	// Active: direct children *.md (exclude README.md).
-	entries, err := os.ReadDir(ideasDir)
+	entries, err := osReadDirFn(ideasDir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +56,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 
 	archivedDir := filepath.Join(ideasDir, "archived")
 	if ai, err := os.Stat(archivedDir); err == nil && ai.IsDir() {
-		aEntries, err := os.ReadDir(archivedDir)
+		aEntries, err := osReadDirFn(archivedDir)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +79,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 	// Proposals: scan spec/features/*/proposals/*.md
 	featuresDir := filepath.Join(specRoot, "features")
 	if fi, ferr := os.Stat(featuresDir); ferr == nil && fi.IsDir() {
-		featureEntries, ferr := os.ReadDir(featuresDir)
+		featureEntries, ferr := osReadDirFn(featuresDir)
 		if ferr == nil {
 			for _, fe := range featureEntries {
 				if !fe.IsDir() {
@@ -84,7 +90,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 				if perr != nil || !pi.IsDir() {
 					continue
 				}
-				pEntries, perr := os.ReadDir(proposalsDir)
+				pEntries, perr := osReadDirFn(proposalsDir)
 				if perr != nil {
 					continue
 				}
@@ -126,7 +132,7 @@ func FindIdeaDirectories(specRoot string) ([]string, error) {
 	if err != nil || !info.IsDir() {
 		return nil, nil
 	}
-	entries, err := os.ReadDir(ideasDir)
+	entries, err := osReadDirFn(ideasDir)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +167,7 @@ func FeatureSourceIdeas(specRoot string) (map[string][]string, error) {
 		return map[string][]string{}, nil
 	}
 	out := make(map[string][]string)
-	err = filepath.Walk(featuresDir, func(path string, info os.FileInfo, walkErr error) error {
+	err = filepathWalkFn(featuresDir, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}

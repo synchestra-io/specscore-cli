@@ -789,6 +789,9 @@ func TestIdeaRelocateCLI_HappyPathE2E(t *testing.T) {
 
 // AC: io-failure-rollback-pre-commit
 func TestIdeaRelocateCLI_IOFailureRollbackPreCommit(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRelocateRepo(t, parent, "specstudio-skills", "specstudio-skills")
 	target := stageRelocateRepo(t, parent, "specscore", "specscore")

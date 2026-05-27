@@ -1093,6 +1093,9 @@ func TestExecutePreCommitPhase_ConflictPassesThrough(t *testing.T) {
 // ===== ExecutePreCommitPhase rollback: non-conflict ApplyMutation failure =====
 
 func TestExecutePreCommitPhase_NonConflictFailureRollback(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")
@@ -1133,6 +1136,9 @@ func TestExecutePreCommitPhase_NonConflictFailureRollback(t *testing.T) {
 // ===== ApplyMutation error paths =====
 
 func TestApplyMutation_SourceFileUnreadable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")
@@ -1159,6 +1165,9 @@ func TestApplyMutation_SourceFileUnreadable(t *testing.T) {
 }
 
 func TestApplyMutation_DestDirUnwritable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")
@@ -1263,6 +1272,9 @@ func TestAppendCheckoutsForResults_GitCheckoutFailure(t *testing.T) {
 // ===== appendIfPartialDest — remove failure (permissions) =====
 
 func TestAppendIfPartialDest_RemoveFailure(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	tmp := t.TempDir()
 	subdir := filepath.Join(tmp, "locked")
 	_ = os.MkdirAll(subdir, 0o755)
@@ -1284,6 +1296,9 @@ func TestAppendIfPartialDest_RemoveFailure(t *testing.T) {
 // ===== appendIfSourceMissing — dir creation failure =====
 
 func TestAppendIfSourceMissing_DirCreationFailure(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	tmp := t.TempDir()
 	// Make the tmp dir read-only so MkdirAll fails for deep path
 	lockedDir := filepath.Join(tmp, "locked")
@@ -1419,6 +1434,9 @@ func TestExecutePreCommitPhase_LinkUpdateErrorTriggersRollback(t *testing.T) {
 // ===== ApplyMutation — source removal after dest write fails =====
 
 func TestApplyMutation_SourceRemoveFailure(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")
@@ -1916,6 +1934,9 @@ func stageRepoAt(t *testing.T, dir, repoSlug string) {
 // ===== appendIfSourceMissing — WriteFile failure (read-only parent) =====
 
 func TestAppendIfSourceMissing_WriteFileFailure(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	tmp := t.TempDir()
 	// Create the parent dir but make it read-only
 	parentDir := filepath.Join(tmp, "readonly")
@@ -2061,6 +2082,9 @@ func TestFindReferences_LinkWithPathPrefix(t *testing.T) {
 // ===== ApplyMutation — stat destination fails with non-NotExist error =====
 
 func TestApplyMutation_StatDestPermissionDenied(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")
@@ -2332,6 +2356,9 @@ func TestResolveSourceArtifact_SeedOnly(t *testing.T) {
 // ===== resolveTargetByPath — stat error non-ENOENT =====
 
 func TestResolveTargetRepo_PathStatErrorNonENOENT(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 
@@ -2422,6 +2449,9 @@ func TestFindReferences_WalkError(t *testing.T) {
 // ===== mutate.go uncovered lines 37 and 60 =====
 
 func TestApplyMutation_DestDirCreationError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	parent := t.TempDir()
 	source := stageRepo(t, parent, "src", "src")
 	target := stageRepo(t, parent, "tgt", "tgt")

@@ -67,7 +67,7 @@ func (c *dogfoodVersionChecker) check(specRoot string) ([]Violation, error) {
 			continue
 		}
 		path := filepath.Join(workflowsDir, name)
-		f, openErr := os.Open(path)
+		f, openErr := osOpenDogfood(path)
 		if openErr != nil {
 			continue
 		}

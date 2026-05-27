@@ -26,8 +26,9 @@ func initGitRepo(t *testing.T, root string) {
 	run("init", "--initial-branch=main")
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "Test")
+	run("config", "commit.gpgsign", "false")
 	run("add", "-A")
-	run("commit", "--no-gpg-sign", "-m", "initial")
+	run("commit", "-m", "initial")
 }
 
 // --- IsPathClean ---

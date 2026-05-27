@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// filepathWalkFn is a testable indirection for filepath.Walk.
+var filepathWalkFn = filepath.Walk
+
 // Discovered is a summary of a Property file found during discovery.
 type Discovered struct {
 	Slug string
@@ -34,7 +37,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 	}
 
 	var out []Discovered
-	walkErr := filepath.Walk(featuresDir, func(path string, info os.FileInfo, err error) error {
+	walkErr := filepathWalkFn(featuresDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

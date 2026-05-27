@@ -35,6 +35,15 @@ import (
 // collision check. Tests can replace it to inject non-ENOENT errors.
 var osStatFn = os.Stat
 
+// lifecycleRewriteFn is a testable indirection for lifecycle.Rewrite.
+var lifecycleRewriteFn = lifecycle.Rewrite
+
+// osWriteFileFn is a testable indirection for os.WriteFile.
+var osWriteFileFn = os.WriteFile
+
+// osRenameFn is a testable indirection for os.Rename.
+var osRenameFn = os.Rename
+
 // archivedIndexStub is the minimal lint-clean content the verb writes to
 // spec/ideas/archived/README.md when that file does not already exist on
 // the first archive transition. lint --fix will subsequently rewrite the
@@ -158,7 +167,7 @@ func ChangeStatus(opts ChangeStatusOptions) (ChangeStatusResult, error) {
 	}
 
 	// (3) Status line rewrite.
-	origLine, err := lifecycle.Rewrite(activePath, opts.To)
+	origLine, err := lifecycleRewriteFn(activePath, opts.To)
 	if err != nil {
 		return ChangeStatusResult{}, exitcode.UnexpectedErrorf("rewriting status line: %v", err)
 	}
@@ -198,7 +207,7 @@ func ChangeStatus(opts ChangeStatusOptions) (ChangeStatusResult, error) {
 		archivedReadme := filepath.Join(archivedDir, "README.md")
 		var archivedReadmeCreated bool
 		if _, err := os.Stat(archivedReadme); os.IsNotExist(err) {
-			if werr := os.WriteFile(archivedReadme, []byte(archivedIndexStub), 0o644); werr != nil {
+			if werr := osWriteFileFn(archivedReadme, []byte(archivedIndexStub), 0o644); werr != nil {
 				fullRollback()
 				return ChangeStatusResult{}, exitcode.UnexpectedErrorf(
 					"creating archived index stub %s: %v", archivedReadme, werr)
@@ -232,7 +241,7 @@ func ChangeStatus(opts ChangeStatusOptions) (ChangeStatusResult, error) {
 				"stat archive target %s: %v", archivedPath, err)
 		}
 
-		if err := os.Rename(activePath, archivedPath); err != nil {
+		if err := osRenameFn(activePath, archivedPath); err != nil {
 			fullRollback()
 			return ChangeStatusResult{}, exitcode.UnexpectedErrorf(
 				"moving %s → %s: %v", activePath, archivedPath, err)

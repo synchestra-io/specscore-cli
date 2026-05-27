@@ -163,7 +163,7 @@ func (c *adherenceFooterChecker) fix(specRoot string) error {
 			rewritten, replaced := rewriteTrailingAdherenceFooterURL(s, target.url)
 			if replaced {
 				if rewritten != s {
-					if err := os.WriteFile(path, []byte(rewritten), 0o644); err != nil {
+					if err := osWriteFileAdherenceFix(path, []byte(rewritten), 0o644); err != nil {
 						writeErr = err
 					}
 				}
@@ -177,7 +177,7 @@ func (c *adherenceFooterChecker) fix(specRoot string) error {
 				s += "\n"
 			}
 			s += "\n---\n*This document follows the " + target.url + "*\n"
-			if err := os.WriteFile(path, []byte(s), 0o644); err != nil {
+			if err := osWriteFileAdherenceFix(path, []byte(s), 0o644); err != nil {
 				writeErr = err
 			}
 		})
@@ -321,7 +321,7 @@ func walkPlanReadmes(specRoot string, fn func(path string, content []byte)) erro
 		if filepath.Base(filepath.Dir(filepath.Dir(path))) == "tasks" {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFilePlanReadme(path)
 		if readErr != nil {
 			return nil
 		}
@@ -350,7 +350,7 @@ func walkTaskReadmes(specRoot string, fn func(path string, content []byte)) erro
 		if filepath.Base(filepath.Dir(filepath.Dir(path))) != "tasks" {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFileTaskReadme(path)
 		if readErr != nil {
 			return nil
 		}
@@ -378,7 +378,7 @@ func walkScenariosIndexes(specRoot string, fn func(path string, content []byte))
 		if filepath.Base(filepath.Dir(path)) != "_tests" {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFileScenariosIdx(path)
 		if readErr != nil {
 			return nil
 		}
@@ -414,7 +414,7 @@ func walkScenarioFiles(specRoot string, fn func(path string, content []byte)) er
 		if parent != "_tests" {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFileScenarioFile(path)
 		if readErr != nil {
 			return nil
 		}
@@ -459,7 +459,7 @@ func walkMatchingFiles(root string, match func(path string, depth int, name stri
 		if !match(path, depth, info.Name()) {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFileMatchingFiles(path)
 		if readErr != nil {
 			return nil
 		}

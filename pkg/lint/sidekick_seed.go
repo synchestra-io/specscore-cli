@@ -68,7 +68,7 @@ func (c *sidekickSeedChecker) check(specRoot string) ([]Violation, error) {
 	if err != nil || !info.IsDir() {
 		return nil, nil
 	}
-	entries, err := os.ReadDir(seedsDir)
+	entries, err := osReadDirSidekickSeed(seedsDir)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (c *sidekickSeedChecker) check(specRoot string) ([]Violation, error) {
 		}
 		path := filepath.Join(seedsDir, name)
 		rel, _ := filepath.Rel(specRoot, path)
-		content, readErr := os.ReadFile(path)
+		content, readErr := osReadFileSidekickSeed(path)
 		if readErr != nil {
 			violations = append(violations, Violation{
 				File:     rel,

@@ -9,6 +9,7 @@ import (
 	"github.com/specscore/specscore-cli/pkg/idea"
 	"github.com/specscore/specscore-cli/pkg/idearelocate"
 	"github.com/specscore/specscore-cli/pkg/issue"
+	"github.com/specscore/specscore-cli/pkg/sourceref"
 )
 
 // Test seams — package-level vars wrapping external functions.
@@ -40,4 +41,8 @@ var (
 	// runEntityRefs verb's resolveErr branch (URL paths short-circuit
 	// before this; only seam injection triggers the error).
 	entityResolveInheritsCLI = entity.ResolveInherits
+
+	// sourcerefScanFilesFn wraps sourceref.ScanFiles so tests can inject
+	// errors for the code deps error path.
+	sourcerefScanFilesFn = sourceref.ScanFiles
 )

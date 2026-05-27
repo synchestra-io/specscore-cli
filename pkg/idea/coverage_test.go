@@ -309,6 +309,9 @@ func TestDiscover_WithActiveAndArchived(t *testing.T) {
 }
 
 func TestDiscover_UnreadableArchivedDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	archivedDir := filepath.Join(ideasDir, "archived")
@@ -703,6 +706,9 @@ func TestFeatureSourceIdeas_NoFeaturesDir(t *testing.T) {
 }
 
 func TestFeatureSourceIdeas_WalkError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	featuresDir := filepath.Join(root, "features")
 	if err := os.MkdirAll(filepath.Join(featuresDir, "unreadable"), 0o755); err != nil {
@@ -787,6 +793,9 @@ func TestDiscover_DirectoriesSkipped(t *testing.T) {
 }
 
 func TestFindIdeaDirectories_UnreadableDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -805,6 +814,9 @@ func TestFindIdeaDirectories_UnreadableDir(t *testing.T) {
 }
 
 func TestDiscover_UnreadableIdeasDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -939,6 +951,9 @@ func TestParse_FileNotFound(t *testing.T) {
 // =============================================================================
 
 func TestChangeStatus_StatErrorOnActivePath(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := stageIdeaTree(t, "stat-err", "Draft")
 	// Make the idea file unreadable so os.Stat returns a permission error.
 	ideaPath := filepath.Join(root, "spec", "ideas", "stat-err.md")
@@ -964,6 +979,9 @@ func TestChangeStatus_StatErrorOnActivePath(t *testing.T) {
 // =============================================================================
 
 func TestChangeStatus_RewriteError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "spec", "ideas")
 	if err := os.MkdirAll(ideasDir, 0o755); err != nil {
@@ -1040,6 +1058,9 @@ func TestChangeStatus_ArchiveMkdirError(t *testing.T) {
 // =============================================================================
 
 func TestChangeStatus_ArchiveWriteReadmeError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "spec", "ideas")
 	archivedDir := filepath.Join(ideasDir, "archived")
@@ -1076,6 +1097,9 @@ func TestChangeStatus_ArchiveWriteReadmeError(t *testing.T) {
 // =============================================================================
 
 func TestChangeStatus_ArchiveRenameError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "spec", "ideas")
 	archivedDir := filepath.Join(ideasDir, "archived")
@@ -1184,6 +1208,9 @@ func TestSplitCSVSlugs_EdgeCases(t *testing.T) {
 // proposals/ subdirectory fails. The directory passes os.Stat (exists, IsDir),
 // but ReadDir is blocked by missing read permission.
 func TestDiscover_UnreadableProposalsDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := t.TempDir()
 	specRoot := filepath.Join(root, "spec")
 	if err := os.MkdirAll(filepath.Join(specRoot, "ideas"), 0o755); err != nil {
@@ -1256,6 +1283,9 @@ func TestFeatureSourceIdeas_FpRelError(t *testing.T) {
 // denied). Achieved by making the parent directory non-executable so that the
 // kernel cannot resolve the path.
 func TestChangeStatus_StatActivePathPermissionDenied(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	root := stageIdeaTree(t, "perm-denied", "Draft")
 	ideasDir := filepath.Join(root, "spec", "ideas")
 	// Remove execute permission from the parent so os.Stat on the file returns

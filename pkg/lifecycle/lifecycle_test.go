@@ -900,6 +900,9 @@ func TestWriteFileAtomic_StatFails(t *testing.T) {
 }
 
 func TestWriteFileAtomic_UnwritableDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "file.md")
@@ -923,6 +926,9 @@ func TestWriteFileAtomic_UnwritableDir(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRewrite_WriteFailure(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	t.Parallel()
 	dir := t.TempDir()
 	content := "# Idea\n\n**Status:** Draft\n"

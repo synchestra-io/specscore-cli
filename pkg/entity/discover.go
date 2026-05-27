@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// filepathWalkFn is a testable indirection for filepath.Walk.
+var filepathWalkFn = filepath.Walk
+
 // EntitySuffix is the canonical filename suffix for entity files.
 const EntitySuffix = ".entity.md"
 
@@ -34,7 +37,7 @@ func Discover(specRoot string) ([]Discovered, error) {
 	}
 
 	var out []Discovered
-	err = filepath.Walk(featuresDir, func(path string, info os.FileInfo, walkErr error) error {
+	err = filepathWalkFn(featuresDir, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}

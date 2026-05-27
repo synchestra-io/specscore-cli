@@ -100,7 +100,7 @@ func (c *planHierarchyChecker) check(specRoot string) ([]Violation, error) {
 // hasChildPlanDirs checks whether the directory contains subdirectories with README.md files
 // (indicating child plans), skipping hidden dirs, acs, and reports.
 func hasChildPlanDirs(dir string) bool {
-	entries, err := os.ReadDir(dir)
+	entries, err := osReadDirHasChildPlanDirs(dir)
 	if err != nil {
 		return false
 	}
@@ -123,7 +123,7 @@ func hasChildPlanDirs(dir string) bool {
 // hasSection scans a markdown file for a specific heading and returns whether it was found
 // and the line number.
 func hasSection(readmePath, heading string) (bool, int) {
-	file, err := os.Open(readmePath)
+	file, err := osOpenHasSection(readmePath)
 	if err != nil {
 		return false, 0
 	}

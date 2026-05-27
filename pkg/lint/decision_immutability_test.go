@@ -23,18 +23,15 @@ func setupGitRepo(t *testing.T, files map[string]string) string {
 	// Init git repo and commit
 	cmds := [][]string{
 		{"git", "init"},
+		{"git", "config", "user.email", "test@test.com"},
+		{"git", "config", "user.name", "Test"},
+		{"git", "config", "commit.gpgsign", "false"},
 		{"git", "add", "-A"},
 		{"git", "commit", "-m", "initial"},
 	}
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Dir = root
-		cmd.Env = append(os.Environ(),
-			"GIT_AUTHOR_NAME=Test",
-			"GIT_AUTHOR_EMAIL=test@test.com",
-			"GIT_COMMITTER_NAME=Test",
-			"GIT_COMMITTER_EMAIL=test@test.com",
-		)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git command %v failed: %v\n%s", args, err, out)
 		}

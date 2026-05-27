@@ -30,7 +30,7 @@ func walkFeatureReadmes(specRoot string, fn func(readmePath string, content []by
 		if statErr != nil || readmeInfo.IsDir() {
 			return nil
 		}
-		content, readErr := os.ReadFile(readmePath)
+		content, readErr := osReadFileFeatureReadme(readmePath)
 		if readErr != nil {
 			return nil
 		}

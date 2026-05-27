@@ -29,6 +29,7 @@ func TestHeadSHA(t *testing.T) {
 	runGit(t, dir, "init", "-q", "-b", "main")
 	runGit(t, dir, "config", "user.email", "t@example.com")
 	runGit(t, dir, "config", "user.name", "T")
+	runGit(t, dir, "config", "commit.gpgsign", "false")
 	runGit(t, dir, "commit", "--allow-empty", "-q", "-m", "initial")
 
 	got, err := HeadSHA(dir)

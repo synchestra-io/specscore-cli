@@ -169,6 +169,7 @@ func gitInitWithCommit(t *testing.T, dir string) {
 		{"init", "-q", "-b", "main"},
 		{"config", "user.email", "t@example.com"},
 		{"config", "user.name", "T"},
+		{"config", "commit.gpgsign", "false"},
 		{"commit", "--allow-empty", "-q", "-m", "initial"},
 	} {
 		cmd := exec.Command("git", args...)

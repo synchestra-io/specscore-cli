@@ -224,6 +224,9 @@ func TestWriteFileAtomic_HappyPath(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWriteFileAtomic_ReadOnlyDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "file.md")
 	if err := os.WriteFile(path, []byte("content"), 0o644); err != nil {

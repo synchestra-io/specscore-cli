@@ -887,6 +887,9 @@ func TestFeatureIndexChecker_SubFeatureRowIgnored(t *testing.T) {
 }
 
 func TestFeatureIndexChecker_FixFailFallback(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	// Test the code path where rewrite fails (read-only file)
 	root := setupSpecTree(t, map[string]string{
 		"features/README.md": "# Features\n\n" +
@@ -4667,6 +4670,9 @@ func TestAdherenceFooterCheck_WalkErrorReturnsError(t *testing.T) {
 }
 
 func TestAdherenceFooterFix_WriteErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	plansDir := filepath.Join(root, "plans")
 	mkdir(t, filepath.Join(plansDir, "my-plan"))
@@ -4685,6 +4691,9 @@ func TestAdherenceFooterFix_WriteErrorPropagates(t *testing.T) {
 }
 
 func TestAdherenceFooterFix_RewriteWriteErrorPropagates(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	plansDir := filepath.Join(root, "plans")
 	mkdir(t, filepath.Join(plansDir, "my-plan"))
@@ -4706,6 +4715,9 @@ func TestAdherenceFooterFix_RewriteWriteErrorPropagates(t *testing.T) {
 // already recorded a write error, subsequent callback invocations return
 // immediately).
 func TestAdherenceFooterFix_WalkCallbackShortCircuits(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	// Two scenario files so the walk visits both — first triggers a write
 	// error, second should short-circuit via L134-136.
@@ -4768,6 +4780,9 @@ func TestAdherenceFooterFix_URLInBodyNotFooter(t *testing.T) {
 // Covers adherence_footer.go L289-291, L301-303: walkPlanReadmes and
 // walkTaskReadmes ReadFile error paths (file exists but is unreadable).
 func TestWalkPlanReadmes_UnreadableReadme(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	plansDir := filepath.Join(root, "plans")
 	mkdir(t, filepath.Join(plansDir, "bad-plan"))
@@ -4789,6 +4804,9 @@ func TestWalkPlanReadmes_UnreadableReadme(t *testing.T) {
 }
 
 func TestWalkTaskReadmes_UnreadableReadme(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	plansDir := filepath.Join(root, "plans")
 	mkdir(t, filepath.Join(plansDir, "alpha", "tasks", "t1"))
@@ -4811,6 +4829,9 @@ func TestWalkTaskReadmes_UnreadableReadme(t *testing.T) {
 
 // Covers L330-332: walkScenariosIndexes ReadFile error.
 func TestWalkScenariosIndexes_UnreadableReadme(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	testsDir := filepath.Join(root, "features", "auth", "_tests")
 	mkdir(t, testsDir)
@@ -4833,6 +4854,9 @@ func TestWalkScenariosIndexes_UnreadableReadme(t *testing.T) {
 
 // Covers L358-360: walkScenarioFiles ReadFile error.
 func TestWalkScenarioFiles_UnreadableFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	testsDir := filepath.Join(root, "features", "auth", "_tests")
 	mkdir(t, testsDir)
@@ -4855,6 +4879,9 @@ func TestWalkScenarioFiles_UnreadableFile(t *testing.T) {
 
 // Covers L394-396: walkMatchingFiles ReadFile error (file unreadable).
 func TestWalkMatchingFiles_UnreadableFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	ideasDir := filepath.Join(root, "ideas")
 	mkdir(t, ideasDir)
@@ -5026,6 +5053,9 @@ func TestRewriteIdeaHeader_NonexistentFile(t *testing.T) {
 // Covers L83-89: active index fix-failed fallback violations (when fix is
 // true but rewriteActiveIndex fails, violations should still be reported).
 func TestIdeaIndex_ActiveFixFailedFallback(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	staleIndex := `# SpecScore Ideas
 
 ## Index
@@ -5065,6 +5095,9 @@ None at this time.
 
 // Covers L142-156: archived index fix-failed fallback.
 func TestIdeaIndex_ArchivedFixFailedFallback(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	older := validIdeaBody("Older", "Archived", map[string]string{"Archive Reason": "pivoted", "Date": "2024-11-02"})
 	older = strings.Replace(older, "**Date:** 2026-04-10", "**Date:** 2024-11-02", 1)
 	newer := validIdeaBody("Newer", "Archived", map[string]string{"Archive Reason": "pivoted", "Date": "2025-03-10"})
@@ -5313,6 +5346,9 @@ func TestIndexEntriesFix_ReadFileError(t *testing.T) {
 
 // Covers L173-175: fix() WriteFile error on dropPhantomIndexRows.
 func TestIndexEntriesFix_WriteFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	featDir := filepath.Join(root, "features")
 	mkdir(t, filepath.Join(featDir, "auth"))
@@ -5425,6 +5461,9 @@ func TestIssueRulesFix_DiscoverAllError(t *testing.T) {
 
 // Covers L172-174, L176-178: fix() MkdirAll/WriteFile errors.
 func TestIssueRulesFix_MkdirAllError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := setupSpecTree(t, map[string]string{
 		"issues/test-issue.md": "---\ntype: issue\nslug: test-issue\nstatus: open\ncaptured_at: 2026-01-01\ncaptured_by: alice\n---\n\n# Issue: Test\n\n## Description\nSomething.\n\n## Steps to Reproduce\n1. Do thing.\n\n## Expected vs Actual\nExpected X, got Y.\n",
 	})
@@ -5739,6 +5778,9 @@ func TestWalkFeatureReadmes_WalkErrorCallback(t *testing.T) {
 
 // Covers feature_readme_walk.go L34-36: ReadFile error.
 func TestWalkFeatureReadmes_UnreadableReadme(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	featDir := filepath.Join(root, "features")
 	mkdir(t, filepath.Join(featDir, "auth"))
@@ -5765,6 +5807,9 @@ func TestWalkFeatureReadmes_UnreadableReadme(t *testing.T) {
 
 // Covers dogfood_version.go L68-69: workflow YAML file that can't be opened.
 func TestDogfoodVersion_UnreadableWorkflowFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root")
+	}
 	root := t.TempDir()
 	specRoot := filepath.Join(root, "spec")
 	mkdir(t, specRoot)

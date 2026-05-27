@@ -182,7 +182,7 @@ func (c *issueRulesChecker) fix(specRoot string) error {
 			return fmt.Errorf("creating directory for %s: %w", m.relPath, err)
 		}
 		content := issueIndexTemplate(m.h1)
-		if err := os.WriteFile(m.absPath, []byte(content), 0o644); err != nil {
+		if err := osWriteFileIssueRules(m.absPath, []byte(content), 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", m.relPath, err)
 		}
 	}
@@ -362,7 +362,7 @@ func lintI015(specRoot string, discovered []issue.Discovered) []Violation {
 
 	var out []Violation
 	for _, t := range targets {
-		data, err := os.ReadFile(t.abs)
+		data, err := osReadFileIssueI015(t.abs)
 		if err != nil {
 			continue
 		}

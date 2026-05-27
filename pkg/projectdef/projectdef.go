@@ -18,6 +18,9 @@ import (
 // Tests can replace it to simulate marshal failures.
 var yamlMarshal = yaml.Marshal
 
+// osWriteFileFn is a testable indirection for os.WriteFile.
+var osWriteFileFn = os.WriteFile
+
 // SpecConfigFile is the canonical filename for the repo-level config,
 // per the repo-config feature.
 const SpecConfigFile = "specscore.yaml"
@@ -316,7 +319,7 @@ func WriteSpecConfig(dir string, cfg SpecConfig) error {
 		return fmt.Errorf("marshalling spec config: %w", err)
 	}
 	out := append([]byte(SchemaHeader+"\n\n"), body...)
-	if err := os.WriteFile(filepath.Join(dir, SpecConfigFile), out, 0o644); err != nil {
+	if err := osWriteFileFn(filepath.Join(dir, SpecConfigFile), out, 0o644); err != nil {
 		return fmt.Errorf("writing spec config: %w", err)
 	}
 	return nil

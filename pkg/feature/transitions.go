@@ -96,7 +96,7 @@ func ChangeStatus(featuresDir, featureID, toRaw string) (*ChangeStatusResult, er
 		return nil, exitcode.UnexpectedErrorf("validating transition: %v", err)
 	}
 
-	originalLine, err := lifecycle.Rewrite(readmePath, to)
+	originalLine, err := lifecycleRewriteFn(readmePath, to)
 	if err != nil {
 		return nil, exitcode.UnexpectedErrorf("rewriting status line: %v", err)
 	}

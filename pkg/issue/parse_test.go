@@ -410,6 +410,9 @@ func TestDiscoverAll_EmptyRoot(t *testing.T) {
 }
 
 func TestDiscoverAll_UnreadableFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	specRoot := t.TempDir()
 	issuesDir := filepath.Join(specRoot, "issues")
 	if err := os.MkdirAll(issuesDir, 0o755); err != nil {
@@ -438,6 +441,9 @@ func TestDiscoverAll_UnreadableFile(t *testing.T) {
 }
 
 func TestDiscoverAll_UnreadableSubdir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root")
+	}
 	specRoot := t.TempDir()
 	// Create a subdirectory and make it unreadable to trigger walk errors.
 	badDir := filepath.Join(specRoot, "issues", "badperm")

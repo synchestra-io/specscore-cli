@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// filepathWalkFn is a testable indirection for filepath.Walk.
+var filepathWalkFn = filepath.Walk
+
 // ScanResult represents the references found in a set of files.
 type ScanResult struct {
 	// FileRefs maps file path to list of references found in that file
@@ -89,7 +92,7 @@ func ExpandGlobPattern(pattern string) ([]string, error) {
 	}
 
 	var matches []string
-	filepath.Walk(".", func(path string, info os.FileInfo, err error) error { //nolint:errcheck
+	filepathWalkFn(".", func(path string, info os.FileInfo, err error) error { //nolint:errcheck
 		if err != nil {
 			return nil
 		}

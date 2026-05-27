@@ -3,6 +3,8 @@ package feature
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/specscore/specscore-cli/pkg/lifecycle"
 )
 
 // info_stubs.go provides var-based seams for injecting failures in tests.
@@ -18,4 +20,8 @@ var (
 	parseSectionsFn         = ParseSections
 	filepathAbsFn           = filepath.Abs
 	osWriteFile             = os.WriteFile
+	osMkdirAll              = os.MkdirAll
+	osReadFileFn            = os.ReadFile
+	extractOpenQuestionsFn  = ExtractOpenQuestions
+	lifecycleRewriteFn      = lifecycle.Rewrite
 )
