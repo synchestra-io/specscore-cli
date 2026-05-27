@@ -459,6 +459,28 @@ None at this time.
 	})
 }
 
+func TestDecisionsArchivedIndexCompletenessSkipsActive(t *testing.T) {
+	t.Run("active decisions not required in archived index", func(t *testing.T) {
+		archivedIndex := `# Archived Decisions
+
+No archived decisions yet.
+`
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/archived/README.md": archivedIndex,
+			"decisions/0001-test.md":       validDecisionContent(),
+		})
+		vs, err := checkDecisionsIndex(root, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range vs {
+			if v.Rule == "DI-completeness" && strings.Contains(v.Message, "archived") {
+				t.Error("active decisions should not be required in archived index")
+			}
+		}
+	})
+}
+
 func TestDecisionsIndexNoDecisionsDir(t *testing.T) {
 	root := t.TempDir()
 	vs, err := checkDecisionsIndex(root, false)

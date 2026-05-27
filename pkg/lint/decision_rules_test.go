@@ -1158,6 +1158,19 @@ None at this time.
 			t.Error("expected D-supersedes-bidirectional violation for nonexistent successor")
 		}
 	})
+
+	t.Run("decision without Superseded By field skipped", func(t *testing.T) {
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/0001-test.md": validDecisionContent(),
+		})
+		vs, err := checkDecisions(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if hasDecisionViolation(vs, "D-supersedes-bidirectional", "Superseded By") {
+			t.Error("decisions without Superseded By should not trigger reverse check")
+		}
+	})
 }
 
 func TestDecisionAffectedFeaturesTargetExists(t *testing.T) {
