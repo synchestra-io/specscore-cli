@@ -56,15 +56,6 @@ func checkDecisionImmutability(specRoot string) ([]Violation, error) {
 	repoRoot := strings.TrimSpace(string(topOut))
 
 	for _, d := range decisions {
-		status := ""
-		if f, ok := d.fieldByName["Status"]; ok {
-			status = f.Value
-		}
-		// Only check Accepted decisions
-		if status != "Accepted" {
-			continue
-		}
-
 		// Get the committed version from HEAD
 		relToRepo, err := filepathRelDecisionImmutability(repoRoot, d.path)
 		if err != nil {

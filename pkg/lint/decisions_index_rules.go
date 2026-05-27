@@ -332,6 +332,52 @@ func checkArchivedDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violat
 	// Parse archived entries: - YYYY-MM-DD — [NNNN-slug](NNNN-slug.md) — Status — reason
 	entries := parseArchivedDecisionEntries(content)
 
+	// DI-status-excludes-archived: archived index must not list Proposed/Accepted decisions.
+	decisions, discErr := discoverDecisionFiles(specRoot)
+	if discErr == nil {
+		fileStatus := make(map[string]string)
+		for _, d := range decisions {
+			if d.slug != "" {
+				if f, ok := d.fieldByName["Status"]; ok {
+					fileStatus[d.slug] = f.Value
+				}
+			}
+		}
+		for _, e := range entries {
+			if st, ok := fileStatus[e.slug]; ok {
+				if st == "Proposed" || st == "Accepted" {
+					vs = append(vs, Violation{
+						File: rel, Line: 0, Severity: "error",
+						Rule:    "DI-status-excludes-archived",
+						Message: fmt.Sprintf("archived decisions index must not list %s decisions (found %s)", st, e.slug),
+					})
+				}
+			}
+		}
+
+		// DI-completeness: every archived decision must have a row in the archived index.
+		listedSet := make(map[string]bool)
+		for _, e := range entries {
+			listedSet[e.slug] = true
+		}
+		var missingSlugs []string
+		for _, d := range decisions {
+			if !d.archived {
+				continue
+			}
+			if d.slug != "" && !listedSet[d.slug] {
+				missingSlugs = append(missingSlugs, d.slug)
+			}
+		}
+		if len(missingSlugs) > 0 {
+			vs = append(vs, Violation{
+				File: rel, Line: 0, Severity: "error",
+				Rule:    "DI-completeness",
+				Message: fmt.Sprintf("archived decisions index missing entries: %s", strings.Join(missingSlugs, ", ")),
+			})
+		}
+	}
+
 	// DI-archived-index-chronological
 	outOfOrder := false
 	for i := 1; i < len(entries); i++ {

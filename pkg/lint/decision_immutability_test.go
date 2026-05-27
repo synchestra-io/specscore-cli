@@ -314,6 +314,25 @@ func TestImmutabilityNewFileNotChecked(t *testing.T) {
 	}
 }
 
+func TestImmutabilityStatusChangeFromAccepted(t *testing.T) {
+	root := setupGitRepo(t, map[string]string{
+		"decisions/0001-test.md": acceptedDecisionContent(),
+	})
+
+	// Change status from Accepted to Superseded AND modify a frozen section.
+	modified := strings.Replace(acceptedDecisionContent(), "**Status:** Accepted", "**Status:** Superseded", 1)
+	modified = strings.Replace(modified, "Some context.", "Completely rewritten context.", 1)
+	_ = os.WriteFile(filepath.Join(root, "decisions/0001-test.md"), []byte(modified), 0o644)
+
+	vs, err := checkDecisionImmutability(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDecisionViolation(vs, "D-immutability-once-accepted", "") {
+		t.Error("changing status from Accepted should still enforce immutability on frozen sections")
+	}
+}
+
 func TestImmutabilityUnchangedPasses(t *testing.T) {
 	root := setupGitRepo(t, map[string]string{
 		"decisions/0001-test.md": acceptedDecisionContent(),
