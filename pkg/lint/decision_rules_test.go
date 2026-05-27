@@ -1001,6 +1001,165 @@ None at this time.
 	})
 }
 
+func TestDecisionSupersedesBidirectionalReverse(t *testing.T) {
+	t.Run("orphan Superseded By detected", func(t *testing.T) {
+		old := `# Decision: Old
+
+**Status:** Superseded
+**Date:** 2026-05-20
+**Owner:** test
+**Tags:** —
+**Source Idea:** —
+**Supersedes:** —
+**Superseded By:** 0002-new
+
+## Context
+
+C.
+
+## Decision
+
+D.
+
+## Rationale
+
+R.
+
+## Declined Alternatives
+
+### Alt
+
+No.
+
+## Consequences at Decision Time
+
+C.
+
+## Observed Consequences
+
+None observed yet.
+
+## Affected Features
+
+None at this time.
+
+---
+*This document follows the https://specscore.md/decision-specification*
+`
+		// 0002-new exists but does NOT have Supersedes: 0001-old
+		new := `# Decision: New
+
+**Status:** Proposed
+**Date:** 2026-05-26
+**Owner:** test
+**Tags:** —
+**Source Idea:** —
+**Supersedes:** —
+**Superseded By:** —
+
+## Context
+
+C.
+
+## Decision
+
+D.
+
+## Rationale
+
+R.
+
+## Declined Alternatives
+
+### Alt
+
+No.
+
+## Consequences at Decision Time
+
+C.
+
+## Observed Consequences
+
+None observed yet.
+
+## Affected Features
+
+None at this time.
+
+---
+*This document follows the https://specscore.md/decision-specification*
+`
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/archived/0001-old.md": old,
+			"decisions/0002-new.md":          new,
+		})
+		vs, err := checkDecisions(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasDecisionViolation(vs, "D-supersedes-bidirectional", "Superseded By references") {
+			t.Error("expected D-supersedes-bidirectional violation for orphan Superseded By")
+		}
+	})
+
+	t.Run("Superseded By references nonexistent decision", func(t *testing.T) {
+		old := `# Decision: Old
+
+**Status:** Superseded
+**Date:** 2026-05-20
+**Owner:** test
+**Tags:** —
+**Source Idea:** —
+**Supersedes:** —
+**Superseded By:** 0099-ghost
+
+## Context
+
+C.
+
+## Decision
+
+D.
+
+## Rationale
+
+R.
+
+## Declined Alternatives
+
+### Alt
+
+No.
+
+## Consequences at Decision Time
+
+C.
+
+## Observed Consequences
+
+None observed yet.
+
+## Affected Features
+
+None at this time.
+
+---
+*This document follows the https://specscore.md/decision-specification*
+`
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/archived/0001-old.md": old,
+		})
+		vs, err := checkDecisions(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasDecisionViolation(vs, "D-supersedes-bidirectional", "does not exist") {
+			t.Error("expected D-supersedes-bidirectional violation for nonexistent successor")
+		}
+	})
+}
+
 func TestDecisionAffectedFeaturesTargetExists(t *testing.T) {
 	t.Run("nonexistent feature slug rejected", func(t *testing.T) {
 		content := `# Decision: Test

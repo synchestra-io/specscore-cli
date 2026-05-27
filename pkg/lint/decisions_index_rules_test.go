@@ -333,6 +333,132 @@ func TestDecisionsIndexArchivedChronological(t *testing.T) {
 	})
 }
 
+func TestDecisionsArchivedIndexStatusExcludesActive(t *testing.T) {
+	t.Run("Proposed in archived index rejected", func(t *testing.T) {
+		archivedIndex := `# Archived Decisions
+
+- 2026-05-20 — [0001-test](0001-test.md) — Superseded — replaced
+`
+		decision := `# Decision: Test
+
+**Status:** Proposed
+**Date:** 2026-05-20
+**Owner:** test
+**Tags:** —
+**Source Idea:** —
+**Supersedes:** —
+**Superseded By:** —
+
+## Context
+
+C.
+
+## Decision
+
+D.
+
+## Rationale
+
+R.
+
+## Declined Alternatives
+
+### Alt
+
+No.
+
+## Consequences at Decision Time
+
+C.
+
+## Observed Consequences
+
+None observed yet.
+
+## Affected Features
+
+None at this time.
+
+---
+*This document follows the https://specscore.md/decision-specification*
+`
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/archived/README.md":    archivedIndex,
+			"decisions/archived/0001-test.md": decision,
+		})
+		vs, err := checkDecisionsIndex(root, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasDecisionViolation(vs, "DI-status-excludes-archived", "Proposed") {
+			t.Error("expected DI-status-excludes-archived violation for Proposed in archived index")
+		}
+	})
+}
+
+func TestDecisionsArchivedIndexCompleteness(t *testing.T) {
+	t.Run("missing archived decision flagged", func(t *testing.T) {
+		archivedIndex := `# Archived Decisions
+
+No archived decisions yet.
+`
+		decision := `# Decision: Old
+
+**Status:** Superseded
+**Date:** 2026-05-20
+**Owner:** test
+**Tags:** —
+**Source Idea:** —
+**Supersedes:** —
+**Superseded By:** 0002-new
+
+## Context
+
+C.
+
+## Decision
+
+D.
+
+## Rationale
+
+R.
+
+## Declined Alternatives
+
+### Alt
+
+No.
+
+## Consequences at Decision Time
+
+C.
+
+## Observed Consequences
+
+None observed yet.
+
+## Affected Features
+
+None at this time.
+
+---
+*This document follows the https://specscore.md/decision-specification*
+`
+		root := setupDecisionTestTree(t, map[string]string{
+			"decisions/archived/README.md":   archivedIndex,
+			"decisions/archived/0001-old.md": decision,
+		})
+		vs, err := checkDecisionsIndex(root, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasDecisionViolation(vs, "DI-completeness", "0001-old") {
+			t.Error("expected DI-completeness violation for missing archived entry")
+		}
+	})
+}
+
 func TestDecisionsIndexNoDecisionsDir(t *testing.T) {
 	root := t.TempDir()
 	vs, err := checkDecisionsIndex(root, false)
