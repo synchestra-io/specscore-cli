@@ -243,23 +243,77 @@ func checkActiveDecisionsIndex(specRoot, indexPath string, fix bool) ([]Violatio
 		listedSet[row.slug] = true
 	}
 
-	var missing []string
+	var missingDecisions []*parsedDecision
 	for _, d := range decisions {
 		if d.archived {
 			continue
 		}
 		if d.slug != "" && !listedSet[d.slug] {
-			missing = append(missing, d.slug)
+			missingDecisions = append(missingDecisions, d)
 		}
 	}
-	sort.Strings(missing)
 
-	if len(missing) > 0 {
-		vs = append(vs, Violation{
-			File: rel, Line: 0, Severity: "error",
-			Rule:    "DI-completeness",
-			Message: fmt.Sprintf("active decisions index missing entries: %s", strings.Join(missing, ", ")),
-		})
+	if len(missingDecisions) > 0 {
+		if fix {
+			// Add missing rows and rewrite
+			for _, d := range missingDecisions {
+				status := ""
+				if f, ok := d.fieldByName["Status"]; ok {
+					status = f.Value
+				}
+				date := ""
+				if f, ok := d.fieldByName["Date"]; ok {
+					date = f.Value
+				}
+				tags := "—"
+				if f, ok := d.fieldByName["Tags"]; ok && f.Value != "" && f.Value != "—" {
+					tags = f.Value
+				}
+				numStr := fmt.Sprintf("%04d", d.number)
+				row := decisionsIndexRow{
+					number:   d.number,
+					numStr:   numStr,
+					slug:     d.slug,
+					title:    d.title,
+					status:   status,
+					date:     date,
+					tags:     tags,
+					affected: "—",
+					rawLine:  fmt.Sprintf("| [%s](%s.md) | %s | %s | %s | %s | %s |", numStr, d.slug, d.title, status, date, tags, "—"),
+				}
+				rows = append(rows, row)
+			}
+			sort.Slice(rows, func(i, j int) bool {
+				return rows[i].number < rows[j].number
+			})
+			// Re-read the file since numeric-ordering fix may have rewritten it
+			freshData, readErr := os.ReadFile(indexPath)
+			if readErr == nil {
+				freshLines := strings.Split(string(freshData), "\n")
+				if err := rewriteDecisionsIndexTable(indexPath, freshLines, decisionsHeadingLine, rows); err != nil {
+					var slugs []string
+					for _, d := range missingDecisions {
+						slugs = append(slugs, d.slug)
+					}
+					vs = append(vs, Violation{
+						File: rel, Line: 0, Severity: "error",
+						Rule:    "DI-completeness",
+						Message: fmt.Sprintf("active decisions index missing entries: %s (fix failed: %v)", strings.Join(slugs, ", "), err),
+					})
+				}
+			}
+		} else {
+			var slugs []string
+			for _, d := range missingDecisions {
+				slugs = append(slugs, d.slug)
+			}
+			sort.Strings(slugs)
+			vs = append(vs, Violation{
+				File: rel, Line: 0, Severity: "error",
+				Rule:    "DI-completeness",
+				Message: fmt.Sprintf("active decisions index missing entries: %s", strings.Join(slugs, ", ")),
+			})
+		}
 	}
 
 	return vs, nil

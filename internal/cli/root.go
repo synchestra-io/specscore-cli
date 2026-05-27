@@ -41,6 +41,7 @@ func Run(args []string) error {
 		codeCommand(),
 		taskCommand(),
 		ideaCommand(),
+		decisionCommand(),
 		issueCommand(),
 		proposalCommand(),
 		initCommand(),
