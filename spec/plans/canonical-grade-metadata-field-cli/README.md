@@ -60,7 +60,7 @@ Register and apply the Grade lint rule uniformly for every artifact kind that ha
 
 ## Open Questions
 
-- The upstream Feature's open question — whether the default value set should include `E` (`A, B, C, D, E, F`) — governs Task 1's default. Until it is resolved, the default is implemented as `A, B, C, D, F`.
+None at this time. (Resolved upstream: the default value set is `A, B, C, D, F` — no `E`. Task 1 implements that default; repos needing a different scale declare `grade.values`.)
 
 ---
 *This document follows the https://specscore.md/plan-specification*
