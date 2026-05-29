@@ -146,6 +146,12 @@ var allRuleNames = map[string]bool{
 	"feature-index-row-sync": true,
 	// Sidekick-seed lint rule.
 	"sidekick-seed": true,
+	// Grade body-metadata-field lint rules (canonical-grade-metadata-field
+	// Feature). Implemented by gradeChecker.
+	"grade-values-shape": true,
+	"grade-single-value": true,
+	"grade-placement":    true,
+	"grade-value":        true,
 	// Plan lint rules (single-file Plans at spec/plans/<slug>.md, per the
 	// SpecStudio plan-Feature contract). Implemented by planRulesChecker.
 	"P-001": true,

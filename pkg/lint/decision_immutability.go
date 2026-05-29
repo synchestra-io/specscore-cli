@@ -3,6 +3,7 @@ package lint
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -65,8 +66,15 @@ func checkDecisionImmutability(specRoot string) ([]Violation, error) {
 			continue
 		}
 
-		// Get the committed version from HEAD
-		relToRepo, err := filepathRelDecisionImmutability(repoRoot, d.path)
+		// Get the committed version from HEAD. repoRoot comes from
+		// `git rev-parse --show-toplevel`, which resolves symlinks, so the
+		// decision path must be canonicalized too — otherwise on a symlinked
+		// working tree (e.g. macOS /tmp → /private/tmp) the relative path is
+		// computed against mismatched prefixes, git show fails, and the rule
+		// silently no-ops. EvalSymlinks errors are tolerated: an unresolvable
+		// path falls through to the err check below.
+		canonPath, _ := filepath.EvalSymlinks(d.path)
+		relToRepo, err := filepathRelDecisionImmutability(repoRoot, canonPath)
 		if err != nil {
 			continue
 		}
