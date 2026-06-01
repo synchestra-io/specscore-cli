@@ -40,6 +40,8 @@ The command MUST preserve unrelated config fields and MUST use the `specscore` r
 
 `specscore publication branch-check` MUST evaluate whether `push` is allowed for a branch under the effective branch safety rules. It MUST refuse detached HEAD, missing branch, denied branches, and branches outside an allow list when one is configured.
 
+Unless project config explicitly sets `publication.push.deny_branches` (including an empty list), the command MUST apply the built-in deny list `main`, `master`, and `release/*`. This default matches SpecStudio's safe publication posture while still giving project config a deliberate override point.
+
 ### Config Mutation
 
 #### REQ: durable-config-writes
@@ -115,9 +117,15 @@ If the CLI provides a helper to run `git push`, that helper MUST first run the b
 
 ### AC: branch-check-denies-main (verifies REQ: branch-check-command)
 
-**Given** branch policy denies `main`,
+**Given** branch policy denies `main` either through config or through the built-in default deny list,
 **When** the caller runs `specscore publication branch-check --branch main`,
 **Then** the command exits non-zero and reports that push is denied for `main`.
+
+### AC: project-can-override-default-deny (verifies REQ: branch-check-command)
+
+**Given** project config explicitly sets `publication.push.deny_branches: []`,
+**When** the caller runs `specscore publication branch-check --branch main`,
+**Then** the built-in deny list is disabled for that project and the branch is allowed unless another configured rule blocks it.
 
 ### AC: no-interactive-prompts (verifies REQ: no-user-prompting)
 
@@ -148,6 +156,11 @@ If the CLI provides a helper to run `git push`, that helper MUST first run the b
 - Should `publication set` use repeated flags (`--action stage --action commit`) or comma-separated `--actions stage,commit`? Lean: support both if parser cost is low; document comma-separated first.
 - Should config mutation live under `specscore publication set`, or under a broader `specscore config set publication...` namespace? Lean: `publication` group because resolve and branch-check are not generic config writes.
 - Should the CLI implement commit/push helpers in MVP, or only config/resolve/branch-check? Lean: implement config/resolve/branch-check first; add commit/push helpers only when a skill is ready to consume them.
+
+## Implementation Notes
+
+- MVP implements `publication set`, `publication resolve`, and `publication branch-check`.
+- Manifest-safe commit and push helpers are future work. This repo currently has no natural manifest-safe git helper surface for publication operations, so the MVP intentionally leaves those helpers out rather than adding a second git-operation boundary.
 
 ---
 *This document follows the https://specscore.md/feature-specification*
