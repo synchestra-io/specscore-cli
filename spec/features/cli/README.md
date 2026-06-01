@@ -80,6 +80,7 @@ Manages the project task board at `tasks/README.md` and individual task files un
 Reports the CLI's build identity. `specscore version` prints the full human-readable line; `specscore --version` (and `-v`) prints the bare semver for scripts. See [version/README.md](version/README.md) for the full contract.
 | [telemetry](telemetry/README.md) | TODO: Add description. |
 | [event](event/README.md) | TODO: Add description. |
+| [publication-policy](publication-policy/README.md) | Adds specscore CLI commands and helpers to mutate publication policy config, resolve effective policy, validate branch guards, and support manifest-based publication operations. |
 
 ## Behavior
 
